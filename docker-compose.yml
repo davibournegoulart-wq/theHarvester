@@ -42,6 +42,10 @@ services:
       NEXT_PUBLIC_API_URL: http://localhost:8100
     depends_on:
       - api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
 
 volumes:
   netscraper_pgdata:
