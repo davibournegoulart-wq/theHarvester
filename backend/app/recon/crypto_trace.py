@@ -64,13 +64,22 @@ async def trace_eth_wallet(address: str) -> WalletTraceResult:
         response.raise_for_status()
         data = response.json()
 
+        # `tx_count` não existe nesse endpoint (confirmado ao vivo em 2026-09-08 —
+        # sempre voltava 0 silenciosamente). O total de transações mora em
+        # /addresses/{address}/counters, campo `transactions_count`.
+        counters_response = await client.get(
+            f"{BLOCKSCOUT_API}/addresses/{address}/counters", timeout=settings.request_timeout_seconds
+        )
+        counters_response.raise_for_status()
+        counters = counters_response.json()
+
     balance_eth = int(data.get("coin_balance") or 0) / 1e18
 
     return WalletTraceResult(
         address=address,
         chain="eth",
         balance=balance_eth,
-        tx_count=int(data.get("tx_count") or 0),
+        tx_count=int(counters.get("transactions_count") or 0),
         is_sanctioned=await _is_sanctioned_address(address, "eth"),
     )
 
