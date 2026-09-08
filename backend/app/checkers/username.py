@@ -20,6 +20,27 @@ positivo em massa.
   do seed até reverse-engenheirar o JSON interno (`SIGI_STATE`) ou usar
   browser headless.
 
+Segunda rodada de expansão (2026-09-08), mesmo rigor — validado ao vivo
+site por site antes de entrar:
+- Reddit (`/user/{}/about.json`) e Medium bloqueiam com **403** tanto pra
+  usuário real quanto inexistente (anti-bot) — inconclusivo dos dois lados,
+  ficam fora.
+- LinkedIn responde com status **999** (código customizado deles pra
+  bloqueio anti-bot, não é HTTP padrão) — mesmo problema documentado no
+  Sherlock upstream, fica fora.
+- GitLab: usuário existente responde 200 direto; inexistente dá **redirect
+  302 pra /users/sign_in** — não dá pra usar status_code puro porque com
+  `follow_redirects=True` os dois acabam em 200 (a página de sign-in também
+  retorna 200). Precisou de método novo (`redirect_away`) que compara o
+  path final da URL com o esperado.
+- Telegram, Threads: título da página muda ("View @user" vs "Contact
+  @user" no Telegram; "(@user)" vs "Threads • Log in" no Threads) —
+  title_regex, mesmo padrão do Instagram.
+- YouTube, Keybase, Snapchat: status_code puro funciona limpo (404 real pra
+  inexistente, sem SPA-shell 200 nem anti-bot no meio).
+- HackerNews: 200 nos dois casos, mas o corpo tem a frase "No such user."
+  quando não existe — message, mesmo padrão do Steam.
+
 Nenhum request de autenticação, nenhuma sessão de terceiro — só GET público.
 """
 
@@ -56,7 +77,7 @@ def _extract_title(body: str) -> str:
     return html.unescape(match.group(1)).strip() if match else ""
 
 
-def _evaluate(definition: dict, username: str, status_code: int, body: str) -> bool | None:
+def _evaluate(definition: dict, username: str, status_code: int, body: str, final_path: str) -> bool | None:
     """Retorna True (existe), False (não existe), ou None (inconclusivo —
     não conseguimos confirmar nenhum dos dois, ex: bloqueio anti-bot)."""
     error_type = definition["error_type"]
@@ -66,7 +87,7 @@ def _evaluate(definition: dict, username: str, status_code: int, body: str) -> b
             return False
         if status_code == 200:
             return True
-        return None  # 403/429/5xx etc — inconclusivo, não é "existe"
+        return None  # 403/429/5xx/999(anti-bot) etc — inconclusivo, não é "existe"
 
     if error_type == "message":
         if status_code != 200:
@@ -86,6 +107,16 @@ def _evaluate(definition: dict, username: str, status_code: int, body: str) -> b
         title = _extract_title(body)
         return title != "" and title != definition["generic_title"]
 
+    if error_type == "redirect_away":
+        # Perfil existente mantém a URL pedida; inexistente redireciona pra
+        # outro lugar (ex: GitLab manda pra /users/sign_in). follow_redirects=True
+        # já seguiu o redirect, então comparamos o path final com o esperado
+        # em vez do status code (que dá 200 nos dois casos depois de seguir).
+        if status_code != 200:
+            return None
+        expected_path = definition["url"].format(username).split("://", 1)[1].split("/", 1)[1]
+        return final_path.strip("/").lower() == expected_path.strip("/").lower()
+
     return None
 
 
@@ -96,7 +127,7 @@ async def _check_one(client: httpx.AsyncClient, platform: str, definition: dict,
     except httpx.HTTPError:
         return None
 
-    exists = _evaluate(definition, username, response.status_code, response.text)
+    exists = _evaluate(definition, username, response.status_code, response.text, str(response.url.path))
     if exists is None:
         return None
 
