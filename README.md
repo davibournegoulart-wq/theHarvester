@@ -143,5 +143,9 @@ UI com abas cobrindo os endpoints funcionais: Username, Email, Telefone,
 Domínio/IP (subdomínio + dorks + reputação de IP), Cripto (BTC/ETH + OFAC),
 **Grafo** (visualização interativa via `sigma.js` + `graphology` +
 ForceAtlas2, consumindo `/graph/compute`). Testado interativamente no
-Chrome (não só `next build`) — todas as 6 abas retornando dado real da API,
+Chrome (não só `next build`) — todas as 7 abas retornando dado real da API,
 incluindo clique em nó do grafo pra ver centralidade/comunidade.
+
+**Casos**: cria caso, lista casos, seleciona um pra ver a trilha de
+auditoria (imutável), arquiva — testado ao vivo no navegador (criação,
+seleção, arquivamento e nova entrada de auditoria aparecendo em tempo real).

@@ -1,3 +1,4 @@
+import CaseManagement from "@/components/CaseManagement";
 import CryptoTrace from "@/components/CryptoTrace";
 import DomainRecon from "@/components/DomainRecon";
 import EmailSearch from "@/components/EmailSearch";
@@ -19,6 +20,7 @@ export default function Home() {
           { label: "Domínio/IP", content: <DomainRecon /> },
           { label: "Cripto", content: <CryptoTrace /> },
           { label: "Grafo", content: <GraphView /> },
+          { label: "Casos", content: <CaseManagement /> },
         ]}
       />
     </main>
