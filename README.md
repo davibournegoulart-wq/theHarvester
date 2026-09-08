@@ -40,10 +40,19 @@ pra relação completa de ferramenta analisada -> entrou/não entrou e por quê.
 ## Status
 
 Funcional e **testado ao vivo** (venv Python 3.12, `pip install -r requirements.txt && pytest`):
-`checkers/username.py`, `checkers/phone.py` (metadado), `checkers/facebook_pivot.py`
-(extração de ID), `recon/domain.py`, `recon/ip_reputation.py`, `recon/crypto_trace.py`,
-`recon/breach_check.py` (senha), `recon/email_pattern.py` (permutação + SMTP),
-`graph/engine.py`, `bulk/explorer.py`, `case/incident.py`.
+`checkers/username.py` (12 plataformas), `checkers/phone.py` (metadado), `checkers/facebook_pivot.py`
+(extração de ID), `recon/domain.py`, `recon/ip_reputation.py`, `recon/crypto_trace.py`
+(BTC + ETH), `recon/breach_check.py` (senha), `recon/email_pattern.py` (permutação + SMTP),
+`graph/engine.py`, `bulk/explorer.py`, `case/incident.py`, `darkweb/monitor.py`.
+
+**53 testes automatizados** (CI roda com Postgres real via serviço no
+GitHub Actions — antes só cobria função pura/HTTP, agora também
+`case/incident.py` e as rotas `/cases/*`). Auditoria completa de atalhos
+feita em 2026-09-08 (ver `Shortcuts Audit.md` no vault) — achou e corrigiu
+2 bugs reais que estavam silenciosamente errados sem nunca terem sido
+testados de ponta a ponta: Twitter/X dava falso positivo pra qualquer
+username (x.com parou de retornar 404), e `trace_eth_wallet` sempre
+retornava `tx_count=0` (campo mora em outro endpoint do Blockscout).
 
 `checkers/email.py` funcional (Twitter — `email_available.json` ainda vivo,
 confirmado ao vivo) — Pinterest bloqueou com 403 (anti-bot), Instagram/Imgur
@@ -177,6 +186,11 @@ incluindo clique em nó do grafo pra ver centralidade/comunidade.
 **Casos**: cria caso, lista casos, seleciona um pra ver a trilha de
 auditoria (imutável), arquiva — testado ao vivo no navegador (criação,
 seleção, arquivamento e nova entrada de auditoria aparecendo em tempo real).
+Marca um caso como "ativo" (persistido em `localStorage`), e as abas
+Username/Email/Telefone ganham um botão "salvar no caso" em cada resultado —
+é o único jeito de um achado virar `Identifier`/`Account` no banco (as
+buscas em si são stateless por design). A aba Casos mostra um relatório
+(achados por plataforma/fonte de descoberta) puxando `GET /cases/{id}/report`.
 
 ## Identidade visual
 
@@ -211,12 +225,11 @@ do compose. Validado ao vivo (2026-09-08):
   Implementado o fluxo de 2 passos (buscar home → extrair token → buscar).
 - `torgle` removido do seed — endereço `.onion` confirmado morto
   (`ProxyError`).
-- Mesmo com o fluxo correto, o Ahmia devolveu **504** em toda tentativa
-  durante o teste (serviço sobrecarregado) — o seletor CSS do resultado
-  não foi confirmado contra uma resposta de busca bem-sucedida real.
-  Testado via UI (Chrome) de ponta a ponta: request completo, sem erro
-  500, resultado vazio por instabilidade do lado do Ahmia (comportamento
-  esperado e tratado).
+- Naquele momento o Ahmia devolveu **504** em toda tentativa (serviço
+  sobrecarregado), então o seletor CSS não pôde ser confirmado contra uma
+  resposta de busca real. **Revalidado em 2026-09-08**: Ahmia voltou ao ar,
+  seletor `li.result h4 a` confirmado correto contra 2384 resultados reais
+  pra "bitcoin". Teste automatizado com skip gracioso se cair de novo.
 
 ## Autenticação
 
