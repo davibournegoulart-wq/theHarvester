@@ -12,6 +12,22 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: netscraper
+          POSTGRES_PASSWORD: netscraper
+          POSTGRES_DB: netscraper
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NETSCRAPER_DATABASE_URL: postgresql+asyncpg://netscraper:netscraper@localhost:5432/netscraper
     steps:
       - uses: actions/checkout@v4
 
@@ -25,10 +41,15 @@ jobs:
       - name: Check syntax (all modules importable)
         run: python -c "import app.main"
 
+      - name: Run migrations
+        run: alembic upgrade head
+
       - name: Run tests
         # Parte da suíte faz request HTTP real a serviço público (ver
         # test_username_checker.py) — pode ficar instável sob rate-limit,
-        # mesmo trade-off documentado no README/vault.
+        # mesmo trade-off documentado no README/vault. Postgres real acima
+        # destrava os testes de integração de case/incident.py e das
+        # rotas /cases/* (antes rodavam só manualmente, nunca em CI).
         run: pytest -v
 
   frontend-build:
