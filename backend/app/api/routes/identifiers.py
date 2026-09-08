@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.checkers.email import check_email
 from app.checkers.facebook_pivot import extract_facebook_id, marketplace_url_for_id
 from app.checkers.phone import lookup_phone_metadata
 from app.checkers.username import check_username
@@ -12,6 +13,12 @@ router = APIRouter(prefix="/identifiers", tags=["identifiers"])
 async def username_lookup(username: str):
     results = await check_username(username)
     return {"username": username, "accounts": results}
+
+
+@router.get("/email/{email}")
+async def email_lookup(email: str):
+    results = await check_email(email)
+    return {"email": email, "services": results}
 
 
 @router.get("/breach/password")

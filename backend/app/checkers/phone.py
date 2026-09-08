@@ -4,21 +4,32 @@ Reimplementação nativa do padrão Ignorant (existência silenciosa) + PhoneInf
 (metadado de país/operadora/tipo de linha) + Moriarty Project (agregador).
 Ver vault: Tools - Identifier Lookup.
 
-`lookup_phone_metadata` usa `phonenumbers` (porte Python da libphonenumber do
-Google) — biblioteca offline, sem chamada de rede, sem depender do PhoneInfoga
-(projeto sem manutenção ativa).
+`check_phone_existence` — técnica lida no código-fonte do Ignorant
+(megadose/ignorant, GPL-3.0), reimplementada (não copiada verbatim).
 
-`check_phone_existence` fica como TODO: cada serviço (Amazon, Instagram,
-Snapchat) tem endpoint de registro/login próprio que muda com frequência —
-implementar exige validação contra o endpoint real de cada um antes de
-confiar no resultado, para não devolver falso positivo/negativo silencioso.
+⚠️ Testado ao vivo (2026-09-08): o fluxo documentado pelo Ignorant pro
+Snapchat (GET cookie `xsrf_token` → POST `validate_phone_number` → checar
+`status_code`) **não funciona mais** — a Snapchat redesenhou a página de
+login pra uma SPA Next.js, e o endpoint agora devolve a casca do app
+(HTML) em vez de JSON. O CSP da resposta mostra hCaptcha/Arkoselabs ativo
+nesse fluxo, indicando proteção anti-bot reforçada. Código abaixo trata
+isso como inconclusivo (retorna vazio, não quebra), mas a checagem de
+telefone por login/registro está efetivamente sem fonte funcional
+confirmada no momento — mesmo problema de manutenção que atinge
+Ignorant/Holehe upstream.
+
+`lookup_phone_metadata` usa `phonenumbers` (porte Python da libphonenumber
+do Google) — biblioteca offline, sem chamada de rede.
 """
 
 from dataclasses import dataclass
 
+import httpx
 import phonenumbers
 from phonenumbers import carrier as phonenumbers_carrier
 from phonenumbers import geocoder as phonenumbers_geocoder
+
+from app.config import settings
 
 
 @dataclass
@@ -64,5 +75,49 @@ def lookup_phone_metadata(phone: str, default_region: str | None = None) -> Phon
     )
 
 
-async def check_phone_existence(phone: str, country_code: str) -> list[PhoneCheckResult]:
-    raise NotImplementedError("Ver vault: Tools - Identifier Lookup#Ignorant para o padrão de fluxo login/registro.")
+async def _check_snapchat(client: httpx.AsyncClient, phone_national: str, region_code: str) -> PhoneCheckResult | None:
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Origin": "https://accounts.snapchat.com",
+        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+    }
+    try:
+        get_resp = await client.get(
+            "https://accounts.snapchat.com", headers=headers, timeout=settings.request_timeout_seconds
+        )
+        xsrf_token = get_resp.cookies.get("xsrf_token")
+        if not xsrf_token:
+            return None
+
+        data = {
+            "phone_country_code": region_code,
+            "phone_number": phone_national,
+            "xsrf_token": xsrf_token,
+        }
+        post_resp = await client.post(
+            "https://accounts.snapchat.com/accounts/validate_phone_number",
+            headers=headers,
+            data=data,
+            timeout=settings.request_timeout_seconds,
+        )
+        status = post_resp.json().get("status_code")
+    except (httpx.HTTPError, ValueError, KeyError):
+        return None
+
+    if status == "TAKEN_NUMBER":
+        return PhoneCheckResult(service="snapchat", exists=True)
+    if status == "OK":
+        return PhoneCheckResult(service="snapchat", exists=False)
+    return None  # bloqueio/rate-limit — inconclusivo
+
+
+async def check_phone_existence(phone: str, default_region: str) -> list[PhoneCheckResult]:
+    """`default_region` é o código ISO do país (ex: "US", "BR") — necessário
+    pra converter o número no formato que o Snapchat espera."""
+    parsed = phonenumbers.parse(phone, default_region)
+    national_number = str(parsed.national_number)
+
+    async with httpx.AsyncClient() as client:
+        result = await _check_snapchat(client, national_number, default_region)
+
+    return [result] if result is not None else []

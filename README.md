@@ -45,8 +45,19 @@ Funcional e **testado ao vivo** (venv Python 3.12, `pip install -r requirements.
 `recon/breach_check.py` (senha), `recon/email_pattern.py` (permutação + SMTP),
 `graph/engine.py`, `bulk/explorer.py`, `case/incident.py`.
 
-Stub com assinatura + TODO: `checkers/email.py`, `checkers/phone.py`
-(existência via login/registro), `checkers/google_account.py`,
+`checkers/email.py` funcional (Twitter — `email_available.json` ainda vivo,
+confirmado ao vivo) — Pinterest bloqueou com 403 (anti-bot), Instagram/Imgur
+exigem fluxo multi-etapa com footprint maior contra sistema de autenticação
+de produção, não implementados nessa rodada.
+
+`checkers/phone.py`'s `check_phone_existence` (Snapchat): implementado
+seguindo a técnica do Ignorant, mas **confirmado quebrado ao vivo** — a
+Snapchat redesenhou a página de login (agora SPA Next.js com
+hCaptcha/Arkoselabs), o endpoint documentado não retorna mais JSON. Trata
+como inconclusivo (não quebra), mas sem fonte funcional confirmada no
+momento.
+
+Stub com assinatura + TODO: `checkers/google_account.py`,
 `checkers/facebook_pivot.py` (dado de vendedor Marketplace),
 `recon/reverse_image.py`.
 
