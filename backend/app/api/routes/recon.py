@@ -7,6 +7,7 @@ from app.recon.crypto_trace import trace_btc_wallet, trace_eth_wallet
 from app.recon.domain import find_subdomains
 from app.recon.dork_engine import DorkRequest, generate_dorks as generate_dork_engine_queries
 from app.recon.dork_generator import generate_dorks
+from app.recon.domain_whois import lookup_domain_whois
 from app.recon.email_pattern import generate_permutations, verify_via_smtp
 from app.recon.ip_reputation import lookup_ip
 from app.recon.phone_mentions import generate_phone_mention_queries
@@ -24,6 +25,11 @@ async def domain_subdomains(domain: str):
 @router.get("/domain/{domain}/dorks")
 async def domain_dorks(domain: str):
     return generate_dorks(domain)
+
+
+@router.get("/domain/{domain}/whois")
+async def domain_whois(domain: str):
+    return await lookup_domain_whois(domain)
 
 
 @router.get("/ip/{ip}")

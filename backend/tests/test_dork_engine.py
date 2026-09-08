@@ -82,3 +82,31 @@ def test_username_field_is_treated_as_contact_subject():
 
     assert '"davibourne"' in queries
     assert any("pastebin.com" in q for q in queries)
+
+
+def test_phone_gets_facebook_group_and_marketplace_templates():
+    dorks = generate_dorks(DorkRequest(phone="+5531996421873"))
+    queries = [d.query for d in dorks]
+
+    assert any("facebook.com/groups" in q for q in queries)
+    assert any("facebook.com/marketplace" in q for q in queries)
+    assert any('intext:"whatsapp"' in q for q in queries)
+    # também deve manter os templates de contato genéricos (vazamento)
+    assert any("pastebin.com" in q for q in queries)
+
+
+def test_email_does_not_get_phone_specific_templates():
+    dorks = generate_dorks(DorkRequest(email="davi@example.com"))
+    queries = [d.query for d in dorks]
+
+    assert not any("facebook.com/groups" in q for q in queries)
+    assert not any("facebook.com/marketplace" in q for q in queries)
+
+
+def test_dorks_carry_a_category_for_frontend_grouping():
+    dorks = generate_dorks(DorkRequest(full_name="Davi Goulart"))
+    categories = {d.category for d in dorks}
+
+    assert "LinkedIn" in categories
+    assert "Facebook" in categories
+    assert "Fórum" in categories

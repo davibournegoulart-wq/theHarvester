@@ -6,11 +6,19 @@ import { apiGet } from "@/lib/api";
 type Subdomain = { subdomain: string };
 type Dork = { query: string; intent: string };
 type IpInfo = { ip: string; asn_holder: string | null; country: string | null };
+type WhoisInfo = {
+  registrar: string | null;
+  registrant_name: string | null;
+  registrant_email: string | null;
+  created_at: string | null;
+  age_days: number | null;
+};
 
 export default function DomainRecon() {
   const [domain, setDomain] = useState("");
   const [subdomains, setSubdomains] = useState<Subdomain[]>([]);
   const [dorks, setDorks] = useState<Dork[]>([]);
+  const [whois, setWhois] = useState<WhoisInfo | null>(null);
   const [ip, setIp] = useState("");
   const [ipInfo, setIpInfo] = useState<IpInfo | null>(null);
   const [loading, setLoading] = useState(false);
@@ -19,12 +27,14 @@ export default function DomainRecon() {
     if (!domain) return;
     setLoading(true);
     try {
-      const [subs, dorkList] = await Promise.all([
+      const [subs, dorkList, whoisInfo] = await Promise.all([
         apiGet<Subdomain[]>(`/recon/domain/${encodeURIComponent(domain)}/subdomains`),
         apiGet<Dork[]>(`/recon/domain/${encodeURIComponent(domain)}/dorks`),
+        apiGet<WhoisInfo>(`/recon/domain/${encodeURIComponent(domain)}/whois`),
       ]);
       setSubdomains(subs);
       setDorks(dorkList);
+      setWhois(whoisInfo);
     } finally {
       setLoading(false);
     }
@@ -55,6 +65,22 @@ export default function DomainRecon() {
           Buscar
         </button>
       </div>
+      {whois && (
+        <>
+          <p style={{ marginTop: 8, fontWeight: "bold" }}>WHOIS (via RDAP):</p>
+          <ul>
+            <li>
+              Registrado em: {whois.created_at ? new Date(whois.created_at).toLocaleDateString("pt-BR") : "—"}
+              {whois.age_days != null && ` (${Math.floor(whois.age_days / 365)} anos atrás)`}
+            </li>
+            <li>Registrador: {whois.registrar ?? "—"}</li>
+            <li>
+              Registrante: {whois.registrant_name ?? "protegido por privacidade (comum em .com desde 2018)"}
+            </li>
+            <li>E-mail do registrante: {whois.registrant_email ?? "protegido por privacidade"}</li>
+          </ul>
+        </>
+      )}
       {subdomains.length > 0 && (
         <>
           <p style={{ marginTop: 8, fontWeight: "bold" }}>Subdomínios (crt.sh) — pode vir vazio se estiver instável:</p>

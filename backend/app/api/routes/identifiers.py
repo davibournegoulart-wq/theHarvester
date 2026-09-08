@@ -1,9 +1,12 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.checkers.email import check_email
 from app.checkers.facebook_pivot import extract_facebook_id, marketplace_url_for_id
 from app.checkers.google_account import lookup_gaia_profile
+from app.checkers.gravatar import lookup_gravatar
+from app.checkers.image_exif import extract_exif
 from app.checkers.phone import lookup_phone_metadata
+from app.checkers.social_id_pivot import extract_instagram_id, extract_tiktok_id
 from app.checkers.username import check_username
 from app.config import settings
 from app.recon.breach_check import check_password_pwned
@@ -54,3 +57,27 @@ async def google_account_lookup(email: str):
             "Cookies > google.com, mínimo SAPISID) e configure como JSON nessa env var.",
         )
     return await lookup_gaia_profile(email, settings.google_session_cookies)
+
+
+@router.get("/gravatar/{email}")
+async def gravatar_lookup(email: str):
+    return await lookup_gravatar(email)
+
+
+@router.get("/social-id/instagram/{username}")
+async def instagram_id_pivot(username: str):
+    return await extract_instagram_id(username)
+
+
+@router.get("/social-id/tiktok/{username}")
+async def tiktok_id_pivot(username: str):
+    return await extract_tiktok_id(username)
+
+
+@router.post("/image/exif")
+async def image_exif(file: UploadFile = File(...)):
+    content = await file.read()
+    try:
+        return extract_exif(content)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Não foi possível ler os metadados dessa imagem.")

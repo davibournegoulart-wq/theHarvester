@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { apiFetch, apiGet } from "@/lib/api";
-import SaveToCaseButton from "@/components/SaveToCaseButton";
+import { apiFetch, apiGet, apiPostJson } from "@/lib/api";
+import { useActiveCase } from "@/lib/activeCase";
 
 type EmailResult = {
   service: string;
@@ -17,30 +17,100 @@ type GoogleAccountResult = {
   is_public_profile: boolean;
 };
 
+type GravatarResult = {
+  exists: boolean;
+  display_name: string | null;
+  profile_url: string | null;
+  avatar_url: string | null;
+  location: string | null;
+  description: string | null;
+  job_title: string | null;
+  company: string | null;
+  verified_accounts: { url: string; service_label: string }[] | null;
+};
+
 export default function EmailSearch() {
+  const { activeCase } = useActiveCase();
   const [email, setEmail] = useState("");
   const [results, setResults] = useState<EmailResult[]>([]);
   const [googleResult, setGoogleResult] = useState<GoogleAccountResult | null>(null);
   const [googleError, setGoogleError] = useState<string | null>(null);
+  const [gravatarResult, setGravatarResult] = useState<GravatarResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
 
   async function handleSearch() {
-    if (!email) return;
+    if (!email || !activeCase) return;
     setLoading(true);
     setGoogleError(null);
     setGoogleResult(null);
     try {
       const data = await apiGet<{ services: EmailResult[] }>(`/identifiers/email/${encodeURIComponent(email)}`);
-      setResults(data.services ?? []);
+      const services = data.services ?? [];
+      setResults(services);
       setSearched(true);
 
-      const googleResponse = await apiFetch(`/identifiers/google-account/${encodeURIComponent(email)}`);
-      if (googleResponse.ok) {
-        setGoogleResult(await googleResponse.json());
-      } else {
-        const body = await googleResponse.json().catch(() => null);
-        setGoogleError(body?.detail ?? `Erro ${googleResponse.status}`);
+      // Cada passo é independente — falha de rede num não deve travar os outros.
+      await Promise.all(
+        services
+          .filter((r) => r.exists)
+          .map((r) =>
+            apiPostJson(`/cases/${activeCase.id}/findings`, {
+              identifier_type: "email",
+              identifier_value: email,
+              platform: r.service,
+              exists: r.exists,
+              discovered_by: "checkers.email",
+              metadata_json: { rate_limited: r.rate_limited, leaked_recovery_hint: r.leaked_recovery_hint },
+            }).catch(() => {})
+          )
+      );
+
+      try {
+        const googleResponse = await apiFetch(`/identifiers/google-account/${encodeURIComponent(email)}`);
+        if (googleResponse.ok) {
+          const google: GoogleAccountResult = await googleResponse.json();
+          setGoogleResult(google);
+          if (google.gaia_id) {
+            await apiPostJson(`/cases/${activeCase.id}/findings`, {
+              identifier_type: "email",
+              identifier_value: email,
+              platform: "google",
+              url: google.profile_photo_url,
+              exists: true,
+              discovered_by: "checkers.google_account",
+              metadata_json: { gaia_id: google.gaia_id, is_public_profile: google.is_public_profile },
+            }).catch(() => {});
+          }
+        } else {
+          const body = await googleResponse.json().catch(() => null);
+          setGoogleError(body?.detail ?? `Erro ${googleResponse.status}`);
+        }
+      } catch (e) {
+        setGoogleError(e instanceof Error ? e.message : "Erro ao consultar conta Google");
+      }
+
+      try {
+        const gravatar = await apiGet<GravatarResult>(`/identifiers/gravatar/${encodeURIComponent(email)}`);
+        setGravatarResult(gravatar);
+        if (gravatar.exists) {
+          await apiPostJson(`/cases/${activeCase.id}/findings`, {
+            identifier_type: "email",
+            identifier_value: email,
+            platform: "gravatar",
+            url: gravatar.profile_url,
+            exists: true,
+            discovered_by: "checkers.gravatar",
+            metadata_json: {
+              display_name: gravatar.display_name,
+              location: gravatar.location,
+              company: gravatar.company,
+              verified_accounts: gravatar.verified_accounts,
+            },
+          }).catch(() => {});
+        }
+      } catch {
+        // Gravatar indisponível não deve travar o restante da busca já exibida.
       }
     } finally {
       setLoading(false);
@@ -61,22 +131,15 @@ export default function EmailSearch() {
           {loading ? "Buscando..." : "Buscar"}
         </button>
       </div>
+      {searched && !loading && results.some((r) => r.exists) && (
+        <p style={{ fontSize: 11, color: "var(--success)" }}>salvo automaticamente em "{activeCase?.name}"</p>
+      )}
       {searched && !loading && (
         <ul style={{ marginTop: 16 }}>
           {results.map((r) => (
             <li key={r.service} style={{ marginBottom: 6 }}>
               {r.service}: {r.exists ? "cadastrado" : "não cadastrado"}
-              {r.leaked_recovery_hint && ` — dica de recuperação: ${r.leaked_recovery_hint}`}{" "}
-              {r.exists && (
-                <SaveToCaseButton
-                  identifierType="email"
-                  identifierValue={email}
-                  platform={r.service}
-                  exists={r.exists}
-                  discoveredBy="checkers.email"
-                  metadata={{ rate_limited: r.rate_limited, leaked_recovery_hint: r.leaked_recovery_hint }}
-                />
-              )}
+              {r.leaked_recovery_hint && ` — dica de recuperação: ${r.leaked_recovery_hint}`}
             </li>
           ))}
           {results.length === 0 && <li>Sem serviço com checagem disponível no momento.</li>}
@@ -100,21 +163,41 @@ export default function EmailSearch() {
                   </a>
                 </li>
               )}
-              {googleResult.gaia_id && (
-                <li>
-                  <SaveToCaseButton
-                    identifierType="email"
-                    identifierValue={email}
-                    platform="google"
-                    url={googleResult.profile_photo_url}
-                    exists={true}
-                    discoveredBy="checkers.google_account"
-                    metadata={{ gaia_id: googleResult.gaia_id, is_public_profile: googleResult.is_public_profile }}
-                  />
-                </li>
-              )}
             </ul>
           )}
+        </>
+      )}
+
+      {gravatarResult && gravatarResult.exists && (
+        <>
+          <p style={{ fontSize: 12, marginTop: 16, fontWeight: "bold" }}>Gravatar (perfil público opt-in):</p>
+          <ul>
+            {gravatarResult.display_name && <li>Nome: {gravatarResult.display_name}</li>}
+            {gravatarResult.location && <li>Localização: {gravatarResult.location}</li>}
+            {gravatarResult.job_title && <li>Cargo: {gravatarResult.job_title}</li>}
+            {gravatarResult.company && <li>Empresa: {gravatarResult.company}</li>}
+            {gravatarResult.profile_url && (
+              <li>
+                <a href={gravatarResult.profile_url} target="_blank" rel="noreferrer">
+                  Ver perfil completo
+                </a>
+              </li>
+            )}
+            {gravatarResult.verified_accounts && gravatarResult.verified_accounts.length > 0 && (
+              <li>
+                Contas verificadas vinculadas:
+                <ul>
+                  {gravatarResult.verified_accounts.map((v, i) => (
+                    <li key={i}>
+                      <a href={v.url} target="_blank" rel="noreferrer">
+                        {v.service_label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            )}
+          </ul>
         </>
       )}
     </div>

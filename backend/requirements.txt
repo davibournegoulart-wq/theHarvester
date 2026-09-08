@@ -9,9 +9,9 @@ pydantic-settings==2.5.2
 httpx[socks]==0.27.2
 networkx==3.2.1
 dnspython==2.7.0
-python-whois==0.9.4
 phonenumbers==8.13.48
 beautifulsoup4==4.12.3
-apscheduler==3.10.4
+Pillow==11.0.0
+python-multipart==0.0.12
 pytest==8.3.3
 pytest-asyncio==0.24.0

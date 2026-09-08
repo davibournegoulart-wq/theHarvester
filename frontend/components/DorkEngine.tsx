@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { apiFetch } from "@/lib/api";
 
-type DorkQuery = { query: string; intent: string };
+type DorkQuery = { query: string; intent: string; category?: string };
 
 const FIELD_LABELS: Record<string, string> = {
   full_name: "Nome completo",
@@ -70,18 +70,31 @@ export default function DorkEngine() {
         {loading ? "Gerando..." : "Gerar dorks"}
       </button>
       {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
-      {dorks.length > 0 && (
-        <ul style={{ marginTop: 16 }}>
-          {dorks.map((d, i) => (
-            <li key={i} style={{ marginBottom: 8 }}>
-              <a href={`https://www.google.com/search?q=${encodeURIComponent(d.query)}`} target="_blank" rel="noreferrer">
-                {d.query}
-              </a>
-              <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{d.intent}</div>
-            </li>
-          ))}
-        </ul>
-      )}
+      {dorks.length > 0 &&
+        Object.entries(groupByCategory(dorks)).map(([category, group]) => (
+          <div key={category} style={{ marginTop: 16 }}>
+            <p style={{ fontWeight: "bold", marginBottom: 4 }}>{category}</p>
+            <ul style={{ marginTop: 0 }}>
+              {group.map((d, i) => (
+                <li key={i} style={{ marginBottom: 8 }}>
+                  <a href={`https://www.google.com/search?q=${encodeURIComponent(d.query)}`} target="_blank" rel="noreferrer">
+                    {d.query}
+                  </a>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{d.intent}</div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
     </div>
   );
+}
+
+function groupByCategory(dorks: DorkQuery[]): Record<string, DorkQuery[]> {
+  const groups: Record<string, DorkQuery[]> = {};
+  for (const dork of dorks) {
+    const category = dork.category ?? "Geral";
+    (groups[category] ??= []).push(dork);
+  }
+  return groups;
 }

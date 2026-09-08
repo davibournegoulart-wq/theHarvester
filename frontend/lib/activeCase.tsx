@@ -9,12 +9,14 @@ type ActiveCase = { id: string; name: string } | null;
 type ActiveCaseContextValue = {
   activeCase: ActiveCase;
   setActiveCase: (c: ActiveCase) => void;
+  hydrated: boolean;
 };
 
 const ActiveCaseContext = createContext<ActiveCaseContextValue | null>(null);
 
 export function ActiveCaseProvider({ children }: { children: ReactNode }) {
   const [activeCase, setActiveCaseState] = useState<ActiveCase>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     try {
@@ -22,6 +24,8 @@ export function ActiveCaseProvider({ children }: { children: ReactNode }) {
       if (raw) setActiveCaseState(JSON.parse(raw));
     } catch {
       // localStorage indisponível — segue sem caso ativo restaurado
+    } finally {
+      setHydrated(true);
     }
   }, []);
 
@@ -36,7 +40,7 @@ export function ActiveCaseProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ActiveCaseContext.Provider value={{ activeCase, setActiveCase }}>{children}</ActiveCaseContext.Provider>
+    <ActiveCaseContext.Provider value={{ activeCase, setActiveCase, hydrated }}>{children}</ActiveCaseContext.Provider>
   );
 }
 

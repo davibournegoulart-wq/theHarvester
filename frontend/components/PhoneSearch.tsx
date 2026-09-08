@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPostJson } from "@/lib/api";
+import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "@/components/SaveToCaseButton";
 
 type PhoneMetadata = {
@@ -14,6 +15,7 @@ type PhoneMetadata = {
 type MentionQuery = { platform: string; query: string };
 
 export default function PhoneSearch() {
+  const { activeCase } = useActiveCase();
   const [phone, setPhone] = useState("");
   const [region, setRegion] = useState("BR");
   const [metadata, setMetadata] = useState<PhoneMetadata | null>(null);
@@ -22,7 +24,7 @@ export default function PhoneSearch() {
   const [error, setError] = useState<string | null>(null);
 
   async function handleSearch() {
-    if (!phone) return;
+    if (!phone || !activeCase) return;
     setLoading(true);
     setError(null);
     try {
@@ -32,6 +34,18 @@ export default function PhoneSearch() {
       ]);
       setMetadata(data);
       setMentionQueries(mentions);
+
+      if (data.is_valid) {
+        // Falha ao salvar não deve apagar o resultado já exibido na tela.
+        await apiPostJson(`/cases/${activeCase.id}/findings`, {
+          identifier_type: "phone",
+          identifier_value: phone,
+          platform: "phone_metadata",
+          exists: true,
+          discovered_by: "recon.phone",
+          metadata_json: { ...data },
+        }).catch(() => {});
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao buscar");
       setMetadata(null);
@@ -70,16 +84,7 @@ export default function PhoneSearch() {
           <li>Operadora: {metadata.carrier ?? "—"}</li>
           <li>Tipo de linha: {metadata.line_type ?? "—"}</li>
           {metadata.is_valid && (
-            <li>
-              <SaveToCaseButton
-                identifierType="phone"
-                identifierValue={phone}
-                platform="phone_metadata"
-                exists={metadata.is_valid}
-                discoveredBy="recon.phone"
-                metadata={{ ...metadata }}
-              />
-            </li>
+            <li style={{ fontSize: 11, color: "var(--success)" }}>salvo automaticamente em "{activeCase?.name}"</li>
           )}
         </ul>
       )}

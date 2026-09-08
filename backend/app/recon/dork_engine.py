@@ -6,30 +6,42 @@ manualmente.
 
 Templates específicos por tipo de campo (2026-09-08): nome se beneficia de
 dork de rede social/currículo/registro público; e-mail/telefone/username se
-beneficiam de dork de vazamento (paste site, credencial exposta) — juntar
-tudo num template genérico único desperdiçava sinal.
+beneficiam de dork de vazamento (paste site, credencial exposta); telefone
+especificamente ganha dork de grupo/Marketplace do Facebook (onde número de
+contato costuma aparecer em anúncio/classificado) — juntar tudo num
+template genérico único desperdiçava sinal. Cada dork carrega uma
+`category`, usada pro frontend agrupar visualmente.
 """
 
 from dataclasses import dataclass
 
 COMMON_DOC_EXTENSIONS = ["pdf", "doc", "docx", "xls", "xlsx", "csv", "txt"]
 
-# {subject} vira o valor entre aspas; {scope} vira "site:dominio " ou "" (já com espaço/vazio).
+# (template, intent, category). {subject} vira o valor entre aspas;
+# {scope} vira "site:dominio " ou "" (já com espaço/vazio).
 NAME_TEMPLATES = [
-    ('{scope}"{subject}" site:linkedin.com/in/', "perfil LinkedIn"),
-    ('{scope}"{subject}" site:facebook.com', "perfil/menção no Facebook"),
-    ('{scope}"{subject}" (site:x.com OR site:twitter.com)', "perfil/menção no Twitter/X"),
-    ('{scope}"{subject}" site:instagram.com', "perfil/menção no Instagram"),
-    ('{scope}"{subject}" (intitle:"currículo" OR intitle:"curriculo" OR intitle:"resume" OR intitle:"curriculum vitae")', "currículo publicado"),
-    ('{scope}"{subject}" site:jusbrasil.com.br', "processo judicial público (Brasil)"),
-    ('{scope}"{subject}" site:escavador.com', "registro público agregado (Brasil)"),
-    ('{scope}"{subject}" (site:reddit.com OR site:quora.com)', "menção em fórum (Reddit/Quora)"),
-    ('{scope}"{subject}" inurl:forum', "menção em fórum genérico"),
+    ('{scope}"{subject}" site:linkedin.com/in/', "perfil LinkedIn", "LinkedIn"),
+    ('{scope}"{subject}" site:facebook.com', "perfil/menção no Facebook", "Facebook"),
+    ('{scope}"{subject}" (site:x.com OR site:twitter.com)', "perfil/menção no Twitter/X", "Twitter/X"),
+    ('{scope}"{subject}" site:instagram.com', "perfil/menção no Instagram", "Instagram"),
+    ('{scope}"{subject}" (intitle:"currículo" OR intitle:"curriculo" OR intitle:"resume" OR intitle:"curriculum vitae")', "currículo publicado", "Currículo"),
+    ('{scope}"{subject}" site:jusbrasil.com.br', "processo judicial público (Brasil)", "Registro Público (BR)"),
+    ('{scope}"{subject}" site:escavador.com', "registro público agregado (Brasil)", "Registro Público (BR)"),
+    ('{scope}"{subject}" (site:reddit.com OR site:quora.com)', "menção em fórum (Reddit/Quora)", "Fórum"),
+    ('{scope}"{subject}" inurl:forum', "menção em fórum genérico", "Fórum"),
 ]
 
 CONTACT_TEMPLATES = [
-    ('{scope}"{subject}" site:pastebin.com', "vazamento em paste site"),
-    ('{scope}"{subject}" (intext:"senha" OR intext:"password")', "possível vazamento de credencial"),
+    ('{scope}"{subject}" site:pastebin.com', "vazamento em paste site", "Vazamento"),
+    ('{scope}"{subject}" (intext:"senha" OR intext:"password")', "possível vazamento de credencial", "Vazamento"),
+]
+
+# Além do CONTACT_TEMPLATES genérico — telefone se beneficia de dork de
+# classificado/grupo, onde número de contato costuma aparecer publicado.
+PHONE_TEMPLATES = [
+    ('{scope}"{subject}" site:facebook.com/groups', "menção em grupo do Facebook", "Facebook"),
+    ('{scope}"{subject}" site:facebook.com/marketplace', "anúncio no Facebook Marketplace", "Facebook"),
+    ('{scope}"{subject}" intext:"whatsapp"', "menção junto de \"whatsapp\"", "WhatsApp"),
 ]
 
 
@@ -49,10 +61,11 @@ class DorkRequest:
 class DorkQuery:
     query: str
     intent: str
+    category: str = "Geral"
 
 
 def _subjects(req: DorkRequest) -> list[tuple[str, str]]:
-    """Retorna [(valor, tipo)] — tipo é "name" ou "contact", decide quais templates específicos aplicar."""
+    """Retorna [(valor, tipo)] — tipo é "name", "phone" ou "contact", decide quais templates específicos aplicar."""
     subjects: list[tuple[str, str]] = []
     if req.full_name:
         subjects.append((req.full_name, "name"))
@@ -61,7 +74,7 @@ def _subjects(req: DorkRequest) -> list[tuple[str, str]]:
     if req.email:
         subjects.append((req.email, "contact"))
     if req.phone:
-        subjects.append((req.phone, "contact"))
+        subjects.append((req.phone, "phone"))
     if req.username:
         subjects.append((req.username, "contact"))
     return subjects
@@ -89,8 +102,12 @@ def generate_dorks(req: DorkRequest) -> list[DorkQuery]:
         dorks.append(DorkQuery(query=f'{scope}"{subject}" ({ext_filter})', intent=f'documento mencionando "{subject}"'))
 
         templates = NAME_TEMPLATES if subject_type == "name" else CONTACT_TEMPLATES
-        for template, intent in templates:
-            dorks.append(DorkQuery(query=template.format(scope=scope, subject=subject), intent=intent))
+        for template, intent, category in templates:
+            dorks.append(DorkQuery(query=template.format(scope=scope, subject=subject), intent=intent, category=category))
+
+        if subject_type == "phone":
+            for template, intent, category in PHONE_TEMPLATES:
+                dorks.append(DorkQuery(query=template.format(scope=scope, subject=subject), intent=intent, category=category))
 
     if len(subjects) >= 2:
         combined = " ".join(f'"{s}"' for s, _ in subjects)

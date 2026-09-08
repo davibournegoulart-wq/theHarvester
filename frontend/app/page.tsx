@@ -1,6 +1,7 @@
 import ActiveCaseBanner from "@/components/ActiveCaseBanner";
 import ApiKeyGate from "@/components/ApiKeyGate";
 import BulkExplorer from "@/components/BulkExplorer";
+import CaseGate from "@/components/CaseGate";
 import CaseManagement from "@/components/CaseManagement";
 import CryptoTrace from "@/components/CryptoTrace";
 import DomainRecon from "@/components/DomainRecon";
@@ -9,6 +10,7 @@ import EmailSearch from "@/components/EmailSearch";
 import GraphView from "@/components/GraphView";
 import PhoneSearch from "@/components/PhoneSearch";
 import Tabs from "@/components/Tabs";
+import ToolsPanel from "@/components/ToolsPanel";
 import UsernameSearch from "@/components/UsernameSearch";
 import { ActiveCaseProvider } from "@/lib/activeCase";
 
@@ -27,19 +29,22 @@ export default function Home() {
             Sistema de investigação OSINT — módulos internos, sem ferramenta de terceiro embutida.
           </p>
           <ActiveCaseBanner />
-          <Tabs
-            tabs={[
-              { label: "Username", content: <UsernameSearch /> },
-              { label: "Email", content: <EmailSearch /> },
-              { label: "Telefone", content: <PhoneSearch /> },
-              { label: "Domínio/IP", content: <DomainRecon /> },
-              { label: "Dorks", content: <DorkEngine /> },
-              { label: "Cripto", content: <CryptoTrace /> },
-              { label: "Grafo", content: <GraphView /> },
-              { label: "Casos", content: <CaseManagement /> },
-              { label: "Bulk", content: <BulkExplorer /> },
-            ]}
-          />
+          <CaseGate>
+            <Tabs
+              tabs={[
+                { label: "Username", content: <UsernameSearch /> },
+                { label: "Email", content: <EmailSearch /> },
+                { label: "Telefone", content: <PhoneSearch /> },
+                { label: "Domínio/IP", content: <DomainRecon /> },
+                { label: "Dorks", content: <DorkEngine /> },
+                { label: "Ferramentas", content: <ToolsPanel /> },
+                { label: "Cripto", content: <CryptoTrace /> },
+                { label: "Grafo", content: <GraphView /> },
+                { label: "Casos", content: <CaseManagement /> },
+                { label: "Bulk", content: <BulkExplorer /> },
+              ]}
+            />
+          </CaseGate>
         </main>
       </ActiveCaseProvider>
     </ApiKeyGate>
