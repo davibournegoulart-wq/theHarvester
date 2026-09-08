@@ -11,10 +11,13 @@ type PhoneMetadata = {
   is_valid: boolean;
 };
 
+type MentionQuery = { platform: string; query: string };
+
 export default function PhoneSearch() {
   const [phone, setPhone] = useState("");
   const [region, setRegion] = useState("BR");
   const [metadata, setMetadata] = useState<PhoneMetadata | null>(null);
+  const [mentionQueries, setMentionQueries] = useState<MentionQuery[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,13 +26,16 @@ export default function PhoneSearch() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiGet<PhoneMetadata>(
-        `/identifiers/phone/metadata?phone=${encodeURIComponent(phone)}&default_region=${region}`
-      );
+      const [data, mentions] = await Promise.all([
+        apiGet<PhoneMetadata>(`/identifiers/phone/metadata?phone=${encodeURIComponent(phone)}&default_region=${region}`),
+        apiGet<MentionQuery[]>(`/recon/phone/${encodeURIComponent(phone)}/mentions`),
+      ]);
       setMetadata(data);
+      setMentionQueries(mentions);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao buscar");
       setMetadata(null);
+      setMentionQueries([]);
     } finally {
       setLoading(false);
     }
@@ -76,6 +82,30 @@ export default function PhoneSearch() {
             </li>
           )}
         </ul>
+      )}
+      {mentionQueries.length > 0 && (
+        <>
+          <p style={{ marginTop: 16, fontWeight: "bold" }}>
+            Menções em rede social — buscas geradas, revise manualmente antes de confiar:
+          </p>
+          <ul>
+            {mentionQueries.map((m, i) => (
+              <li key={i} style={{ marginBottom: 6 }}>
+                <a href={`https://www.google.com/search?q=${encodeURIComponent(m.query)}`} target="_blank" rel="noreferrer">
+                  [{m.platform}] {m.query}
+                </a>{" "}
+                <SaveToCaseButton
+                  identifierType="phone"
+                  identifierValue={phone}
+                  platform={m.platform}
+                  exists={true}
+                  discoveredBy="recon.phone_mentions"
+                  metadata={{ query: m.query }}
+                />
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </div>
   );

@@ -4,6 +4,7 @@ import BulkExplorer from "@/components/BulkExplorer";
 import CaseManagement from "@/components/CaseManagement";
 import CryptoTrace from "@/components/CryptoTrace";
 import DomainRecon from "@/components/DomainRecon";
+import DorkEngine from "@/components/DorkEngine";
 import EmailSearch from "@/components/EmailSearch";
 import GraphView from "@/components/GraphView";
 import PhoneSearch from "@/components/PhoneSearch";
@@ -32,6 +33,7 @@ export default function Home() {
               { label: "Email", content: <EmailSearch /> },
               { label: "Telefone", content: <PhoneSearch /> },
               { label: "Domínio/IP", content: <DomainRecon /> },
+              { label: "Dorks", content: <DorkEngine /> },
               { label: "Cripto", content: <CryptoTrace /> },
               { label: "Grafo", content: <GraphView /> },
               { label: "Casos", content: <CaseManagement /> },
