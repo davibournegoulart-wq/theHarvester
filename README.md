@@ -1,0 +1,105 @@
+# Net Scraper
+
+Sistema de investigação OSINT — módulos internos, sem ferramenta de terceiro embutida.
+Documentação completa de arquitetura e decisão de escopo/risco no vault Obsidian
+`Net_Scraper/Scraper` (ver `Project Overview.md`, `Architecture Roadmap.md`, `Tool Decision Log.md`).
+
+## Rodando localmente
+
+```bash
+docker compose up -d
+```
+
+- API: http://localhost:8100 (docs em `/docs`)
+- Web: http://localhost:3100
+- Postgres: `localhost:5433`
+
+## Estrutura
+
+```
+backend/app/
+  checkers/     — identificador (username/email/telefone/google/facebook) -> contas
+  recon/        — domínio/organização, e-mail corporativo, breach, imagem reversa,
+                  reputação de IP, sanções, cripto
+  graph/        — motor de correlação (networkx)
+  bulk/         — exploração de CSV em massa + monitor de paste site
+  darkweb/      — busca multi-engine .onion
+  case/         — case management com trilha de auditoria
+  report/       — serialização de dado pro gráfico do frontend
+frontend/       — Next.js, consome a API acima
+```
+
+## Regra de arquitetura
+
+Nenhum módulo depende de ferramenta de terceiro rodando como processo/produto
+separado — cada um reimplementa a técnica nativamente. Único link externo
+aceito: fonte de dado oficial/governamental por país (OFAC SDN, USGS, RDAP,
+registro público de empresa/eleitoral). Ver `Tool Decision Log.md` no vault
+pra relação completa de ferramenta analisada -> entrou/não entrou e por quê.
+
+## Status
+
+Funcional e **testado ao vivo** (venv Python 3.12, `pip install -r requirements.txt && pytest`):
+`checkers/username.py`, `checkers/phone.py` (metadado), `checkers/facebook_pivot.py`
+(extração de ID), `recon/domain.py`, `recon/ip_reputation.py`, `recon/crypto_trace.py`,
+`recon/breach_check.py` (senha), `recon/email_pattern.py` (permutação + SMTP),
+`graph/engine.py`, `bulk/explorer.py`, `case/incident.py`.
+
+Stub com assinatura + TODO: `checkers/email.py`, `checkers/phone.py`
+(existência via login/registro), `checkers/google_account.py`,
+`checkers/facebook_pivot.py` (dado de vendedor Marketplace),
+`recon/reverse_image.py`, `bulk/paste_monitor.py`.
+
+## Migrações
+
+```bash
+cd backend && source .venv/bin/activate
+alembic upgrade head          # aplica
+alembic revision --autogenerate -m "descrição"   # gera nova, após mudar um model
+```
+
+### Descobertas do teste ao vivo (2026-09-08)
+- **Falso positivo crítico corrigido em `checkers/username.py`**: a lógica
+  original ("status != 404 → existe") dava falso positivo em **7 de 10**
+  sites do seed contra um username certamente inexistente. Causa: sites com
+  anti-bot (GitLab, Reddit, Medium) bloqueiam requisição não-autenticada com
+  **403** (não 404); sites SPA (Instagram, Pinterest, Twitch) servem a casca
+  da aplicação com **200** independente do perfil existir. Corrigido com
+  detecção por `<title>` renderizado (title_regex/title_not_generic) pros
+  SPA, e tratamento de qualquer status fora de {200, 404} como
+  **inconclusivo** (nunca reportado como "existe"). GitLab/Reddit/Medium/
+  TikTok removidos do seed até ter estratégia de detecção validada pra eles.
+  Teste de regressão em `test_no_false_positive_on_nonexistent_username`.
+- **crt.sh instável**: retorna 502 com frequência (serviço comunitário
+  gratuito). Código já trata (retorna vazio), mas precisa de fonte
+  secundária de fallback.
+- **OpenSanctions exige API key** (gratuita, cadastro em
+  opensanctions.org/api/) — não é keyless como documentado inicialmente.
+  Configurar via `NETSCRAPER_OPENSANCTIONS_API_KEY`. Formato do header de
+  auth ainda não verificado contra uma chave real.
+- **Python 3.10+ obrigatório** (sintaxe `str | None`) — o Dockerfile já usa
+  3.12, mas rodar localmente fora do Docker exige o mesmo mínimo.
+- **`greenlet` faltava no requirements.txt** — SQLAlchemy async exige
+  explicitamente, adicionado.
+- **Stack completo validado via Docker**: `docker compose up -d`, migração
+  aplicada (7 tabelas), API respondendo em `:8100` com dado real (ex:
+  `torvalds` corretamente achado em GitHub/Twitter/Steam/Instagram/
+  Pinterest/Twitch; carteira genesis do Bitcoin com saldo/histórico corretos
+  via `recon/crypto_trace.py`).
+- **Frontend não buildava**: `package.json` original pinava Next.js 15.0.0 +
+  React 19.0.0 final — a peer dependency do Next 15.0.0 só aceitava React 18
+  ou a RC exata do React 19, não a versão estável. Corrigido pra Next
+  16.3.4 + React 19.2.8 (versões atuais confirmadas compatíveis via
+  `npm install` limpo). Build e `docker compose up -d web` validados, página
+  serve conteúdo real em `:3100`.
+- **Timestamps sem timezone quebravam `POST /cases`**: colunas `datetime`
+  mapeavam pra `TIMESTAMP WITHOUT TIME ZONE` no Postgres por padrão, mas o
+  código grava `datetime.now(timezone.utc)` (timezone-aware) — asyncpg
+  rejeitava com erro de tipo. Corrigido pra `DateTime(timezone=True)` em
+  todos os models (`case`, `identifier`, `account`, `correlation`,
+  `bulk_dataset`), nova migração aplicada. `POST /cases` e trilha de
+  auditoria confirmados funcionando (audit log grava certo).
+- **`bulk/explorer.py` não tinha como acessar arquivo real**: o container da
+  API não compartilhava filesystem com o host. Adicionado volume
+  `./data/bulk_uploads:/data/bulk_uploads` no compose — é onde um dump/CSV
+  deve ser colocado pra `bulk/inspect` e `bulk/filter` conseguirem ler.

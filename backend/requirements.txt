@@ -1,0 +1,17 @@
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+sqlalchemy==2.0.35
+greenlet==3.1.1
+asyncpg==0.30.0
+alembic==1.13.3
+pydantic==2.9.2
+pydantic-settings==2.5.2
+httpx[socks]==0.27.2
+networkx==3.2.1
+dnspython==2.7.0
+python-whois==0.9.4
+phonenumbers==8.13.48
+beautifulsoup4==4.12.3
+apscheduler==3.10.4
+pytest==8.3.3
+pytest-asyncio==0.24.0

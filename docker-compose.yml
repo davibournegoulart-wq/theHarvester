@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: netscraper
+      POSTGRES_PASSWORD: netscraper
+      POSTGRES_DB: netscraper
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - netscraper_pgdata:/var/lib/postgresql/data
+
+  api:
+    build: ./backend
+    environment:
+      NETSCRAPER_DATABASE_URL: postgresql+asyncpg://netscraper:netscraper@postgres:5432/netscraper
+    ports:
+      - "127.0.0.1:8100:8000"
+    depends_on:
+      - postgres
+    volumes:
+      - ./backend/app:/app/app
+      - ./data/bulk_uploads:/data/bulk_uploads
+
+  web:
+    build: ./frontend
+    ports:
+      - "3100:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8100
+    depends_on:
+      - api
+
+volumes:
+  netscraper_pgdata:

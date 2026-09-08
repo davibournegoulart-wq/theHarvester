@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+.next/
+*.egg-info/
+.env
+.DS_Store
+data/bulk_uploads/*
+!data/bulk_uploads/.gitkeep
