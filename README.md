@@ -48,7 +48,14 @@ Funcional e **testado ao vivo** (venv Python 3.12, `pip install -r requirements.
 Stub com assinatura + TODO: `checkers/email.py`, `checkers/phone.py`
 (existência via login/registro), `checkers/google_account.py`,
 `checkers/facebook_pivot.py` (dado de vendedor Marketplace),
-`recon/reverse_image.py`, `bulk/paste_monitor.py`.
+`recon/reverse_image.py`.
+
+`bulk/paste_monitor.py` também funcional: lista pastes recentes do archive
+público do Pastebin, busca keyword no conteúdo (raw), paralelizado (~90
+pastes em 1.3s vs 60s+ sequencial). ⚠️ Pastebin rate-limita/retorna 503 sob
+carga (confirmado ao vivo testando repetidamente) — tratado como
+inconclusivo (retorna vazio / testе pula), nunca derruba a aplicação. Não
+fazer polling agressivo em produção.
 
 ## Migrações
 
