@@ -66,8 +66,36 @@ não faz scraping do resultado, o investigador abre e revisa).
 sessão autenticada (parede de login) — mesma categoria de risco excluída
 do projeto, sem stub morto no código.
 
-Stub com assinatura + TODO (não testável sem OAuth real de investigador):
-`checkers/google_account.py`.
+## Conta Google (`checkers/google_account.py`)
+
+Implementado seguindo a técnica real do GHunt (mxrch/GHunt, AGPL-3.0),
+lida direto do código-fonte deles em 2026-09-08 — não é OAuth clássico
+(tela de consentimento + token), é o esquema **SAPISIDHASH**: assinatura
+de request usando o cookie `SAPISID` da sua própria sessão Google já
+logada. Nunca pedimos e-mail/senha, nunca simulamos login — usa a sessão
+que já existe no seu navegador.
+
+- Config: `NETSCRAPER_GOOGLE_SESSION_COOKIES` (JSON) no servidor — nunca
+  digitado no frontend por busca. Copie do DevTools do seu navegador
+  (Application → Cookies → google.com), mínimo `SAPISID`.
+- Validado ao vivo: hash bate com o formato documentado, request com
+  cookie fake retorna **401 do Google** (confirma que a request está
+  estruturalmente correta — só a credencial fake foi rejeitada). Não
+  testado com cookie real (exigiria a sessão pessoal do Davi, que não
+  deve ser colada em chat/conversa).
+- ⚠️ Limitação encontrada lendo o código-fonte atual do GHunt: o próprio
+  mantenedor documentou que o Google bloqueou a extração de **nome**
+  desse endpoint ("Google patched the names :/ very sad") — só Gaia ID e
+  foto de perfil continuam funcionando.
+- UI: seção extra na aba Email, chama o endpoint automaticamente após a
+  busca de e-mail normal.
+
+**Decisão explícita de escopo**: pedido de login com e-mail/senha pra
+Instagram/Facebook/LinkedIn foi recusado — armazenar credencial de
+terceiro no app é risco de segurança sério e reabre a categoria de risco
+do Nqntnqnqmb/Toutatis. Alternativas comerciais avaliadas (OSINT
+Industries, £99/mês) e recusadas por serem serviço privado no núcleo
+(mesma regra que excluiu o hunter.io).
 
 `bulk/paste_monitor.py` também funcional: lista pastes recentes do archive
 público do Pastebin, busca keyword no conteúdo (raw), paralelizado (~90

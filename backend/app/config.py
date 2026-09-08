@@ -7,6 +7,10 @@ class Settings(BaseSettings):
     max_concurrent_checks: int = 20
     cors_allowed_origins: list[str] = ["http://localhost:3100", "http://127.0.0.1:3100"]
     tor_proxy_url: str = "socks5://127.0.0.1:9050"
+    # Cookies da PRÓPRIA sessão Google do investigador (ver checkers/google_account.py).
+    # Configurado uma vez aqui via env var (JSON), nunca digitado no frontend por
+    # busca — evita expor a sessão pela rede/UI a cada request.
+    google_session_cookies: dict[str, str] = {}
 
     # Fonte governamental oficial (único link externo aceito fora de fluxo público de plataforma)
     ofac_sdn_url: str = "https://sanctionssearch.ofac.treas.gov"

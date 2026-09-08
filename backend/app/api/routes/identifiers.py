@@ -1,9 +1,11 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from app.checkers.email import check_email
 from app.checkers.facebook_pivot import extract_facebook_id, marketplace_url_for_id
+from app.checkers.google_account import lookup_gaia_profile
 from app.checkers.phone import lookup_phone_metadata
 from app.checkers.username import check_username
+from app.config import settings
 from app.recon.breach_check import check_password_pwned
 
 router = APIRouter(prefix="/identifiers", tags=["identifiers"])
@@ -38,3 +40,17 @@ async def facebook_pivot(profile_url: str):
     if facebook_id is None:
         return {"facebook_id": None, "marketplace_url": None}
     return {"facebook_id": facebook_id, "marketplace_url": marketplace_url_for_id(facebook_id)}
+
+
+@router.get("/google-account/{email}")
+async def google_account_lookup(email: str):
+    """Usa a sessão Google configurada em `NETSCRAPER_GOOGLE_SESSION_COOKIES`
+    (env var do servidor, nunca enviada pelo frontend) — ver checkers/google_account.py."""
+    if not settings.google_session_cookies:
+        raise HTTPException(
+            status_code=503,
+            detail="NETSCRAPER_GOOGLE_SESSION_COOKIES não configurado no servidor. "
+            "Copie os cookies da sua própria sessão Google logada (DevTools > Application > "
+            "Cookies > google.com, mínimo SAPISID) e configure como JSON nessa env var.",
+        )
+    return await lookup_gaia_profile(email, settings.google_session_cookies)
