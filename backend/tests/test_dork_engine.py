@@ -61,6 +61,8 @@ def test_name_gets_social_and_public_record_templates():
     assert any("linkedin.com/in/" in q for q in queries)
     assert any("jusbrasil.com.br" in q for q in queries)
     assert any("escavador.com" in q for q in queries)
+    assert any("reddit.com" in q for q in queries)
+    assert any("inurl:forum" in q for q in queries)
     # templates de contato não devem vazar pra um subject de nome
     assert not any("pastebin.com" in q for q in queries)
 

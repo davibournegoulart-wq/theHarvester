@@ -23,6 +23,8 @@ NAME_TEMPLATES = [
     ('{scope}"{subject}" (intitle:"currículo" OR intitle:"curriculo" OR intitle:"resume" OR intitle:"curriculum vitae")', "currículo publicado"),
     ('{scope}"{subject}" site:jusbrasil.com.br', "processo judicial público (Brasil)"),
     ('{scope}"{subject}" site:escavador.com', "registro público agregado (Brasil)"),
+    ('{scope}"{subject}" (site:reddit.com OR site:quora.com)', "menção em fórum (Reddit/Quora)"),
+    ('{scope}"{subject}" inurl:forum', "menção em fórum genérico"),
 ]
 
 CONTACT_TEMPLATES = [
