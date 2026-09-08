@@ -6,6 +6,9 @@ class Settings(BaseSettings):
     request_timeout_seconds: float = 8.0
     max_concurrent_checks: int = 20
     cors_allowed_origins: list[str] = ["http://localhost:3100", "http://127.0.0.1:3100"]
+    # Chave de API obrigatória em todo endpoint (menos /health) — ver app/auth.py.
+    # MUDE isso em produção; o valor default é público (está neste arquivo).
+    api_key: str = "change-me-net-scraper-insecure-default"
     tor_proxy_url: str = "socks5://127.0.0.1:9050"
     # Cookies da PRÓPRIA sessão Google do investigador (ver checkers/google_account.py).
     # Configurado uma vez aqui via env var (JSON), nunca digitado no frontend por

@@ -4,7 +4,7 @@ import Graph from "graphology";
 import forceAtlas2 from "graphology-layout-forceatlas2";
 import { useEffect, useRef, useState } from "react";
 import Sigma from "sigma";
-import { API_URL } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 type EdgeInput = { source_id: string; target_id: string; relation_type: string };
 type GraphNodeResult = { id: string; degree: number; betweenness: number; closeness: number; community: number };
@@ -47,7 +47,7 @@ export default function GraphView() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_URL}/graph/compute`, {
+      const response = await apiFetch(`/graph/compute`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ edges }),

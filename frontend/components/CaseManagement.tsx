@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiGet, API_URL } from "@/lib/api";
+import { apiFetch, apiGet } from "@/lib/api";
 
 type CaseStatus = "open" | "archived";
 
@@ -39,7 +39,7 @@ export default function CaseManagement() {
     if (!newCaseName) return;
     setLoading(true);
     try {
-      await fetch(`${API_URL}/cases/?name=${encodeURIComponent(newCaseName)}`, { method: "POST" });
+      await apiFetch(`/cases/?name=${encodeURIComponent(newCaseName)}`, { method: "POST" });
       setNewCaseName("");
       await loadCases();
     } finally {
@@ -55,7 +55,7 @@ export default function CaseManagement() {
   async function handleArchive(c: CaseSummary) {
     setLoading(true);
     try {
-      await fetch(`${API_URL}/cases/${c.id}/archive?actor=investigador`, { method: "POST" });
+      await apiFetch(`/cases/${c.id}/archive?actor=investigador`, { method: "POST" });
       await loadCases();
       if (selected?.id === c.id) await openCase({ ...c, status: "archived" });
     } finally {

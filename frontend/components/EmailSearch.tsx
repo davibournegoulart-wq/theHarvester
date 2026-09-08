@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { apiGet, API_URL } from "@/lib/api";
+import { apiFetch, apiGet } from "@/lib/api";
 
 type EmailResult = {
   service: string;
@@ -34,7 +34,7 @@ export default function EmailSearch() {
       setResults(data.services ?? []);
       setSearched(true);
 
-      const googleResponse = await fetch(`${API_URL}/identifiers/google-account/${encodeURIComponent(email)}`);
+      const googleResponse = await apiFetch(`/identifiers/google-account/${encodeURIComponent(email)}`);
       if (googleResponse.ok) {
         setGoogleResult(await googleResponse.json());
       } else {

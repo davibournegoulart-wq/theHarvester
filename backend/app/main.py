@@ -1,8 +1,13 @@
-from fastapi import FastAPI
+import logging
+
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import bulk, cases, graph, identifiers, recon
+from app.auth import INSECURE_DEFAULT_KEY, require_api_key
 from app.config import settings
+
+logger = logging.getLogger("net_scraper")
 
 app = FastAPI(
     title="Net Scraper",
@@ -18,11 +23,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(identifiers.router)
-app.include_router(recon.router)
-app.include_router(graph.router)
-app.include_router(bulk.router)
-app.include_router(cases.router)
+if settings.api_key == INSECURE_DEFAULT_KEY:
+    logger.warning(
+        "NETSCRAPER_API_KEY não configurado — usando o valor default público. "
+        "Configure uma chave própria antes de expor esse serviço fora de localhost."
+    )
+
+_auth = [Depends(require_api_key)]
+
+app.include_router(identifiers.router, dependencies=_auth)
+app.include_router(recon.router, dependencies=_auth)
+app.include_router(graph.router, dependencies=_auth)
+app.include_router(bulk.router, dependencies=_auth)
+app.include_router(cases.router, dependencies=_auth)
 
 
 @app.get("/health")

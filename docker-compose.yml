@@ -21,6 +21,10 @@ services:
     environment:
       NETSCRAPER_DATABASE_URL: postgresql+asyncpg://netscraper:netscraper@postgres:5432/netscraper
       NETSCRAPER_TOR_PROXY_URL: socks5://tor:9050
+      # NETSCRAPER_API_KEY: troque isso antes de expor o serviço fora de localhost
+      # (default inseguro documentado em app/auth.py, funciona pra dev local)
+      # NETSCRAPER_GOOGLE_SESSION_COOKIES: '{"SAPISID": "..."}' — ver checkers/google_account.py
+      # NETSCRAPER_OPENSANCTIONS_API_KEY: sua chave (opensanctions.org/api/)
     ports:
       - "127.0.0.1:8100:8000"
     depends_on:

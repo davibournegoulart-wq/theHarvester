@@ -218,6 +218,23 @@ do compose. Validado ao vivo (2026-09-08):
   500, resultado vazio por instabilidade do lado do Ahmia (comportamento
   esperado e tratado).
 
+## Autenticação
+
+Toda rota (menos `/health`) exige header `X-API-Key`. Configurado via
+`NETSCRAPER_API_KEY` (env var do servidor) — **troque o valor default
+inseguro (`change-me-net-scraper-insecure-default`) antes de expor o
+serviço fora de localhost**, um warning é logado se continuar no default.
+
+Frontend: primeira visita mostra tela pedindo a chave, valida contra
+`/cases/`, e guarda em `localStorage` — toda chamada subsequente já manda
+o header automaticamente via `apiFetch()` em `lib/api.ts`. Testado ao vivo
+no Chrome: chave errada bloqueia com mensagem clara, chave certa libera o
+app normalmente, buscas continuam funcionando com o header anexado.
+
+Não é sistema multi-usuário — é uma trava única, adequada ao escopo atual
+(um investigador por instância). Se precisar de múltiplos usuários/roles
+no futuro, isso precisa ser trocado por um sistema de conta de verdade.
+
 ## Bulk / Dark Web / Paste Monitor (UI)
 
 Aba "Bulk" cobre as três peças da Fase 3: inspeção/filtro de CSV
