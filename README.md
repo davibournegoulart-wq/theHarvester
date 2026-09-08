@@ -57,9 +57,17 @@ hCaptcha/Arkoselabs), o endpoint documentado não retorna mais JSON. Trata
 como inconclusivo (não quebra), mas sem fonte funcional confirmada no
 momento.
 
-Stub com assinatura + TODO: `checkers/google_account.py`,
-`checkers/facebook_pivot.py` (dado de vendedor Marketplace),
-`recon/reverse_image.py`.
+`recon/reverse_image.py` funcional: gera URL de busca reversa pronta pra
+Google Images/Yandex/TinEye/Bing (mesmo princípio do `dork_generator.py` —
+não faz scraping do resultado, o investigador abre e revisa).
+
+`checkers/facebook_pivot.py`'s dado de vendedor Marketplace: **removido**
+(não é TODO). Confirmado ao vivo que `marketplace/profile/{id}` exige
+sessão autenticada (parede de login) — mesma categoria de risco excluída
+do projeto, sem stub morto no código.
+
+Stub com assinatura + TODO (não testável sem OAuth real de investigador):
+`checkers/google_account.py`.
 
 `bulk/paste_monitor.py` também funcional: lista pastes recentes do archive
 público do Pastebin, busca keyword no conteúdo (raw), paralelizado (~90

@@ -7,6 +7,7 @@ from app.recon.domain import find_subdomains
 from app.recon.dork_generator import generate_dorks
 from app.recon.email_pattern import generate_permutations, verify_via_smtp
 from app.recon.ip_reputation import lookup_ip
+from app.recon.reverse_image import generate_reverse_image_links
 from app.recon.sanctions_check import search_sanctions
 
 router = APIRouter(prefix="/recon", tags=["recon"])
@@ -54,3 +55,8 @@ async def email_pattern(domain: str, first_name: str, last_name: str):
 @router.get("/darkweb")
 async def darkweb_search(keyword: str):
     return await search_dark_web(keyword)
+
+
+@router.get("/reverse-image")
+async def reverse_image(image_url: str):
+    return generate_reverse_image_links(image_url)
