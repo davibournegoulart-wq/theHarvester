@@ -1,57 +1,24 @@
-"use client";
-
-import { useState } from "react";
-
-type AccountResult = {
-  platform: string;
-  url: string;
-  exists: boolean;
-  discovered_by: string;
-};
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8100";
+import CryptoTrace from "@/components/CryptoTrace";
+import DomainRecon from "@/components/DomainRecon";
+import EmailSearch from "@/components/EmailSearch";
+import PhoneSearch from "@/components/PhoneSearch";
+import Tabs from "@/components/Tabs";
+import UsernameSearch from "@/components/UsernameSearch";
 
 export default function Home() {
-  const [username, setUsername] = useState("");
-  const [results, setResults] = useState<AccountResult[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  async function handleSearch() {
-    if (!username) return;
-    setLoading(true);
-    try {
-      const response = await fetch(`${API_URL}/identifiers/username/${encodeURIComponent(username)}`);
-      const data = await response.json();
-      setResults(data.accounts ?? []);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
-    <main style={{ maxWidth: 640, margin: "40px auto", fontFamily: "sans-serif" }}>
-      <h1>Net Scraper — Identificador → Contas</h1>
-      <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-        <input
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="username"
-          style={{ flex: 1, padding: 8 }}
-        />
-        <button onClick={handleSearch} disabled={loading}>
-          {loading ? "Buscando..." : "Buscar"}
-        </button>
-      </div>
-      <ul style={{ marginTop: 24 }}>
-        {results.map((r) => (
-          <li key={r.platform}>
-            <a href={r.url} target="_blank" rel="noreferrer">
-              {r.platform}
-            </a>{" "}
-            — via {r.discovered_by}
-          </li>
-        ))}
-      </ul>
+    <main style={{ maxWidth: 720, margin: "40px auto", fontFamily: "sans-serif" }}>
+      <h1>Net Scraper</h1>
+      <p style={{ color: "#666" }}>Sistema de investigação OSINT — módulos internos, sem ferramenta de terceiro embutida.</p>
+      <Tabs
+        tabs={[
+          { label: "Username", content: <UsernameSearch /> },
+          { label: "Email", content: <EmailSearch /> },
+          { label: "Telefone", content: <PhoneSearch /> },
+          { label: "Domínio/IP", content: <DomainRecon /> },
+          { label: "Cripto", content: <CryptoTrace /> },
+        ]}
+      />
     </main>
   );
 }

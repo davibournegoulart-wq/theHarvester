@@ -129,3 +129,17 @@ alembic revision --autogenerate -m "descrição"   # gera nova, após mudar um m
   API não compartilhava filesystem com o host. Adicionado volume
   `./data/bulk_uploads:/data/bulk_uploads` no compose — é onde um dump/CSV
   deve ser colocado pra `bulk/inspect` e `bulk/filter` conseguirem ler.
+- **CORS bloqueava toda chamada do frontend pra API**: testado de verdade no
+  navegador (Chrome via automação) — servidor respondia 200, mas o browser
+  recusava entregar a resposta ao JS (`TypeError: Failed to fetch`).
+  Faltava `CORSMiddleware` na API. Corrigido em `app/main.py` +
+  `cors_allowed_origins` em `app/config.py`. Confirmado ao vivo depois do
+  fix: as 5 abas (Username, Email, Telefone, Domínio/IP, Cripto) funcionando
+  ponta a ponta no navegador real, não só via curl.
+
+## Frontend
+
+UI com abas cobrindo os endpoints funcionais: Username, Email, Telefone,
+Domínio/IP (subdomínio + dorks + reputação de IP), Cripto (BTC/ETH + OFAC).
+Testado interativamente no Chrome (não só `next build`) — todas as 5 abas
+retornando dado real da API.

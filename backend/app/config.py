@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://netscraper:netscraper@postgres:5432/netscraper"
     request_timeout_seconds: float = 8.0
     max_concurrent_checks: int = 20
+    cors_allowed_origins: list[str] = ["http://localhost:3100", "http://127.0.0.1:3100"]
 
     # Fonte governamental oficial (único link externo aceito fora de fluxo público de plataforma)
     ofac_sdn_url: str = "https://sanctionssearch.ofac.treas.gov"
