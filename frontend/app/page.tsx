@@ -1,6 +1,7 @@
 import CryptoTrace from "@/components/CryptoTrace";
 import DomainRecon from "@/components/DomainRecon";
 import EmailSearch from "@/components/EmailSearch";
+import GraphView from "@/components/GraphView";
 import PhoneSearch from "@/components/PhoneSearch";
 import Tabs from "@/components/Tabs";
 import UsernameSearch from "@/components/UsernameSearch";
@@ -17,6 +18,7 @@ export default function Home() {
           { label: "Telefone", content: <PhoneSearch /> },
           { label: "Domínio/IP", content: <DomainRecon /> },
           { label: "Cripto", content: <CryptoTrace /> },
+          { label: "Grafo", content: <GraphView /> },
         ]}
       />
     </main>
