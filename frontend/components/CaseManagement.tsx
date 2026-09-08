@@ -86,16 +86,16 @@ export default function CaseManagement() {
               style={{
                 padding: 8,
                 cursor: "pointer",
-                background: selected?.id === c.id ? "#f0f0f0" : "transparent",
-                borderBottom: "1px solid #eee",
+                background: selected?.id === c.id ? "rgba(5, 217, 232, 0.08)" : "transparent",
+                borderBottom: "1px solid var(--panel-border)",
               }}
             >
               <strong>{c.name}</strong>{" "}
-              <span style={{ fontSize: 12, color: c.status === "archived" ? "#999" : "#2a7" }}>[{c.status}]</span>
-              <div style={{ fontSize: 11, color: "#888" }}>{new Date(c.created_at).toLocaleString()}</div>
+              <span style={{ fontSize: 12, color: c.status === "archived" ? "var(--text-muted)" : "var(--success)" }}>[{c.status}]</span>
+              <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{new Date(c.created_at).toLocaleString()}</div>
             </li>
           ))}
-          {cases.length === 0 && <li style={{ color: "#888" }}>Nenhum caso ainda.</li>}
+          {cases.length === 0 && <li style={{ color: "var(--text-muted)" }}>Nenhum caso ainda.</li>}
         </ul>
       </div>
 
@@ -110,21 +110,21 @@ export default function CaseManagement() {
                 </button>
               )}
             </h3>
-            <p style={{ fontSize: 12, color: "#888" }}>Trilha de auditoria (imutável):</p>
+            <p style={{ fontSize: 12, color: "var(--text-muted)" }}>Trilha de auditoria (imutável):</p>
             <ul>
               {auditLog.map((entry) => (
                 <li key={entry.id} style={{ marginBottom: 8 }}>
                   <div>
                     <strong>{entry.action}</strong> — {entry.actor}
                   </div>
-                  <div style={{ fontSize: 11, color: "#888" }}>{new Date(entry.created_at).toLocaleString()}</div>
-                  <pre style={{ fontSize: 11, background: "#f7f7f7", padding: 4 }}>{JSON.stringify(entry.payload)}</pre>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{new Date(entry.created_at).toLocaleString()}</div>
+                  <pre style={{ fontSize: 11, padding: 4 }}>{JSON.stringify(entry.payload)}</pre>
                 </li>
               ))}
             </ul>
           </>
         ) : (
-          <p style={{ color: "#888" }}>Selecione um caso pra ver a trilha de auditoria.</p>
+          <p style={{ color: "var(--text-muted)" }}>Selecione um caso pra ver a trilha de auditoria.</p>
         )}
       </div>
     </div>

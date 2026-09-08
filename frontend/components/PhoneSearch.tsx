@@ -55,7 +55,7 @@ export default function PhoneSearch() {
           {loading ? "Buscando..." : "Buscar"}
         </button>
       </div>
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
+      {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
       {metadata && (
         <ul style={{ marginTop: 16 }}>
           <li>Válido: {metadata.is_valid ? "sim" : "não"}</li>

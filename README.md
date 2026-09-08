@@ -149,3 +149,25 @@ incluindo clique em nó do grafo pra ver centralidade/comunidade.
 **Casos**: cria caso, lista casos, seleciona um pra ver a trilha de
 auditoria (imutável), arquiva — testado ao vivo no navegador (criação,
 seleção, arquivamento e nova entrada de auditoria aparecendo em tempo real).
+
+## Identidade visual
+
+Estética cyberpunk anime (referência: Cyberpunk Edgerunners/Studio Trigger)
+aplicada via CSS puro — sem depender de asset de imagem externo pra
+funcionar:
+
+- Fontes Google via `next/font`: **Orbitron** (display/título) + **Share
+  Tech Mono** (corpo/terminal)
+- Paleta: fundo quase-preto `#0a0c12`, neon ciano `#05d9e8`, magenta
+  `#ff2a6d`, amarelo sinalizador `#f9f002`
+- Título com efeito glitch (duplicação cromática ciano/magenta via
+  `::before`/`::after` + `clip-path` animado)
+- Overlay de scanline (CRT) fixo sobre a página inteira, baixa opacidade
+- Botões e painéis com `clip-path` angular (cantos cortados, estilo HUD)
+- Cores de comunidade do grafo trocadas pra paleta neon (ciano/magenta/
+  amarelo/verde)
+
+Ver `DESIGN_PROMPTS.md` na raiz do repo pra prompts de geração de
+logo/ícones/vídeo em ferramenta externa (Midjourney/SDXL/Runway) — cobre
+estilo e composição, sem reproduzir personagem/IP protegido por direito
+autoral.

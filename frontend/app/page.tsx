@@ -9,9 +9,16 @@ import UsernameSearch from "@/components/UsernameSearch";
 
 export default function Home() {
   return (
-    <main style={{ maxWidth: 720, margin: "40px auto", fontFamily: "sans-serif" }}>
-      <h1>Net Scraper</h1>
-      <p style={{ color: "#666" }}>Sistema de investigação OSINT — módulos internos, sem ferramenta de terceiro embutida.</p>
+    <main style={{ maxWidth: 900, margin: "0 auto", padding: "48px 24px" }}>
+      <div style={{ fontSize: 12, color: "var(--cyan)", marginBottom: 8, letterSpacing: "0.1em" }}>
+        {"> SYSTEM ONLINE_"}
+      </div>
+      <h1 className="glitch-title" data-text="NET SCRAPER" style={{ fontSize: 42, margin: 0 }}>
+        NET SCRAPER
+      </h1>
+      <p style={{ marginTop: 8, marginBottom: 32 }}>
+        Sistema de investigação OSINT — módulos internos, sem ferramenta de terceiro embutida.
+      </p>
       <Tabs
         tabs={[
           { label: "Username", content: <UsernameSearch /> },

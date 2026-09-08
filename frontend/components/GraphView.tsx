@@ -11,7 +11,7 @@ type GraphNodeResult = { id: string; degree: number; betweenness: number; closen
 type GraphEdgeResult = { source: string; target: string; relation_type: string; weight: number };
 type GraphResponse = { nodes: GraphNodeResult[]; edges: GraphEdgeResult[] };
 
-const COMMUNITY_COLORS = ["#4C72B0", "#DD8452", "#55A868", "#C44E52", "#8172B2", "#937860", "#DA8BC3", "#8C8C8C"];
+const COMMUNITY_COLORS = ["#05D9E8", "#FF2A6D", "#F9F002", "#39FF88", "#B967FF", "#FF9E2C", "#2ADFFF", "#FF5C8A"];
 
 const EXAMPLE_EDGES: EdgeInput[] = [
   { source_id: "email:a@x.com", target_id: "user:alice", relation_type: "same_person" },
@@ -85,13 +85,17 @@ export default function GraphView() {
     }
     for (const edge of data.edges) {
       if (graph.hasNode(edge.source) && graph.hasNode(edge.target) && !graph.hasEdge(edge.source, edge.target)) {
-        graph.addEdge(edge.source, edge.target, { label: edge.relation_type, size: 1, color: "#ccc" });
+        graph.addEdge(edge.source, edge.target, { label: edge.relation_type, size: 1, color: "#2a3548" });
       }
     }
 
     forceAtlas2.assign(graph, { iterations: 100 });
 
-    const sigma = new Sigma(graph, containerRef.current);
+    const sigma = new Sigma(graph, containerRef.current, {
+      labelColor: { color: "#d6f3ff" },
+      labelFont: "var(--font-body), monospace",
+      defaultEdgeColor: "#2a3548",
+    });
     sigma.on("clickNode", ({ node }) => {
       const attrs = graph.getNodeAttributes(node);
       setSelected({
@@ -144,7 +148,7 @@ export default function GraphView() {
       <button onClick={computeAndRender} disabled={loading || edges.length === 0}>
         {loading ? "Calculando..." : "Calcular e renderizar grafo"}
       </button>
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
+      {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
 
       <div ref={containerRef} style={{ width: "100%", height: 420, marginTop: 16, border: "1px solid #ddd" }} />
 

@@ -51,12 +51,12 @@ export default function CryptoTrace() {
           {loading ? "Buscando..." : "Buscar"}
         </button>
       </div>
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
+      {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
       {result && (
         <ul style={{ marginTop: 16 }}>
           <li>Saldo: {result.balance}</li>
           <li>Transações: {result.tx_count}</li>
-          <li style={{ color: result.is_sanctioned ? "crimson" : "inherit", fontWeight: result.is_sanctioned ? "bold" : "normal" }}>
+          <li style={{ color: result.is_sanctioned ? "var(--danger)" : "inherit", fontWeight: result.is_sanctioned ? "bold" : "normal" }}>
             {result.is_sanctioned ? "⚠️ SANCIONADO — OFAC SDN" : "Não consta na lista OFAC SDN"}
           </li>
         </ul>
