@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { apiGet } from "@/lib/api";
+import SaveToCaseButton from "@/components/SaveToCaseButton";
 
 type AccountResult = {
   platform: string;
@@ -47,11 +48,19 @@ export default function UsernameSearch() {
       {searched && !loading && results.length === 0 && <p>Nenhuma conta encontrada.</p>}
       <ul style={{ marginTop: 16 }}>
         {results.map((r) => (
-          <li key={r.platform}>
+          <li key={r.platform} style={{ marginBottom: 6 }}>
             <a href={r.url} target="_blank" rel="noreferrer">
               {r.platform}
             </a>{" "}
-            — via {r.discovered_by}
+            — via {r.discovered_by}{" "}
+            <SaveToCaseButton
+              identifierType="username"
+              identifierValue={username}
+              platform={r.platform}
+              url={r.url}
+              exists={r.exists}
+              discoveredBy={r.discovered_by}
+            />
           </li>
         ))}
       </ul>

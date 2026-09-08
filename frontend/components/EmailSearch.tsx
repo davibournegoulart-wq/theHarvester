@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { apiFetch, apiGet } from "@/lib/api";
+import SaveToCaseButton from "@/components/SaveToCaseButton";
 
 type EmailResult = {
   service: string;
@@ -63,9 +64,19 @@ export default function EmailSearch() {
       {searched && !loading && (
         <ul style={{ marginTop: 16 }}>
           {results.map((r) => (
-            <li key={r.service}>
+            <li key={r.service} style={{ marginBottom: 6 }}>
               {r.service}: {r.exists ? "cadastrado" : "não cadastrado"}
-              {r.leaked_recovery_hint && ` — dica de recuperação: ${r.leaked_recovery_hint}`}
+              {r.leaked_recovery_hint && ` — dica de recuperação: ${r.leaked_recovery_hint}`}{" "}
+              {r.exists && (
+                <SaveToCaseButton
+                  identifierType="email"
+                  identifierValue={email}
+                  platform={r.service}
+                  exists={r.exists}
+                  discoveredBy="checkers.email"
+                  metadata={{ rate_limited: r.rate_limited, leaked_recovery_hint: r.leaked_recovery_hint }}
+                />
+              )}
             </li>
           ))}
           {results.length === 0 && <li>Sem serviço com checagem disponível no momento.</li>}
@@ -87,6 +98,19 @@ export default function EmailSearch() {
                   <a href={googleResult.profile_photo_url} target="_blank" rel="noreferrer">
                     Foto de perfil
                   </a>
+                </li>
+              )}
+              {googleResult.gaia_id && (
+                <li>
+                  <SaveToCaseButton
+                    identifierType="email"
+                    identifierValue={email}
+                    platform="google"
+                    url={googleResult.profile_photo_url}
+                    exists={true}
+                    discoveredBy="checkers.google_account"
+                    metadata={{ gaia_id: googleResult.gaia_id, is_public_profile: googleResult.is_public_profile }}
+                  />
                 </li>
               )}
             </ul>

@@ -32,3 +32,15 @@ export async function apiGet<T>(path: string): Promise<T> {
   }
   return response.json();
 }
+
+export async function apiPostJson<T>(path: string, body: unknown): Promise<T> {
+  const response = await apiFetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(`API error ${response.status}: ${await response.text()}`);
+  }
+  return response.json();
+}

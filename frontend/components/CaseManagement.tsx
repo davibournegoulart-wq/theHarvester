@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiFetch, apiGet } from "@/lib/api";
+import { useActiveCase } from "@/lib/activeCase";
 
 type CaseStatus = "open" | "archived";
 
@@ -20,11 +21,20 @@ type AuditLogEntry = {
   created_at: string;
 };
 
+type ChartSeries = { label: string; value: number };
+
+type CaseReport = {
+  by_platform: ChartSeries[];
+  by_discovery_source: ChartSeries[];
+};
+
 export default function CaseManagement() {
+  const { activeCase, setActiveCase } = useActiveCase();
   const [cases, setCases] = useState<CaseSummary[]>([]);
   const [newCaseName, setNewCaseName] = useState("");
   const [selected, setSelected] = useState<CaseSummary | null>(null);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
+  const [report, setReport] = useState<CaseReport | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function loadCases() {
@@ -50,6 +60,7 @@ export default function CaseManagement() {
   async function openCase(c: CaseSummary) {
     setSelected(c);
     setAuditLog(await apiGet<AuditLogEntry[]>(`/cases/${c.id}/audit-log`));
+    setReport(await apiGet<CaseReport>(`/cases/${c.id}/report`));
   }
 
   async function handleArchive(c: CaseSummary) {
@@ -92,6 +103,19 @@ export default function CaseManagement() {
             >
               <strong>{c.name}</strong>{" "}
               <span style={{ fontSize: 12, color: c.status === "archived" ? "var(--text-muted)" : "var(--success)" }}>[{c.status}]</span>
+              {activeCase?.id === c.id ? (
+                <span style={{ fontSize: 11, color: "var(--cyan)", marginLeft: 6 }}>[ativo]</span>
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveCase({ id: c.id, name: c.name });
+                  }}
+                  style={{ fontSize: 11, marginLeft: 6, padding: "1px 6px" }}
+                >
+                  marcar como ativo
+                </button>
+              )}
               <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{new Date(c.created_at).toLocaleString()}</div>
             </li>
           ))}
@@ -110,7 +134,32 @@ export default function CaseManagement() {
                 </button>
               )}
             </h3>
-            <p style={{ fontSize: 12, color: "var(--text-muted)" }}>Trilha de auditoria (imutável):</p>
+            <p style={{ fontSize: 12, color: "var(--text-muted)" }}>Relatório (achados salvos neste caso):</p>
+            {report && report.by_platform.length === 0 ? (
+              <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                Nenhum achado salvo ainda — use "salvar no caso" nas abas Username/Email/Telefone.
+              </p>
+            ) : (
+              <>
+                <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Por plataforma:</p>
+                <ul style={{ marginTop: 0 }}>
+                  {report?.by_platform.map((s) => (
+                    <li key={s.label}>
+                      {s.label}: {s.value}
+                    </li>
+                  ))}
+                </ul>
+                <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Por fonte de descoberta:</p>
+                <ul style={{ marginTop: 0 }}>
+                  {report?.by_discovery_source.map((s) => (
+                    <li key={s.label}>
+                      {s.label}: {s.value}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 16 }}>Trilha de auditoria (imutável):</p>
             <ul>
               {auditLog.map((entry) => (
                 <li key={entry.id} style={{ marginBottom: 8 }}>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { apiGet } from "@/lib/api";
+import SaveToCaseButton from "@/components/SaveToCaseButton";
 
 type PhoneMetadata = {
   country: string | null;
@@ -62,6 +63,18 @@ export default function PhoneSearch() {
           <li>País: {metadata.country ?? "—"}</li>
           <li>Operadora: {metadata.carrier ?? "—"}</li>
           <li>Tipo de linha: {metadata.line_type ?? "—"}</li>
+          {metadata.is_valid && (
+            <li>
+              <SaveToCaseButton
+                identifierType="phone"
+                identifierValue={phone}
+                platform="phone_metadata"
+                exists={metadata.is_valid}
+                discoveredBy="recon.phone"
+                metadata={{ ...metadata }}
+              />
+            </li>
+          )}
         </ul>
       )}
     </div>
