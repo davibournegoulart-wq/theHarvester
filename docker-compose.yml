@@ -10,14 +10,22 @@ services:
     volumes:
       - netscraper_pgdata:/var/lib/postgresql/data
 
+  tor:
+    image: dockurr/tor
+    ports:
+      - "127.0.0.1:9050:9050"
+    restart: unless-stopped
+
   api:
     build: ./backend
     environment:
       NETSCRAPER_DATABASE_URL: postgresql+asyncpg://netscraper:netscraper@postgres:5432/netscraper
+      NETSCRAPER_TOR_PROXY_URL: socks5://tor:9050
     ports:
       - "127.0.0.1:8100:8000"
     depends_on:
       - postgres
+      - tor
     volumes:
       - ./backend/app:/app/app
       - ./data/bulk_uploads:/data/bulk_uploads

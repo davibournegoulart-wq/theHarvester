@@ -168,6 +168,31 @@ funcionar:
   amarelo/verde)
 
 Ver `DESIGN_PROMPTS.md` na raiz do repo pra prompts de geração de
-logo/ícones/vídeo em ferramenta externa (Midjourney/SDXL/Runway) — cobre
-estilo e composição, sem reproduzir personagem/IP protegido por direito
-autoral.
+logo/ícones/vídeo em ferramenta externa (Midjourney/SDXL/Runway/Google
+Flow) — cobre estilo e composição, sem reproduzir personagem/IP protegido
+por direito autoral.
+
+## Tor / dark web
+
+`docker-compose.yml` inclui um serviço `tor` (`dockurr/tor`, SOCKS5 na
+porta 9050) — a API se conecta nele via `socks5://tor:9050` dentro da rede
+do compose. Validado ao vivo (2026-09-08):
+- Corrigido: faltava `follow_redirects=True` e o Ahmia tem um campo
+  honeypot anti-scraping oculto (nome/valor hexadecimal que muda a cada
+  carregamento) — sem ele, a busca redireciona de volta pra home.
+  Implementado o fluxo de 2 passos (buscar home → extrair token → buscar).
+- `torgle` removido do seed — endereço `.onion` confirmado morto
+  (`ProxyError`).
+- Mesmo com o fluxo correto, o Ahmia devolveu **504** em toda tentativa
+  durante o teste (serviço sobrecarregado) — o seletor CSS do resultado
+  não foi confirmado contra uma resposta de busca bem-sucedida real.
+  Testado via UI (Chrome) de ponta a ponta: request completo, sem erro
+  500, resultado vazio por instabilidade do lado do Ahmia (comportamento
+  esperado e tratado).
+
+## Bulk / Dark Web / Paste Monitor (UI)
+
+Aba "Bulk" cobre as três peças da Fase 3: inspeção/filtro de CSV
+(`bulk/explorer.py`), monitor de paste site (`bulk/paste_monitor.py`) e
+monitor dark web (`darkweb/monitor.py`) — todas testadas ao vivo no
+Chrome com dado real.

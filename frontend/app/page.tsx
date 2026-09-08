@@ -1,3 +1,4 @@
+import BulkExplorer from "@/components/BulkExplorer";
 import CaseManagement from "@/components/CaseManagement";
 import CryptoTrace from "@/components/CryptoTrace";
 import DomainRecon from "@/components/DomainRecon";
@@ -28,6 +29,7 @@ export default function Home() {
           { label: "Cripto", content: <CryptoTrace /> },
           { label: "Grafo", content: <GraphView /> },
           { label: "Casos", content: <CaseManagement /> },
+          { label: "Bulk", content: <BulkExplorer /> },
         ]}
       />
     </main>
