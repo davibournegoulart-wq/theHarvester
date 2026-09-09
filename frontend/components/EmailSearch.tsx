@@ -29,6 +29,8 @@ type GravatarResult = {
   verified_accounts: { url: string; service_label: string }[] | null;
 };
 
+type EmailBreachResult = { breaches: string[] };
+
 export default function EmailSearch() {
   const { activeCase } = useActiveCase();
   const [email, setEmail] = useState("");
@@ -36,6 +38,7 @@ export default function EmailSearch() {
   const [googleResult, setGoogleResult] = useState<GoogleAccountResult | null>(null);
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [gravatarResult, setGravatarResult] = useState<GravatarResult | null>(null);
+  const [breachResult, setBreachResult] = useState<EmailBreachResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
 
@@ -111,6 +114,23 @@ export default function EmailSearch() {
         }
       } catch {
         // Gravatar indisponível não deve travar o restante da busca já exibida.
+      }
+
+      try {
+        const breach = await apiGet<EmailBreachResult>(`/identifiers/breach/email?email=${encodeURIComponent(email)}`);
+        setBreachResult(breach);
+        if (breach.breaches.length > 0) {
+          await apiPostJson(`/cases/${activeCase.id}/findings`, {
+            identifier_type: "email",
+            identifier_value: email,
+            platform: "xposedornot",
+            exists: true,
+            discovered_by: "recon.breach_check.xposedornot",
+            metadata_json: { breaches: breach.breaches },
+          }).catch(() => {});
+        }
+      } catch {
+        // Serviço de vazamento indisponível não deve travar o restante da busca já exibida.
       }
     } finally {
       setLoading(false);
@@ -198,6 +218,20 @@ export default function EmailSearch() {
               </li>
             )}
           </ul>
+        </>
+      )}
+
+      {breachResult && (
+        <>
+          <p style={{ fontSize: 12, marginTop: 16, fontWeight: "bold" }}>Vazamentos conhecidos (XposedOrNot):</p>
+          {breachResult.breaches.length === 0 ? (
+            <p style={{ fontSize: 12, color: "var(--text-muted)" }}>Nenhum vazamento conhecido pra esse e-mail.</p>
+          ) : (
+            <p style={{ fontSize: 12 }}>
+              Encontrado em {breachResult.breaches.length} vazamento(s): {breachResult.breaches.slice(0, 15).join(", ")}
+              {breachResult.breaches.length > 15 && ` e mais ${breachResult.breaches.length - 15}`}
+            </p>
+          )}
         </>
       )}
     </div>

@@ -1,11 +1,15 @@
-"""Checagem de vazamento conhecido — Have I Been Pwned.
+"""Checagem de vazamento conhecido — Have I Been Pwned + XposedOrNot.
 
-Ver vault: Tool Decision Log. Dois endpoints diferentes:
-- Senha: API de k-anonimato (pwnedpasswords.com), pública e sem chave —
-  implementado abaixo, nunca envia a senha em texto claro, só os 5
-  primeiros caracteres do hash SHA-1.
-- E-mail: endpoint de breach por conta exige API key paga da HIBP — fica
-  como TODO, não é keyless como o de senha.
+Ver vault: Tool Decision Log. Dois provedores diferentes:
+- Senha: API de k-anonimato da HIBP (pwnedpasswords.com), pública e sem
+  chave — nunca envia a senha em texto claro, só os 5 primeiros
+  caracteres do hash SHA-1.
+- E-mail: endpoint de breach por conta da própria HIBP exige API key
+  paga — ficou muito tempo como TODO. Confirmado ao vivo (2026-09-09):
+  XposedOrNot (xposedornot.com) tem o mesmo tipo de busca, **gratuito e
+  sem chave**. Sempre responde HTTP 200 (até pra e-mail não encontrado),
+  então a distinção é pelo corpo: `{"breaches": [[...]]}` quando acha,
+  `{"Error": "Not found"}` quando não.
 """
 
 import hashlib
@@ -16,6 +20,7 @@ import httpx
 from app.config import settings
 
 PWNED_PASSWORDS_URL = "https://api.pwnedpasswords.com/range/"
+XPOSEDORNOT_URL = "https://api.xposedornot.com/v1/check-email/"
 
 
 @dataclass
@@ -41,5 +46,19 @@ async def check_password_pwned(password: str) -> PasswordBreachResult:
     return PasswordBreachResult(times_seen=0)
 
 
-async def check_email_breaches(email: str, hibp_api_key: str) -> list[str]:
-    raise NotImplementedError("Endpoint de breach por conta da HIBP exige API key paga — plugar quando disponível.")
+@dataclass
+class EmailBreachResult:
+    breaches: list[str]
+    discovered_by: str = "recon.breach_check.xposedornot"
+
+
+async def check_email_breaches(email: str) -> EmailBreachResult:
+    """XposedOrNot é gratuito e sem chave — sempre HTTP 200, distingue pelo corpo."""
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{XPOSEDORNOT_URL}{email}", timeout=settings.request_timeout_seconds)
+        response.raise_for_status()
+        data = response.json()
+
+    breach_lists = data.get("breaches", [])
+    breaches = breach_lists[0] if breach_lists else []
+    return EmailBreachResult(breaches=breaches)

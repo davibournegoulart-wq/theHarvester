@@ -9,7 +9,7 @@ from app.checkers.phone import lookup_phone_metadata
 from app.checkers.social_id_pivot import extract_instagram_id, extract_tiktok_id
 from app.checkers.username import check_username
 from app.config import settings
-from app.recon.breach_check import check_password_pwned
+from app.recon.breach_check import check_email_breaches, check_password_pwned
 
 router = APIRouter(prefix="/identifiers", tags=["identifiers"])
 
@@ -30,6 +30,11 @@ async def email_lookup(email: str):
 async def password_breach(password: str):
     result = await check_password_pwned(password)
     return result
+
+
+@router.get("/breach/email")
+async def email_breach(email: str):
+    return await check_email_breaches(email)
 
 
 @router.get("/phone/metadata")
