@@ -24,6 +24,11 @@ class SaveFindingRequest(BaseModel):
     metadata_json: dict = {}
 
 
+class SaveEvidenceRequest(BaseModel):
+    url: str
+    note: str | None = None
+
+
 @router.get("/")
 async def list_cases_route(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Case).order_by(Case.created_at.desc()))
@@ -134,3 +139,23 @@ async def save_finding_route(case_id: uuid.UUID, body: SaveFindingRequest, db: A
             },
         )
     return account
+
+
+@router.post("/{case_id}/evidence")
+async def save_evidence_route(case_id: uuid.UUID, body: SaveEvidenceRequest, db: AsyncSession = Depends(get_db)):
+    """Preserva um link como evidência na trilha de auditoria imutável — sem
+    baixar nenhum conteúdo. Registra que aquela URL existia com aquele
+    timestamp (o próprio `created_at` do log), pra caso o post seja apagado
+    depois. Alternativa nativa ao baixador de mídia de terceiro (recusado —
+    ver Tools - Excluded (Risk Review) no vault)."""
+    case = await db.get(Case, case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    return await log_action(
+        db,
+        case_id,
+        actor="investigador",
+        action="evidence_saved",
+        payload={"url": body.url, "note": body.note},
+    )

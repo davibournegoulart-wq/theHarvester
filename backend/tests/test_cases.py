@@ -91,3 +91,34 @@ async def test_report_for_unknown_case_returns_404(require_db):
     async with await _client() as client:
         resp = await client.get(f"/cases/{uuid.uuid4()}/report")
         assert resp.status_code == 404
+
+
+async def test_save_evidence_logs_url_and_note_without_touching_identifiers(require_db):
+    case_name = f"pytest-integration-evidence-{uuid.uuid4().hex[:8]}"
+    async with await _client() as client:
+        create_resp = await client.post("/cases/", params={"name": case_name})
+        case_id = create_resp.json()["id"]
+
+        evidence_resp = await client.post(
+            f"/cases/{case_id}/evidence",
+            json={"url": "https://instagram.com/p/exemplo", "note": "post ameaçador"},
+        )
+        assert evidence_resp.status_code == 200
+        assert evidence_resp.json()["action"] == "evidence_saved"
+        assert evidence_resp.json()["payload"]["url"] == "https://instagram.com/p/exemplo"
+
+        audit_resp = await client.get(f"/cases/{case_id}/audit-log")
+        actions = [entry["action"] for entry in audit_resp.json()]
+        assert actions.count("evidence_saved") == 1
+
+        # Não deve ter criado nenhum achado/relatório — evidência é só log, não Identifier/Account.
+        report_resp = await client.get(f"/cases/{case_id}/report")
+        assert report_resp.json() == {"by_platform": [], "by_discovery_source": []}
+
+        await client.post(f"/cases/{case_id}/archive", params={"actor": "pytest"})
+
+
+async def test_save_evidence_for_unknown_case_returns_404(require_db):
+    async with await _client() as client:
+        resp = await client.post(f"/cases/{uuid.uuid4()}/evidence", json={"url": "https://example.com"})
+        assert resp.status_code == 404

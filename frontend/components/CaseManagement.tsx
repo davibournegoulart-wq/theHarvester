@@ -167,7 +167,16 @@ export default function CaseManagement() {
                     <strong>{entry.action}</strong> — {entry.actor}
                   </div>
                   <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{new Date(entry.created_at).toLocaleString()}</div>
-                  <pre style={{ fontSize: 11, padding: 4 }}>{JSON.stringify(entry.payload)}</pre>
+                  {entry.action === "evidence_saved" ? (
+                    <div style={{ fontSize: 12 }}>
+                      <a href={String(entry.payload.url)} target="_blank" rel="noreferrer">
+                        {String(entry.payload.url)}
+                      </a>
+                      {entry.payload.note ? <div style={{ color: "var(--text-muted)" }}>{String(entry.payload.note)}</div> : null}
+                    </div>
+                  ) : (
+                    <pre style={{ fontSize: 11, padding: 4 }}>{JSON.stringify(entry.payload)}</pre>
+                  )}
                 </li>
               ))}
             </ul>

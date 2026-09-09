@@ -41,6 +41,23 @@ site por site antes de entrar:
 - HackerNews: 200 nos dois casos, mas o corpo tem a frase "No such user."
   quando não existe — message, mesmo padrão do Steam.
 
+Terceira rodada (2026-09-08) — Davi pediu pra usar a base de sites do
+Sherlock/Maigret como **referência** (não rodar essas ferramentas embutidas,
+que herdaria os falsos positivos delas sem a validação daqui). Puxei
+`sherlock-project/sherlock`'s `data.json` (482 sites, cada um já vem com um
+`username_claimed` — um username real conhecido, útil pra validar) e testei
+26 candidatos populares ao vivo, real vs. inexistente:
+- **17 entraram limpos** com `status_code` puro (404 real pra inexistente,
+  sem SPA-shell nem anti-bot no meio): Kaggle, Codewars, Vimeo, DockerHub,
+  Spotify, MyAnimeList, Slides, Kongregate, osu!, SoundCloud, DeviantArt,
+  GoodReads, Flickr, CashApp, Roblox, Bandcamp, Dribbble.
+- **9 ficaram fora**: ProductHunt/LeetCode/Behance (403/429 anti-bot nos
+  dois casos), Anilist/Trello (título genérico igual nos dois casos, sem
+  sinal), npm (challenge Cloudflare — "Just a moment..."), Letterboxd
+  (403 inconsistente dependendo do username falso testado, não confiável),
+  Venmo (o `username_claimed` do Sherlock pra essa plataforma já não existe
+  mais — deu 404 igual ao falso, dado da fonte ficou desatualizado).
+
 Nenhum request de autenticação, nenhuma sessão de terceiro — só GET público.
 """
 

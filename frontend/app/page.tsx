@@ -7,6 +7,7 @@ import CryptoTrace from "@/components/CryptoTrace";
 import DomainRecon from "@/components/DomainRecon";
 import DorkEngine from "@/components/DorkEngine";
 import EmailSearch from "@/components/EmailSearch";
+import EvidenceQuickAdd from "@/components/EvidenceQuickAdd";
 import GraphView from "@/components/GraphView";
 import PhoneSearch from "@/components/PhoneSearch";
 import Tabs from "@/components/Tabs";
@@ -29,6 +30,7 @@ export default function Home() {
             Sistema de investigação OSINT — módulos internos, sem ferramenta de terceiro embutida.
           </p>
           <ActiveCaseBanner />
+          <EvidenceQuickAdd />
           <CaseGate>
             <Tabs
               tabs={[

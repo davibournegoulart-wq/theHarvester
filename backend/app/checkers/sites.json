@@ -62,5 +62,90 @@
   "GitLab": {
     "url": "https://gitlab.com/{}",
     "error_type": "redirect_away"
+  },
+  "Kaggle": {
+    "url": "https://www.kaggle.com/{}",
+    "error_type": "status_code",
+    "not_found_code": 404
+  },
+  "Codewars": {
+    "url": "https://www.codewars.com/users/{}",
+    "error_type": "status_code",
+    "not_found_code": 404
+  },
+  "Vimeo": {
+    "url": "https://vimeo.com/{}",
+    "error_type": "status_code",
+    "not_found_code": 404
+  },
+  "DockerHub": {
+    "url": "https://hub.docker.com/u/{}/",
+    "error_type": "status_code",
+    "not_found_code": 404
+  },
+  "Spotify": {
+    "url": "https://open.spotify.com/user/{}",
+    "error_type": "status_code",
+    "not_found_code": 404
+  },
+  "MyAnimeList": {
+    "url": "https://myanimelist.net/profile/{}",
+    "error_type": "status_code",
+    "not_found_code": 404
+  },
+  "Slides": {
+    "url": "https://slides.com/{}",
+    "error_type": "status_code",
+    "not_found_code": 404
+  },
+  "Kongregate": {
+    "url": "https://www.kongregate.com/accounts/{}",
+    "error_type": "status_code",
+    "not_found_code": 404
+  },
+  "osu!": {
+    "url": "https://osu.ppy.sh/users/{}",
+    "error_type": "status_code",
+    "not_found_code": 404
+  },
+  "SoundCloud": {
+    "url": "https://soundcloud.com/{}",
+    "error_type": "status_code",
+    "not_found_code": 404
+  },
+  "DeviantArt": {
+    "url": "https://www.deviantart.com/{}",
+    "error_type": "status_code",
+    "not_found_code": 404
+  },
+  "GoodReads": {
+    "url": "https://www.goodreads.com/{}",
+    "error_type": "status_code",
+    "not_found_code": 404
+  },
+  "Flickr": {
+    "url": "https://www.flickr.com/people/{}",
+    "error_type": "status_code",
+    "not_found_code": 404
+  },
+  "CashApp": {
+    "url": "https://cash.app/${}",
+    "error_type": "status_code",
+    "not_found_code": 404
+  },
+  "Roblox": {
+    "url": "https://www.roblox.com/user.aspx?username={}",
+    "error_type": "status_code",
+    "not_found_code": 404
+  },
+  "Bandcamp": {
+    "url": "https://www.bandcamp.com/{}",
+    "error_type": "status_code",
+    "not_found_code": 404
+  },
+  "Dribbble": {
+    "url": "https://dribbble.com/{}",
+    "error_type": "status_code",
+    "not_found_code": 404
   }
 }
