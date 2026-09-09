@@ -23,8 +23,17 @@ externa rodando como produto separado, é uma lista de motor de busca
 
 Onion de motor de busca muda/cai com frequência — revalidar periodicamente
 e expandir seguindo a lista completa do OnionSearch.
+
+**Torch adicionado (2026-09-09)**: mesmo padrão do Ahmia (fluxo de 2
+passos — busca a home pra pegar um token de sessão, depois busca de
+verdade com ele). Confirmado ao vivo: token vem em
+`<input name=tkn value="...">`, sem aspas no fechamento (tag mal-formada,
+por isso o regex não pode assumir aspas nos dois lados). Resultado real
+confirmado (busca por "bitcoin" trouxe onion de exchange/mixer real).
+Seletor: `td b a` dentro da tabela de resultado.
 """
 
+import asyncio
 import re
 from dataclasses import dataclass
 
@@ -35,6 +44,9 @@ from app.config import settings
 
 AHMIA_BASE = "http://juhanurmihxlp77nkq76byazcldy2hlmovfu2epvl5ankdibsot4csyd.onion"
 _AHMIA_HONEYPOT_RE = re.compile(r'<input type="hidden" name="([a-f0-9]+)" value="([a-f0-9]+)">')
+
+TORCH_BASE = "http://xmh57jrknzkhv6y3ls3ubitzfqnkrwxhopf5aygthi7d6rplyvk3noyd.onion"
+_TORCH_TOKEN_RE = re.compile(r'name=tkn value="([a-f0-9]+)')
 
 
 @dataclass
@@ -72,10 +84,42 @@ async def _search_ahmia(client: httpx.AsyncClient, keyword: str) -> list[DarkWeb
     return matches
 
 
+async def _search_torch(client: httpx.AsyncClient, keyword: str) -> list[DarkWebMatch]:
+    try:
+        home = await client.get(f"{TORCH_BASE}/cgi-bin/omega/omega", timeout=30.0)
+        home.raise_for_status()
+        match = _TORCH_TOKEN_RE.search(home.text)
+        if not match:
+            return []
+        token = match.group(1)
+
+        response = await client.get(
+            f"{TORCH_BASE}/cgi-bin/omega/omega",
+            params={"P": keyword, "DEFAULTOP": "and", "DB": "default", "FMT": "query", "xDB": "default", "xFILTERS": ".~~", "tkn": token},
+            timeout=45.0,
+        )
+        response.raise_for_status()
+    except httpx.HTTPError:
+        return []
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    matches: list[DarkWebMatch] = []
+    for link in soup.select("td b a"):
+        href = link.get("href", "")
+        matches.append(DarkWebMatch(engine="torch", result_url=href, title=link.get_text(strip=True) or href))
+
+    return matches
+
+
 async def search_dark_web(keyword: str, tor_proxy: str | None = None) -> list[DarkWebMatch]:
     """Requer um Tor daemon acessível em `tor_proxy` (default:
     `settings.tor_proxy_url`, que já aponta pro container `tor` do
-    docker-compose)."""
+    docker-compose). Roda todos os motores em paralelo, junta o resultado —
+    um motor falhando não derruba os outros."""
     proxy = tor_proxy or settings.tor_proxy_url
     async with httpx.AsyncClient(proxy=proxy, headers={"User-Agent": "Mozilla/5.0"}, follow_redirects=True) as client:
-        return await _search_ahmia(client, keyword)
+        results = await asyncio.gather(
+            _search_ahmia(client, keyword),
+            _search_torch(client, keyword),
+        )
+    return [match for engine_results in results for match in engine_results]
