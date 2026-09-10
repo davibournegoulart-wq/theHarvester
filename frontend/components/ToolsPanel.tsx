@@ -5,6 +5,7 @@ import { apiGet, apiFetch, apiPostJson } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "@/components/SaveToCaseButton";
 import DeepScraperTool from "./DeepScraperTool";
+import ImageMagnifier from "./ImageMagnifier";
 
 type ReverseImageLink = { engine: string; search_url: string };
 type PasswordBreachResult = { times_seen: number };
@@ -214,7 +215,13 @@ function ReverseImageTool() {
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
             {faces.map((f, i) => (
               <div key={i} style={{ border: "1px solid var(--border)", padding: 8, borderRadius: 8 }}>
-                <img src={f.public_url} alt="Face" style={{ width: 100, height: 100, objectFit: "cover", display: "block", marginBottom: 8, borderRadius: 4 }} />
+                <ImageMagnifier
+                  src={f.public_url}
+                  alt="Face"
+                  lensSize={100}
+                  zoomLevel={2.5}
+                  style={{ width: 100, height: 100, display: "block", marginBottom: 8 }}
+                />
                 <ul style={{ margin: 0, paddingLeft: 20, fontSize: 12 }}>
                   {f.links.map(l => (
                     <li key={l.engine}>

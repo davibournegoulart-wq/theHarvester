@@ -4,6 +4,7 @@ import { useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "./SaveToCaseButton";
+import ImageMagnifier from "./ImageMagnifier";
 
 type ReverseSearchLink = {
   engine: string;
@@ -386,16 +387,12 @@ export default function FaceBiometricsRecon() {
                       }}
                     >
                       <div style={{ display: "flex", gap: 12 }}>
-                        <img
+                        <ImageMagnifier
                           src={f.crop_base64}
                           alt={`Face ${f.face_id}`}
-                          style={{
-                            width: 90,
-                            height: 90,
-                            objectFit: "cover",
-                            borderRadius: 4,
-                            border: "1px solid var(--cyan)",
-                          }}
+                          lensSize={100}
+                          zoomLevel={2.5}
+                          style={{ width: 95, height: 95, flexShrink: 0 }}
                         />
                         <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11 }}>
                           <span style={{ color: "var(--cyan)", fontWeight: "bold" }}>FACE #{f.face_id}</span>
@@ -598,12 +595,14 @@ export default function FaceBiometricsRecon() {
                 {/* Face 1 Crop */}
                 <div style={{ textAlign: "center" }}>
                   <span style={{ display: "block", fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>
-                    ALIGNED CROP: TARGET
+                    ALIGNED CROP: TARGET (Hover to Magnify)
                   </span>
-                  <img
+                  <ImageMagnifier
                     src={compResult.face1_crop}
                     alt="Aligned 1"
-                    style={{ width: 112, height: 112, borderRadius: 6, border: "2px solid var(--cyan)" }}
+                    lensSize={110}
+                    zoomLevel={2.8}
+                    style={{ width: 112, height: 112, display: "inline-block" }}
                   />
                 </div>
 
@@ -637,12 +636,14 @@ export default function FaceBiometricsRecon() {
                 {/* Face 2 Crop */}
                 <div style={{ textAlign: "center" }}>
                   <span style={{ display: "block", fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>
-                    ALIGNED CROP: SUSPECT
+                    ALIGNED CROP: SUSPECT (Hover to Magnify)
                   </span>
-                  <img
+                  <ImageMagnifier
                     src={compResult.face2_crop}
                     alt="Aligned 2"
-                    style={{ width: 112, height: 112, borderRadius: 6, border: "2px solid var(--cyan)" }}
+                    lensSize={110}
+                    zoomLevel={2.8}
+                    style={{ width: 112, height: 112, display: "inline-block" }}
                   />
                 </div>
               </div>
