@@ -13,6 +13,14 @@ import networkx as nx
 
 
 @dataclass
+class GraphNode:
+    id: str
+    label: str
+    type: str = "default"
+    details: dict | None = None
+
+
+@dataclass
 class GraphEdge:
     source_id: str
     target_id: str
@@ -28,8 +36,11 @@ class GraphMetrics:
     communities: dict[str, int]  # node_id -> community index (modularidade)
 
 
-def build_graph(edges: list[GraphEdge]) -> nx.Graph:
+def build_graph(edges: list[GraphEdge], nodes: list[GraphNode] | None = None) -> nx.Graph:
     graph = nx.Graph()
+    if nodes:
+        for n in nodes:
+            graph.add_node(n.id, label=n.label, type=n.type, details=n.details or {})
     for edge in edges:
         graph.add_edge(edge.source_id, edge.target_id, relation_type=edge.relation_type, weight=edge.confidence)
     return graph
@@ -63,6 +74,9 @@ def to_frontend_json(graph: nx.Graph, metrics: GraphMetrics) -> dict:
     nodes = [
         {
             "id": node,
+            "label": graph.nodes[node].get("label", node),
+            "type": graph.nodes[node].get("type", "default"),
+            "details": graph.nodes[node].get("details", {}),
             "degree": metrics.degree_centrality.get(node, 0),
             "betweenness": metrics.betweenness_centrality.get(node, 0),
             "closeness": metrics.closeness_centrality.get(node, 0),
@@ -71,7 +85,8 @@ def to_frontend_json(graph: nx.Graph, metrics: GraphMetrics) -> dict:
         for node in graph.nodes
     ]
     edges = [
-        {"source": u, "target": v, "relation_type": data.get("relation_type"), "weight": data.get("weight", 1.0)}
+        {"source": u, "target": v, "relation_type": data.get("relation_type", "related"), "weight": data.get("weight", 1.0)}
         for u, v, data in graph.edges(data=True)
     ]
     return {"nodes": nodes, "edges": edges}
+

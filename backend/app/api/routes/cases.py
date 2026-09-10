@@ -620,37 +620,41 @@ async def clear_case_geolocations(
 
 
 @router.post("/custom-graph")
-
 async def get_custom_multi_case_graph_route(body: MultiCaseGraphRequest, db: AsyncSession = Depends(get_db)):
     """Generates correlation graph for any chosen 2 or more cases."""
-    from app.case.multi_case_graph import get_edges_for_case_list
-    from app.graph.engine import build_graph, compute_metrics, to_frontend_json, GraphEdge
+    from app.case.multi_case_graph import get_graph_elements_for_case_list
+    from app.graph.engine import build_graph, compute_metrics, to_frontend_json, GraphEdge, GraphNode
 
-    edges_raw = await get_edges_for_case_list(db, body.case_ids)
+    nodes_raw, edges_raw = await get_graph_elements_for_case_list(db, body.case_ids)
+    nodes = [GraphNode(**n) for n in nodes_raw]
     edges = [GraphEdge(**e) for e in edges_raw]
-    graph = build_graph(edges)
+    graph = build_graph(edges, nodes)
     metrics = compute_metrics(graph)
     return to_frontend_json(graph, metrics)
 
 
 @router.get("/all/graph")
 async def get_all_cases_graph_route(db: AsyncSession = Depends(get_db)):
-    from app.case.graph_builder import get_edges_for_case
-    from app.graph.engine import build_graph, compute_metrics, to_frontend_json, GraphEdge
+    from app.case.graph_builder import get_graph_elements_for_case
+    from app.graph.engine import build_graph, compute_metrics, to_frontend_json, GraphEdge, GraphNode
     
-    edges_raw = await get_edges_for_case(db, None)
+    nodes_raw, edges_raw = await get_graph_elements_for_case(db, None)
+    nodes = [GraphNode(**n) for n in nodes_raw]
     edges = [GraphEdge(**e) for e in edges_raw]
-    graph = build_graph(edges)
+    graph = build_graph(edges, nodes)
     metrics = compute_metrics(graph)
     return to_frontend_json(graph, metrics)
 
+
 @router.get("/{case_id}/graph")
 async def get_case_graph_route(case_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    from app.case.graph_builder import get_edges_for_case
-    from app.graph.engine import build_graph, compute_metrics, to_frontend_json, GraphEdge
+    from app.case.graph_builder import get_graph_elements_for_case
+    from app.graph.engine import build_graph, compute_metrics, to_frontend_json, GraphEdge, GraphNode
     
-    edges_raw = await get_edges_for_case(db, case_id)
+    nodes_raw, edges_raw = await get_graph_elements_for_case(db, case_id)
+    nodes = [GraphNode(**n) for n in nodes_raw]
     edges = [GraphEdge(**e) for e in edges_raw]
-    graph = build_graph(edges)
+    graph = build_graph(edges, nodes)
     metrics = compute_metrics(graph)
     return to_frontend_json(graph, metrics)
+

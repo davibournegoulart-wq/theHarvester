@@ -9,6 +9,19 @@
   --text-muted: #6f8299;
   --danger: #ff2a6d;
   --success: #39ff88;
+
+  /* Sigma Relational Graph Cyberpunk Theme */
+  --sigma-background-color: #060812;
+  --sigma-controls-background-color: #11151f;
+  --sigma-controls-background-color-hover: rgba(5, 217, 232, 0.2);
+  --sigma-controls-border-color: #1e2636;
+  --sigma-controls-color: #05d9e8;
+}
+
+div.react-sigma,
+div.sigma-container,
+div.sigma-container canvas {
+  background: #060812 !important;
 }
 
 * {
