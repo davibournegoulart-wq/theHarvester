@@ -23,6 +23,7 @@ import GlobalOSINT from "@/components/GlobalOSINT";
 import MetaRecon from "@/components/MetaRecon";
 import TelegramRecon from "@/components/TelegramRecon";
 import TikTokRecon from "@/components/TikTokRecon";
+import FaceBiometricsRecon from "@/components/FaceBiometricsRecon";
 import { ActiveCaseProvider } from "@/lib/activeCase";
 
 export default function Home() {
@@ -55,6 +56,7 @@ export default function Home() {
             <Tabs
               tabs={[
                 { label: "CASES", content: <CaseManagement /> },
+                { label: "BIOMETRICS", content: <FaceBiometricsRecon /> },
                 { label: "USERNAME", content: <UsernameSearch /> },
                 { label: "EMAIL", content: <EmailSearch /> },
                 { label: "PHONE", content: <PhoneSearch /> },

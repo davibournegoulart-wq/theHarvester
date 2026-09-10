@@ -8,3 +8,4 @@ node_modules/
 .DS_Store
 data/bulk_uploads/*
 !data/bulk_uploads/.gitkeep
+backend/app/models/face/*.onnx
