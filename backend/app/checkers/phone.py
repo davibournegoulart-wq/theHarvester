@@ -28,6 +28,7 @@ import httpx
 import phonenumbers
 from phonenumbers import carrier as phonenumbers_carrier
 from phonenumbers import geocoder as phonenumbers_geocoder
+from phonenumbers import timezone as phonenumbers_timezone
 
 from app.config import settings
 
@@ -46,6 +47,7 @@ class PhoneMetadata:
     carrier: str | None
     line_type: str | None  # mobile / fixed_line / voip / unknown
     is_valid: bool
+    timezones: list[str] | None = None
     discovered_by: str = "checkers.phone.metadata"
 
 
@@ -67,11 +69,14 @@ def lookup_phone_metadata(phone: str, default_region: str | None = None) -> Phon
     parsed = phonenumbers.parse(phone, default_region)
     is_valid = phonenumbers.is_valid_number(parsed)
 
+    timezones = list(phonenumbers_timezone.time_zones_for_number(parsed)) if is_valid else None
+    
     return PhoneMetadata(
         country=phonenumbers_geocoder.description_for_number(parsed, "en") or None,
         carrier=phonenumbers_carrier.name_for_number(parsed, "en") or None,
         line_type=_LINE_TYPE_NAMES.get(phonenumbers.number_type(parsed), "unknown"),
         is_valid=is_valid,
+        timezones=timezones,
     )
 
 
@@ -121,3 +126,54 @@ async def check_phone_existence(phone: str, default_region: str) -> list[PhoneCh
         result = await _check_snapchat(client, national_number, default_region)
 
     return [result] if result is not None else []
+
+
+async def check_whatsapp_existence(phone: str) -> PhoneCheckResult | None:
+    """Verifica existência no WhatsApp. `phone` deve ter o código do país."""
+    try:
+        parsed = phonenumbers.parse(phone)
+        if not phonenumbers.is_valid_number(parsed):
+            return None
+        phone_e164 = phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)[1:]
+    except phonenumbers.NumberParseException:
+        return None
+
+    url = f"https://wa.me/{phone_e164}"
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            # A HEAD request sem follow_redirects:
+            # 200 = OK, tem a página com botão Message (telefone válido)
+            # 302 (redirect) ou outro = não existe
+            resp = await client.head(url, timeout=settings.request_timeout_seconds, follow_redirects=False)
+            if resp.status_code == 200:
+                return PhoneCheckResult(service="whatsapp", exists=True)
+            return PhoneCheckResult(service="whatsapp", exists=False)
+        except httpx.HTTPError:
+            return None
+
+async def check_telegram_existence(phone: str) -> PhoneCheckResult | None:
+    """Verifica existência no Telegram. `phone` deve ter o código do país."""
+    try:
+        parsed = phonenumbers.parse(phone)
+        if not phonenumbers.is_valid_number(parsed):
+            return None
+        phone_e164 = phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+    except phonenumbers.NumberParseException:
+        return None
+
+    url = f"https://t.me/{phone_e164}"
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.get(url, timeout=settings.request_timeout_seconds, follow_redirects=True)
+            if resp.status_code == 200:
+                if 'tgme_page_title' in resp.text and 'tgme_page_extra' not in resp.text: # telegram generic empty
+                     pass
+                # A heuristic: valid pages have a specific title or contact elements
+                if 'Send Message' in resp.text or 'Contact' in resp.text or 'tgme_page_title' in resp.text:
+                    if "If you have Telegram, you can contact" in resp.text:
+                        return PhoneCheckResult(service="telegram", exists=True)
+            return PhoneCheckResult(service="telegram", exists=False)
+        except httpx.HTTPError:
+            return None

@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     # dado governamental, não serviço privado comercial — não viola a regra
     # de arquitetura, só precisa de configuração.
     opensanctions_api_key: str | None = None
+    
+    companies_house_api_key: str | None = None
+    bscscan_api_key: str | None = None
+    polygonscan_api_key: str | None = None
 
     class Config:
         env_prefix = "NETSCRAPER_"

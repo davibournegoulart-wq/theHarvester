@@ -177,3 +177,12 @@ pre {
   border: 1px solid var(--panel-border);
   font-family: var(--font-body), monospace;
 }
+
+/* Hide scrollbar for tabs but keep them scrollable */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}

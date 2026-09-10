@@ -19,6 +19,15 @@ DORK_TEMPLATES = [
     'site:{domain} ext:sql | ext:env | ext:log',
 ]
 
+DATING_DORKS = [
+    'site:tinder.com "{query}"',
+    'site:badoo.com "{query}"',
+    'site:okcupid.com "{query}"',
+    'site:match.com "{query}"',
+    'site:bumble.com "{query}"',
+    'site:pof.com "{query}"',
+]
+
 
 @dataclass
 class DorkQuery:

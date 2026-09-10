@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum
 
-from sqlalchemy import DateTime, ForeignKey, JSON, String
+from sqlalchemy import DateTime, Float, ForeignKey, JSON, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -10,8 +10,10 @@ from app.db import Base
 
 
 class CaseStatus(str, Enum):
-    OPEN = "open"
-    ARCHIVED = "archived"
+    OPEN = "OPEN"
+    CLOSED = "CLOSED"
+    COLD = "COLD"
+    ARCHIVED = "ARCHIVED"
 
 
 class Case(Base):
@@ -25,6 +27,8 @@ class Case(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     audit_log: Mapped[list["AuditLogEntry"]] = relationship(back_populates="case")
+    files: Mapped[list["CaseFile"]] = relationship(back_populates="case")
+    geolocations: Mapped[list["CaseGeolocation"]] = relationship(back_populates="case", cascade="all, delete-orphan")
 
 
 class AuditLogEntry(Base):
@@ -40,3 +44,46 @@ class AuditLogEntry(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     case: Mapped["Case"] = relationship(back_populates="audit_log")
+
+
+class CaseFile(Base):
+    """Local databank storage for case files, downloaded web documents, and forensic assets."""
+
+    __tablename__ = "case_files"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cases.id"))
+    filename: Mapped[str] = mapped_column(String(512))
+    original_filename: Mapped[str] = mapped_column(String(512))
+    typology: Mapped[str] = mapped_column(String(100), default="document")  # document, dork_dump, image, evidence, corporate, audio, video
+    source_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    file_size: Mapped[int] = mapped_column(default=0)
+    mime_type: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    storage_path: Mapped[str] = mapped_column(String(1024))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    case: Mapped["Case"] = relationship(back_populates="files")
+    geolocations: Mapped[list["CaseGeolocation"]] = relationship(back_populates="attached_file")
+
+
+class CaseGeolocation(Base):
+    """Geolocations linked to a case (from photo EXIF, corporate address, or manual mapping).
+    Allows pinning exact coordinates, linking evidence URLs and attaching case databank files.
+    """
+
+    __tablename__ = "case_geolocations"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
+    latitude: Mapped[float] = mapped_column(Float)
+    longitude: Mapped[float] = mapped_column(Float)
+    label: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source: Mapped[str] = mapped_column(String(255), default="manual")
+    source_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    attached_file_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("case_files.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    case: Mapped["Case"] = relationship(back_populates="geolocations")
+    attached_file: Mapped["CaseFile | None"] = relationship(back_populates="geolocations")
+

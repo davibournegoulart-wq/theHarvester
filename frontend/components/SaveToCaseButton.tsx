@@ -4,7 +4,7 @@ import { useState } from "react";
 import { apiPostJson } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 
-type IdentifierType = "email" | "phone" | "username" | "domain";
+type IdentifierType = "email" | "phone" | "username" | "domain" | "corporate" | "person" | "crypto" | "url";
 
 type Props = {
   identifierType: IdentifierType;
@@ -33,7 +33,7 @@ export default function SaveToCaseButton({
   if (!activeCase) {
     return (
       <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-        selecione um caso ativo na aba "Casos" pra salvar
+        select an active case first
       </span>
     );
   }
@@ -42,31 +42,34 @@ export default function SaveToCaseButton({
     setSaving(true);
     setError(null);
     try {
+      const investigator = localStorage.getItem("investigator_name");
+      const by = investigator ? `${discoveredBy} (${investigator})` : discoveredBy;
+      
       await apiPostJson(`/cases/${activeCase!.id}/findings`, {
         identifier_type: identifierType,
         identifier_value: identifierValue,
         platform,
         url,
         exists,
-        discovered_by: discoveredBy,
+        discovered_by: by,
         metadata_json: metadata,
       });
       setSaved(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "erro ao salvar");
+      setError(e instanceof Error ? e.message : "error saving");
     } finally {
       setSaving(false);
     }
   }
 
   if (saved) {
-    return <span style={{ fontSize: 11, color: "var(--success)" }}>salvo em "{activeCase.name}"</span>;
+    return <span style={{ fontSize: 11, color: "var(--success)" }}>saved to "{activeCase.name}"</span>;
   }
 
   return (
     <span>
       <button onClick={handleSave} disabled={saving} style={{ fontSize: 11, padding: "2px 6px" }}>
-        {saving ? "salvando..." : `salvar no caso "${activeCase.name}"`}
+        {saving ? "saving..." : `save to "${activeCase.name}"`}
       </button>
       {error && <span style={{ fontSize: 11, color: "var(--danger)", marginLeft: 6 }}>{error}</span>}
     </span>

@@ -9,7 +9,17 @@ export default function Tabs({ tabs }: { tabs: Tab[] }) {
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--panel-border)", marginBottom: 20 }}>
+      <div 
+        style={{ 
+          display: "flex", 
+          gap: 4, 
+          flexWrap: "wrap",
+          borderBottom: "1px solid var(--panel-border)", 
+          marginBottom: 20,
+          paddingBottom: 4, // prevent clipping focus rings
+        }}
+        className="hide-scrollbar"
+      >
         {tabs.map((tab, i) => (
           <button
             key={tab.label}

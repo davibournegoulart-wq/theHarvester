@@ -1,168 +1,472 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Graph from "graphology";
-import forceAtlas2 from "graphology-layout-forceatlas2";
-import { useEffect, useRef, useState } from "react";
-import Sigma from "sigma";
-import { apiFetch } from "@/lib/api";
+import { SigmaContainer, ControlsContainer, ZoomControl, useLoadGraph, useRegisterEvents, useSigma } from "@react-sigma/core";
+import { useLayoutForceAtlas2 } from "@react-sigma/layout-forceatlas2";
+import { NodeImageProgram } from "@sigma/node-image";
+import { bidirectional } from "graphology-shortest-path/unweighted";
+import "@react-sigma/core/lib/style.css";
+import { useActiveCase } from "@/lib/activeCase";
+import { apiGet, apiPostJson } from "@/lib/api";
 
-type EdgeInput = { source_id: string; target_id: string; relation_type: string };
-type GraphNodeResult = { id: string; degree: number; betweenness: number; closeness: number; community: number };
-type GraphEdgeResult = { source: string; target: string; relation_type: string; weight: number };
-type GraphResponse = { nodes: GraphNodeResult[]; edges: GraphEdgeResult[] };
+type NodeData = {
+  id: string;
+  label: string;
+  type: string;
+  color?: string;
+  image?: string;
+  size?: number;
+};
+type EdgeData = {
+  id: string;
+  source: string;
+  target: string;
+  label?: string;
+  color?: string;
+  size?: number;
+};
 
-const COMMUNITY_COLORS = ["#05D9E8", "#FF2A6D", "#F9F002", "#39FF88", "#B967FF", "#FF9E2C", "#2ADFFF", "#FF5C8A"];
+type ViewMode = "active" | "custom" | "all";
 
-const EXAMPLE_EDGES: EdgeInput[] = [
-  { source_id: "email:a@x.com", target_id: "user:alice", relation_type: "same_person" },
-  { source_id: "user:alice", target_id: "phone:+551199999", relation_type: "same_person" },
-  { source_id: "user:alice", target_id: "user:alice_gh", relation_type: "same_person" },
-  { source_id: "user:bob", target_id: "user:carol", relation_type: "same_person" },
-  { source_id: "user:carol", target_id: "email:c@y.com", relation_type: "same_person" },
-];
+type CaseOption = {
+  id: string;
+  name: string;
+  status: string;
+};
+
+const NODE_SETTINGS: Record<string, { color: string; size: number; image?: string }> = {
+  // Identity & People
+  person: { color: "#FF4D4D", size: 18, image: "https://unpkg.com/lucide-static@0.400.0/icons/user.svg" },
+  username: { color: "#00E676", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/user-check.svg" },
+  
+  // Contact & Comms
+  email: { color: "#00B0FF", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/mail.svg" },
+  phone: { color: "#FF9100", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/phone.svg" },
+  whatsapp: { color: "#25D366", size: 16, image: "https://cdn.simpleicons.org/whatsapp/white" },
+  telegram: { color: "#2AABEE", size: 16, image: "https://cdn.simpleicons.org/telegram/white" },
+
+  // Corporate, Organization & Work
+  corporate: { color: "#9C27B0", size: 18, image: "https://unpkg.com/lucide-static@0.400.0/icons/building-2.svg" },
+  company: { color: "#9C27B0", size: 18, image: "https://unpkg.com/lucide-static@0.400.0/icons/building-2.svg" },
+  enterprise: { color: "#9C27B0", size: 18, image: "https://unpkg.com/lucide-static@0.400.0/icons/building-2.svg" },
+  partner: { color: "#E040FB", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/users.svg" },
+  qsa: { color: "#E040FB", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/users.svg" },
+  work: { color: "#7C4DFF", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/briefcase.svg" },
+  employment: { color: "#7C4DFF", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/briefcase.svg" },
+
+  // Network & Infra
+  domain: { color: "#00BCD4", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/globe.svg" },
+  dns: { color: "#00BCD4", size: 15, image: "https://unpkg.com/lucide-static@0.400.0/icons/network.svg" },
+  ip: { color: "#607D8B", size: 15, image: "https://unpkg.com/lucide-static@0.400.0/icons/server.svg" },
+
+  // Crypto & Financial
+  crypto: { color: "#FFD600", size: 16, image: "https://cdn.simpleicons.org/bitcoin/white" },
+  bitcoin: { color: "#F7931A", size: 16, image: "https://cdn.simpleicons.org/bitcoin/white" },
+  ethereum: { color: "#627EEA", size: 16, image: "https://cdn.simpleicons.org/ethereum/white" },
+
+  // Databank, Files & Documents
+  document: { color: "#05D9E8", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/file-text.svg" },
+  dork_dump: { color: "#FF2A6D", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/database.svg" },
+  evidence: { color: "#00FF9F", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/shield-check.svg" },
+  image: { color: "#FFAB00", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/image.svg" },
+  audio_video: { color: "#A259FF", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/video.svg" },
+  file: { color: "#05D9E8", size: 15, image: "https://unpkg.com/lucide-static@0.400.0/icons/file.svg" },
+
+  // Social Platforms
+  facebook: { color: "#1877F2", size: 16, image: "https://cdn.simpleicons.org/facebook/white" },
+  instagram: { color: "#E4405F", size: 16, image: "https://cdn.simpleicons.org/instagram/white" },
+  twitter: { color: "#1DA1F2", size: 16, image: "https://cdn.simpleicons.org/x/white" },
+  x: { color: "#FFFFFF", size: 16, image: "https://cdn.simpleicons.org/x/white" },
+  tiktok: { color: "#FE2C55", size: 16, image: "https://cdn.simpleicons.org/tiktok/white" },
+  github: { color: "#F0F6FC", size: 16, image: "https://cdn.simpleicons.org/github/white" },
+  linkedin: { color: "#0A66C2", size: 16, image: "https://cdn.simpleicons.org/linkedin/white" },
+  reddit: { color: "#FF4500", size: 16, image: "https://cdn.simpleicons.org/reddit/white" },
+  youtube: { color: "#FF0000", size: 16, image: "https://cdn.simpleicons.org/youtube/white" },
+
+  // System default
+  case: { color: "#05D9E8", size: 20, image: "https://unpkg.com/lucide-static@0.400.0/icons/folder-git-2.svg" },
+  default: { color: "#888888", size: 12, image: "https://unpkg.com/lucide-static@0.400.0/icons/disc.svg" },
+};
+
+function LoadGraph({ nodes, edges, onGraphReady }: { nodes: NodeData[]; edges: EdgeData[], onGraphReady: (g: Graph) => void }) {
+  const { assign } = useLayoutForceAtlas2();
+  const loadGraph = useLoadGraph();
+
+  useEffect(() => {
+    const graph = new Graph({ multi: true }); // Multi graph to avoid duplicate edge issues just in case
+    
+    nodes.forEach((n) => {
+      // Node IDs come from backend as e.g. "[case_id] username:target_user" or "email:test@target.com"
+      let cleanId = n.id;
+      let casePrefix = "";
+      if (cleanId.startsWith("[")) {
+        const idx = cleanId.indexOf("] ");
+        if (idx !== -1) {
+          casePrefix = cleanId.substring(0, idx + 2);
+          cleanId = cleanId.substring(idx + 2);
+        }
+      }
+
+      // Infer type and clean label
+      let detectedType = n.type || "default";
+      let displayLabel = n.label || cleanId;
+
+      if (cleanId.includes(":")) {
+        const colonIdx = cleanId.indexOf(":");
+        const prefixType = cleanId.substring(0, colonIdx).toLowerCase().trim();
+        const valuePart = cleanId.substring(colonIdx + 1).trim();
+
+        if (NODE_SETTINGS[prefixType]) {
+          detectedType = prefixType;
+        }
+        displayLabel = valuePart;
+      }
+
+      const st = NODE_SETTINGS[detectedType] || NODE_SETTINGS.default;
+
+      graph.addNode(n.id, {
+        x: Math.random() * 100,
+        y: Math.random() * 100,
+        label: displayLabel,
+        size: n.size || st.size,
+        color: n.color || st.color,
+        type: st.image ? "image" : "circle",
+        image: st.image,
+        originalColor: n.color || st.color,
+      });
+    });
+
+    edges.forEach((e) => {
+      if (graph.hasNode(e.source) && graph.hasNode(e.target)) {
+        try {
+          graph.addEdge(e.source, e.target, {
+            label: e.label || "",
+            size: e.size || 1,
+            color: e.color || "#555555",
+            originalColor: e.color || "#555555",
+          });
+        } catch {}
+      }
+    });
+
+    loadGraph(graph);
+    assign();
+    onGraphReady(graph);
+  }, [nodes, edges, assign, loadGraph, onGraphReady]);
+
+  return null;
+}
+
+function GraphEvents({ selectedNodes, setSelectedNodes, pathNodes }: { selectedNodes: string[], setSelectedNodes: any, pathNodes: string[] | null }) {
+  const registerEvents = useRegisterEvents();
+  const sigma = useSigma();
+
+  useEffect(() => {
+    registerEvents({
+      clickNode: (e) => {
+        const node = e.node;
+        setSelectedNodes((prev: string[]) => {
+          if (prev.includes(node)) {
+            return prev.filter((n) => n !== node);
+          }
+          if (prev.length >= 2) return [node]; // Reset if 2 already selected
+          return [...prev, node];
+        });
+      },
+      clickStage: () => {
+        setSelectedNodes([]);
+      }
+    });
+  }, [registerEvents, setSelectedNodes]);
+
+  useEffect(() => {
+    const graph = sigma.getGraph();
+    
+    // Reset all
+    graph.forEachNode((n) => {
+      graph.setNodeAttribute(n, "color", graph.getNodeAttribute(n, "originalColor"));
+      graph.setNodeAttribute(n, "highlighted", false);
+    });
+    graph.forEachEdge((e) => {
+      graph.setEdgeAttribute(e, "color", graph.getEdgeAttribute(e, "originalColor"));
+      graph.setEdgeAttribute(e, "size", 1);
+    });
+
+    if (selectedNodes.length > 0 || pathNodes) {
+      const activeNodes = new Set(pathNodes || selectedNodes);
+      
+      graph.forEachNode((n) => {
+        if (activeNodes.has(n)) {
+          // Highlight
+          graph.setNodeAttribute(n, "color", "#05D9E8");
+        } else {
+          // Dim
+          graph.setNodeAttribute(n, "color", "#222222");
+        }
+      });
+
+      if (pathNodes && pathNodes.length > 1) {
+        // Highlight path edges
+        for (let i = 0; i < pathNodes.length - 1; i++) {
+          const s = pathNodes[i];
+          const t = pathNodes[i+1];
+          const edge = graph.edge(s, t) || graph.edge(t, s);
+          if (edge) {
+            graph.setEdgeAttribute(edge, "color", "#05D9E8");
+            graph.setEdgeAttribute(edge, "size", 3);
+          }
+        }
+        
+        // Dim other edges
+        graph.forEachEdge((e) => {
+          if (graph.getEdgeAttribute(e, "color") !== "#05D9E8") {
+            graph.setEdgeAttribute(e, "color", "#111111");
+          }
+        });
+      }
+    }
+  }, [selectedNodes, pathNodes, sigma]);
+
+  return null;
+}
 
 export default function GraphView() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const sigmaRef = useRef<Sigma | null>(null);
-  const [edges, setEdges] = useState<EdgeInput[]>(EXAMPLE_EDGES);
-  const [source, setSource] = useState("");
-  const [target, setTarget] = useState("");
-  const [relation, setRelation] = useState("same_person");
+  const { activeCase } = useActiveCase();
+  const [nodes, setNodes] = useState<NodeData[]>([]);
+  const [edges, setEdges] = useState<EdgeData[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<GraphNodeResult | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("active");
+  const [availableCases, setAvailableCases] = useState<CaseOption[]>([]);
+  const [selectedCaseIds, setSelectedCaseIds] = useState<string[]>([]);
+  const [graphInstance, setGraphInstance] = useState<Graph | null>(null);
+  
+  // Link Analysis State
+  const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
+  const [shortestPath, setShortestPath] = useState<string[] | null>(null);
 
-  function addEdge() {
-    if (!source || !target) return;
-    setEdges((prev) => [...prev, { source_id: source, target_id: target, relation_type: relation }]);
-    setSource("");
-    setTarget("");
-  }
+  useEffect(() => {
+    // Load list of available cases
+    apiGet<CaseOption[]>("/cases/")
+      .then((data) => {
+        setAvailableCases(data || []);
+        if (activeCase) {
+          setSelectedCaseIds([activeCase.id]);
+        }
+      })
+      .catch((err) => console.error("Error loading cases:", err));
+  }, [activeCase]);
 
-  function removeEdge(index: number) {
-    setEdges((prev) => prev.filter((_, i) => i !== index));
-  }
+  useEffect(() => {
+    if (selectedNodes.length === 2 && graphInstance) {
+      try {
+        const path = bidirectional(graphInstance, selectedNodes[0], selectedNodes[1]);
+        setShortestPath(path || []);
+      } catch (e) {
+        setShortestPath([]); // No path found
+      }
+    } else {
+      setShortestPath(null);
+    }
+  }, [selectedNodes, graphInstance]);
 
-  async function computeAndRender() {
+  async function loadGraphData() {
     setLoading(true);
-    setError(null);
+    setSelectedNodes([]);
     try {
-      const response = await apiFetch(`/graph/compute`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ edges }),
-      });
-      if (!response.ok) throw new Error(`API error ${response.status}`);
-      const data: GraphResponse = await response.json();
-      renderGraph(data);
+      let data: { nodes: NodeData[]; edges: EdgeData[] };
+
+      if (viewMode === "active" && activeCase) {
+        data = await apiGet<{ nodes: NodeData[]; edges: EdgeData[] }>(`/cases/${activeCase.id}/graph`);
+      } else if (viewMode === "custom") {
+        if (selectedCaseIds.length === 0) {
+          setNodes([]);
+          setEdges([]);
+          setLoading(false);
+          return;
+        }
+        data = await apiPostJson<{ nodes: NodeData[]; edges: EdgeData[] }>("/cases/custom-graph", {
+          case_ids: selectedCaseIds,
+        });
+      } else if (viewMode === "all") {
+        data = await apiGet<{ nodes: NodeData[]; edges: EdgeData[] }>("/cases/all/graph");
+      } else {
+        setNodes([]);
+        setEdges([]);
+        return;
+      }
+      
+      setNodes(data.nodes || []);
+      setEdges(data.edges || []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro ao calcular grafo");
+      console.error("Error loading graph:", e);
     } finally {
       setLoading(false);
     }
   }
 
-  function renderGraph(data: GraphResponse) {
-    if (!containerRef.current) return;
-    sigmaRef.current?.kill();
-    sigmaRef.current = null;
+  useEffect(() => {
+    loadGraphData();
+  }, [activeCase, viewMode, selectedCaseIds]);
 
-    const graph = new Graph();
-    const maxDegree = Math.max(...data.nodes.map((n) => n.degree), 0.01);
+  const toggleCaseSelection = (caseId: string) => {
+    setSelectedCaseIds((prev) =>
+      prev.includes(caseId) ? prev.filter((id) => id !== caseId) : [...prev, caseId]
+    );
+  };
 
-    for (const node of data.nodes) {
-      graph.addNode(node.id, {
-        label: node.id,
-        size: 5 + (node.degree / maxDegree) * 15,
-        color: COMMUNITY_COLORS[node.community % COMMUNITY_COLORS.length],
-        x: Math.random(),
-        y: Math.random(),
-        degree: node.degree,
-        betweenness: node.betweenness,
-        closeness: node.closeness,
-        community: node.community,
-      });
-    }
-    for (const edge of data.edges) {
-      if (graph.hasNode(edge.source) && graph.hasNode(edge.target) && !graph.hasEdge(edge.source, edge.target)) {
-        graph.addEdge(edge.source, edge.target, { label: edge.relation_type, size: 1, color: "#2a3548" });
-      }
-    }
-
-    forceAtlas2.assign(graph, { iterations: 100 });
-
-    const sigma = new Sigma(graph, containerRef.current, {
-      labelColor: { color: "#d6f3ff" },
-      labelFont: "var(--font-body), monospace",
-      defaultEdgeColor: "#2a3548",
-    });
-    sigma.on("clickNode", ({ node }) => {
-      const attrs = graph.getNodeAttributes(node);
-      setSelected({
-        id: node,
-        degree: attrs.degree,
-        betweenness: attrs.betweenness,
-        closeness: attrs.closeness,
-        community: attrs.community,
-      });
-    });
-    sigmaRef.current = sigma;
+  if (!activeCase && viewMode === "active") {
+    return <div style={{ color: "var(--warning)", marginTop: 32 }}>Select an active case to view the correlation graph.</div>;
   }
 
-  useEffect(() => {
-    return () => {
-      sigmaRef.current?.kill();
-    };
-  }, []);
-
   return (
-    <div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-        <input
-          value={source}
-          onChange={(e) => setSource(e.target.value)}
-          placeholder="origem (ex: email:a@x.com)"
-          style={{ flex: 1, padding: 8 }}
-        />
-        <input
-          value={target}
-          onChange={(e) => setTarget(e.target.value)}
-          placeholder="destino (ex: user:alice)"
-          style={{ flex: 1, padding: 8 }}
-        />
-        <input value={relation} onChange={(e) => setRelation(e.target.value)} placeholder="relação" style={{ width: 140, padding: 8 }} />
-        <button onClick={addEdge}>+ aresta</button>
+    <div style={{ marginTop: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 16 }}>
+        <div>
+          <h2 style={{ color: "var(--cyan)", margin: 0 }}>Relational Graph</h2>
+          <p style={{ color: "var(--text-muted)", fontSize: 13, margin: "4px 0 0 0" }}>
+            Visualizes all saved findings and their correlations.
+          </p>
+          <div style={{ marginTop: 8, fontSize: 12, background: "rgba(5, 217, 232, 0.1)", padding: "4px 8px", borderRadius: 4, display: "inline-block", border: "1px solid rgba(5,217,232,0.3)" }}>
+            <strong>Link Analysis Tool:</strong> Click 2 nodes to find the shortest path between them. 
+            {selectedNodes.length === 1 && <span style={{ color: "var(--warning)", marginLeft: 6 }}>(1 node selected...)</span>}
+            {selectedNodes.length === 2 && shortestPath && shortestPath.length > 0 && <span style={{ color: "var(--success)", marginLeft: 6 }}>(Path found: {shortestPath.length - 1} hops)</span>}
+            {selectedNodes.length === 2 && shortestPath && shortestPath.length === 0 && <span style={{ color: "var(--danger)", marginLeft: 6 }}>(No path exists)</span>}
+          </div>
+        </div>
+        
+        <div style={{ display: "flex", gap: 16, background: "var(--panel)", padding: "4px 8px", borderRadius: 4, border: "1px solid var(--panel-border)", height: "fit-content", flexWrap: "wrap" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+            <input 
+              type="radio" 
+              checked={viewMode === "active"} 
+              onChange={() => setViewMode("active")} 
+            />
+            <span style={{ fontSize: 13, fontWeight: viewMode === "active" ? "bold" : "normal" }}>
+              Active Case Only
+            </span>
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+            <input 
+              type="radio" 
+              checked={viewMode === "custom"} 
+              onChange={() => setViewMode("custom")} 
+            />
+            <span style={{ fontSize: 13, fontWeight: viewMode === "custom" ? "bold" : "normal", color: viewMode === "custom" ? "var(--cyan)" : "inherit" }}>
+              Select Cases (2 or more)
+            </span>
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+            <input 
+              type="radio" 
+              checked={viewMode === "all"} 
+              onChange={() => setViewMode("all")} 
+            />
+            <span style={{ fontSize: 13, fontWeight: viewMode === "all" ? "bold" : "normal", color: viewMode === "all" ? "var(--danger)" : "inherit" }}>
+              Full Merge (All Cases)
+            </span>
+          </label>
+        </div>
       </div>
 
-      <ul style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>
-        {edges.map((e, i) => (
-          <li key={i}>
-            {e.source_id} → {e.target_id} ({e.relation_type}){" "}
-            <button onClick={() => removeEdge(i)} style={{ fontSize: 11 }}>
-              remover
-            </button>
-          </li>
-        ))}
-      </ul>
-
-      <button onClick={computeAndRender} disabled={loading || edges.length === 0}>
-        {loading ? "Calculando..." : "Calcular e renderizar grafo"}
-      </button>
-      {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
-
-      <div ref={containerRef} style={{ width: "100%", height: 420, marginTop: 16, border: "1px solid #ddd" }} />
-
-      {selected && (
-        <ul style={{ marginTop: 8 }}>
-          <li>
-            <strong>{selected.id}</strong>
-          </li>
-          <li>Degree centrality: {selected.degree.toFixed(3)}</li>
-          <li>Betweenness centrality: {selected.betweenness.toFixed(3)}</li>
-          <li>Closeness centrality: {selected.closeness.toFixed(3)}</li>
-          <li>Comunidade: {selected.community}</li>
-        </ul>
+      {/* Multi-case picker when Select Cases (2 or more) is chosen */}
+      {viewMode === "custom" && (
+        <div style={{ marginBottom: 16, padding: "10px 14px", background: "rgba(5, 217, 232, 0.05)", border: "1px solid var(--cyan)", borderRadius: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: "bold", color: "var(--cyan)", marginBottom: 8 }}>
+            CHOOSE 2 OR MORE CASES TO MERGE INTO THIS GRAPH:
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {availableCases.map((c) => {
+              const isChecked = selectedCaseIds.includes(c.id);
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => toggleCaseSelection(c.id)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "4px 10px",
+                    borderRadius: 4,
+                    fontSize: 12,
+                    cursor: "pointer",
+                    background: isChecked ? "rgba(5, 217, 232, 0.25)" : "var(--panel)",
+                    border: isChecked ? "1px solid var(--cyan)" : "1px solid var(--panel-border)",
+                    color: isChecked ? "var(--cyan)" : "var(--text-muted)",
+                    fontWeight: isChecked ? "bold" : "normal",
+                  }}
+                >
+                  <span>{isChecked ? "☑" : "☐"}</span>
+                  <span>{c.name}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6 }}>
+            {selectedCaseIds.length} case(s) selected {selectedCaseIds.length < 2 && "(select at least 2 to analyze cross-case correlations)"}
+          </div>
+        </div>
       )}
+
+      <div style={{ height: "600px", width: "100%", background: "#0a0c12", border: "1px solid var(--cyan)", borderRadius: 8, position: "relative" }}>
+        {loading && (
+          <div style={{ position: "absolute", top: 10, left: 10, zIndex: 10, color: "var(--cyan)", fontSize: 14 }}>
+            Loading graph...
+          </div>
+        )}
+        
+        {viewMode === "all" && (
+          <div style={{ position: "absolute", bottom: 10, left: 10, zIndex: 10, color: "var(--danger)", fontSize: 11, background: "rgba(0,0,0,0.7)", padding: "4px 8px", borderRadius: 4 }}>
+            🚨 MACRO VIEW: Cross-case connections are highlighted in red edges.
+          </div>
+        )}
+
+        <SigmaContainer 
+          style={{ height: "100%", width: "100%" }} 
+          settings={{ 
+            defaultNodeType: "circle", 
+            defaultNodeColor: "#999",
+            nodeProgramClasses: {
+              image: NodeImageProgram,
+            }
+          }}
+        >
+          <LoadGraph nodes={nodes} edges={edges} onGraphReady={setGraphInstance} />
+          <GraphEvents selectedNodes={selectedNodes} setSelectedNodes={setSelectedNodes} pathNodes={shortestPath} />
+          
+          <ControlsContainer position={"bottom-right"}>
+            <ZoomControl />
+          </ControlsContainer>
+        </SigmaContainer>
+      </div>
+
+      {/* Maltego Typology Legend */}
+      <div style={{ marginTop: 12, padding: "10px 14px", background: "var(--panel)", border: "1px solid var(--panel-border)", borderRadius: 6 }}>
+        <div style={{ fontSize: 11, fontWeight: "bold", color: "var(--text-muted)", marginBottom: 8, letterSpacing: "0.5px" }}>
+          MALTEGO ENTITY TYPOLOGIES & HARVESTED DATA:
+        </div>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          {[
+            { label: "Person", color: "#FF4D4D", icon: "user.svg" },
+            { label: "Username", color: "#00E676", icon: "user-check.svg" },
+            { label: "Email", color: "#00B0FF", icon: "mail.svg" },
+            { label: "Phone", color: "#FF9100", icon: "phone.svg" },
+            { label: "Enterprise / Company", color: "#9C27B0", icon: "building-2.svg" },
+            { label: "Partner / QSA", color: "#E040FB", icon: "users.svg" },
+            { label: "Work / Employment", color: "#7C4DFF", icon: "briefcase.svg" },
+            { label: "Domain / Network", color: "#00BCD4", icon: "globe.svg" },
+            { label: "Crypto / Bitcoin", color: "#FFD600", icon: "bitcoin.svg" },
+            { label: "Document / PDF", color: "#05D9E8", icon: "file-text.svg" },
+            { label: "Dork Web Dump", color: "#FF2A6D", icon: "database.svg" },
+            { label: "Forensic Evidence", color: "#00FF9F", icon: "shield-check.svg" },
+          ].map((item) => (
+            <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--text)" }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: item.color, display: "inline-block", boxShadow: `0 0 6px ${item.color}` }} />
+              <span>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

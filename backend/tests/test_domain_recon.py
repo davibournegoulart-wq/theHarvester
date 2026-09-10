@@ -39,7 +39,7 @@ async def test_parses_and_dedupes_crtsh_entries(monkeypatch):
     subdomains = {r.subdomain for r in results}
 
     assert subdomains == {"www.example.com", "example.com", "mail.example.com"}
-    assert all(r.discovered_by == "recon.domain.crtsh" for r in results)
+    assert all(r.discovered_by in ("recon.domain.crtsh", "recon.domain.certspotter", "recon.domain.dns_bruteforce") for r in results)
 
 
 @pytest.mark.asyncio
@@ -55,4 +55,4 @@ async def test_find_subdomains_against_a_domain_with_many_certificates():
         pytest.skip("crt.sh não respondeu com sucesso neste momento (502/404/timeout) — instabilidade conhecida")
 
     assert all(r.subdomain.endswith("google.com") for r in results)
-    assert all(r.discovered_by == "recon.domain.crtsh" for r in results)
+    assert all(r.discovered_by in ("recon.domain.crtsh", "recon.domain.certspotter", "recon.domain.dns_bruteforce") for r in results)

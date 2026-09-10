@@ -44,3 +44,14 @@ export async function apiPostJson<T>(path: string, body: unknown): Promise<T> {
   }
   return response.json();
 }
+
+export async function apiPostFormData<T>(path: string, formData: FormData): Promise<T> {
+  const response = await apiFetch(path, {
+    method: "POST",
+    body: formData,
+  });
+  if (!response.ok) {
+    throw new Error(`API error ${response.status}: ${await response.text()}`);
+  }
+  return response.json();
+}

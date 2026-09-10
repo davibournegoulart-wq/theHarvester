@@ -24,6 +24,7 @@ NAME_TEMPLATES = [
     ('{scope}"{subject}" site:facebook.com', "perfil/menção no Facebook", "Facebook"),
     ('{scope}"{subject}" (site:x.com OR site:twitter.com)', "perfil/menção no Twitter/X", "Twitter/X"),
     ('{scope}"{subject}" site:instagram.com', "perfil/menção no Instagram", "Instagram"),
+    ('{scope}"{subject}" (site:tinder.com OR site:badoo.com OR site:okcupid.com OR site:bumble.com OR site:pof.com)', "perfil/menção em site de relacionamentos", "Relacionamentos (Dating)"),
     ('{scope}"{subject}" (intitle:"currículo" OR intitle:"curriculo" OR intitle:"resume" OR intitle:"curriculum vitae")', "currículo publicado", "Currículo"),
     ('{scope}"{subject}" site:jusbrasil.com.br', "processo judicial público (Brasil)", "Registro Público (BR)"),
     ('{scope}"{subject}" site:escavador.com', "registro público agregado (Brasil)", "Registro Público (BR)"),

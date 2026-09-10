@@ -101,3 +101,73 @@ async def _load_sanctioned_set(chain: str) -> set[str]:
 async def _is_sanctioned_address(address: str, chain: str) -> bool:
     sanctioned = await _load_sanctioned_set(chain)
     return address in sanctioned
+
+
+ETHERSCAN_V2_URL = "https://api.etherscan.io/v2/api"
+
+
+async def _trace_evm_chain_via_etherscan_v2(address: str, chain_id: int, chain_name: str, api_key: str | None) -> dict:
+    """BscScan/PolygonScan V1 (api.bscscan.com, api.polygonscan.com) foram
+    descontinuadas — confirmado ao vivo (2026-09-09): V1 redireciona 301 pra
+    doc de migração, e mesmo quando responde 200 (caso do BscScan), o corpo
+    diz "deprecated V1 endpoint" e `status` nunca é "1", fazendo o saldo
+    sempre voltar 0.0 silenciosamente, sem erro visível algum. A Etherscan
+    unificou tudo numa API V2 só, selecionando a chain via `chainid`
+    (56=BSC, 137=Polygon) — mesma chave de API pra qualquer chain suportada.
+    """
+    key = api_key or "YourApiKeyToken"
+    async with httpx.AsyncClient() as client:
+        balance_resp = await client.get(
+            ETHERSCAN_V2_URL,
+            params={
+                "chainid": chain_id,
+                "module": "account",
+                "action": "balance",
+                "address": address,
+                "tag": "latest",
+                "apikey": key,
+            },
+            timeout=settings.request_timeout_seconds,
+        )
+        balance_resp.raise_for_status()
+        balance_data = balance_resp.json()
+        balance = int(balance_data.get("result", 0)) / 1e18 if balance_data.get("status") == "1" else 0.0
+
+        tx_resp = await client.get(
+            ETHERSCAN_V2_URL,
+            params={
+                "chainid": chain_id,
+                "module": "account",
+                "action": "txlist",
+                "address": address,
+                "startblock": "0",
+                "endblock": "99999999",
+                "page": "1",
+                "offset": "10",
+                "sort": "desc",
+                "apikey": key,
+            },
+            timeout=settings.request_timeout_seconds,
+        )
+        tx_resp.raise_for_status()
+        tx_data = tx_resp.json()
+        txs = tx_data.get("result", []) if tx_data.get("status") == "1" else []
+        tx_count = len(txs)  # essa API só traz os últimos até 'offset', então tx_count aqui reflete isso
+
+    return {
+        "address": address,
+        "chain": chain_name,
+        "balance": balance,
+        "tx_count": tx_count,
+        "recent_txs": txs,
+        "discovered_by": f"recon.crypto_trace.{chain_name}",
+    }
+
+
+async def trace_bsc_wallet(address: str) -> dict:
+    return await _trace_evm_chain_via_etherscan_v2(address, chain_id=56, chain_name="bsc", api_key=settings.bscscan_api_key)
+
+
+async def trace_polygon_wallet(address: str) -> dict:
+    return await _trace_evm_chain_via_etherscan_v2(address, chain_id=137, chain_name="polygon", api_key=settings.polygonscan_api_key)
+

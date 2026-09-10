@@ -13,7 +13,7 @@ export default function CaseGate({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
 
   async function loadCases() {
-    setCases((await apiGet<CaseSummary[]>("/cases/")).filter((c) => c.status === "open"));
+    setCases((await apiGet<CaseSummary[]>("/cases/")).filter((c) => c.status.toUpperCase() === "OPEN"));
   }
 
   useEffect(() => {
@@ -38,24 +38,24 @@ export default function CaseGate({ children }: { children: ReactNode }) {
   return (
     <div>
       <p style={{ marginBottom: 16 }}>
-        Todo achado de busca vira evidência automaticamente vinculada a um caso — por isso, antes de investigar, crie
-        ou selecione um caso.
+        Every search finding automatically becomes evidence linked to a case — so before investigating, create
+        or select a case.
       </p>
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         <input
           value={newCaseName}
           onChange={(e) => setNewCaseName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-          placeholder="Nome do novo caso"
+          placeholder="New case name"
           style={{ flex: 1, padding: 8 }}
         />
         <button onClick={handleCreate} disabled={loading || !newCaseName}>
-          Criar e ativar
+          Create & Activate
         </button>
       </div>
       {cases.length > 0 && (
         <>
-          <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>Ou continue um caso aberto:</p>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>Or continue an open case:</p>
           <ul style={{ listStyle: "none", padding: 0 }}>
             {cases.map((c) => (
               <li

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { apiGet, apiPostJson } from "@/lib/api";
+import { apiGet } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
+import SaveToCaseButton from "./SaveToCaseButton";
 
 type AccountResult = {
   platform: string;
@@ -25,48 +26,15 @@ export default function UsernameSearch() {
     if (!username || !activeCase) return;
     setLoading(true);
     try {
-      const data = await apiGet<{ accounts: AccountResult[] }>(
-        `/identifiers/username/${encodeURIComponent(username)}`
-      );
-      const accounts = data.accounts ?? [];
-      setResults(accounts);
+      const data = await apiGet<{ accounts: AccountResult[] }>(`/identifiers/username/${encodeURIComponent(username)}`);
+      setResults(data.accounts ?? []);
       setSearched(true);
-
-      // Salvar achado não deve travar o resto do fluxo (pivô de ID) se a rede
-      // falhar num request isolado — cada save é independente.
-      await Promise.all(
-        accounts.map((r) =>
-          apiPostJson(`/cases/${activeCase.id}/findings`, {
-            identifier_type: "username",
-            identifier_value: username,
-            platform: r.platform,
-            url: r.url,
-            exists: r.exists,
-            discovered_by: r.discovered_by,
-            metadata_json: {},
-          }).catch(() => {})
-        )
-      );
 
       const [instagramId, tiktokId] = await Promise.all([
         apiGet<SocialIdResult>(`/identifiers/social-id/instagram/${encodeURIComponent(username)}`).catch(() => null),
         apiGet<SocialIdResult>(`/identifiers/social-id/tiktok/${encodeURIComponent(username)}`).catch(() => null),
       ]);
-      const foundIds = [instagramId, tiktokId].filter((r): r is SocialIdResult => r !== null && !!r.user_id);
-      setSocialIds(foundIds);
-
-      await Promise.all(
-        foundIds.map((r) =>
-          apiPostJson(`/cases/${activeCase.id}/findings`, {
-            identifier_type: "username",
-            identifier_value: username,
-            platform: `${r.platform}_id`,
-            exists: true,
-            discovered_by: "checkers.social_id_pivot",
-            metadata_json: { user_id: r.user_id, sec_uid: r.sec_uid },
-          }).catch(() => {})
-        )
-      );
+      setSocialIds([instagramId, tiktokId].filter((r): r is SocialIdResult => r !== null && !!r.user_id));
     } finally {
       setLoading(false);
     }
@@ -74,7 +42,7 @@ export default function UsernameSearch() {
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 8 }}>
+      <div style={{ display: "flex", gap: 8, maxWidth: 600 }}>
         <input
           value={username}
           onChange={(e) => setUsername(e.target.value)}
@@ -83,33 +51,45 @@ export default function UsernameSearch() {
           style={{ flex: 1, padding: 8 }}
         />
         <button onClick={handleSearch} disabled={loading}>
-          {loading ? "Buscando..." : "Buscar"}
+          {loading ? "Searching..." : "Search"}
         </button>
       </div>
-      {searched && !loading && results.length === 0 && <p>Nenhuma conta encontrada.</p>}
-      {searched && !loading && results.length > 0 && (
-        <p style={{ fontSize: 11, color: "var(--success)" }}>salvo automaticamente em "{activeCase?.name}"</p>
-      )}
+      {searched && !loading && results.length === 0 && <p>No accounts found.</p>}
       <ul style={{ marginTop: 16 }}>
         {results.map((r) => (
-          <li key={r.platform} style={{ marginBottom: 6 }}>
+          <li key={`${activeCase?.id}-${username}-${r.platform}`} style={{ marginBottom: 6 }}>
             <a href={r.url} target="_blank" rel="noreferrer">
               {r.platform}
             </a>{" "}
-            — via {r.discovered_by}
+            — via {r.discovered_by}{" "}
+            <SaveToCaseButton 
+              identifierType="username" 
+              identifierValue={username} 
+              platform={r.platform} 
+              url={r.url} 
+              exists={r.exists} 
+              discoveredBy={r.discovered_by} 
+            />
           </li>
         ))}
       </ul>
       {socialIds.length > 0 && (
         <>
           <p style={{ marginTop: 16, fontWeight: "bold" }}>
-            ID interno (persiste mesmo se o @username mudar):
+            Internal ID (persists even if the @username changes):
           </p>
           <ul>
             {socialIds.map((r) => (
-              <li key={r.platform}>
+              <li key={`${activeCase?.id}-${username}-${r.platform}`} style={{ marginBottom: 6 }}>
                 {r.platform}: {r.user_id}
-                {r.sec_uid && ` (secUid: ${r.sec_uid})`}
+                {r.sec_uid && ` (secUid: ${r.sec_uid})`} {" "}
+                <SaveToCaseButton 
+                  identifierType="username" 
+                  identifierValue={username} 
+                  platform={`${r.platform}_id`} 
+                  discoveredBy="checkers.social_id_pivot" 
+                  metadata={{ user_id: r.user_id, sec_uid: r.sec_uid }} 
+                />
               </li>
             ))}
           </ul>

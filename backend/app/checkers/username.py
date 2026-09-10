@@ -122,7 +122,10 @@ def _evaluate(definition: dict, username: str, status_code: int, body: str, fina
         if status_code != 200:
             return None
         title = _extract_title(body)
-        return title != "" and title != definition["generic_title"]
+        generic = definition.get("generic_title", definition.get("generic_titles", []))
+        if isinstance(generic, str):
+            generic = [generic]
+        return title != "" and title not in generic
 
     if error_type == "redirect_away":
         # Perfil existente mantém a URL pedida; inexistente redireciona pra

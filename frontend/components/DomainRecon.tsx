@@ -1,50 +1,37 @@
 "use client";
 
 import { useState } from "react";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPostJson } from "@/lib/api";
+import { useActiveCase } from "@/lib/activeCase";
+import SaveToCaseButton from "@/components/SaveToCaseButton";
 
-type Subdomain = { subdomain: string };
-type Dork = { query: string; intent: string };
-type IpInfo = { ip: string; asn_holder: string | null; country: string | null };
-type WhoisInfo = {
-  registrar: string | null;
-  registrant_name: string | null;
-  registrant_email: string | null;
-  created_at: string | null;
-  age_days: number | null;
+type DnsRecord = { type: string; value: string };
+type Subdomain = { subdomain: string; ip: string };
+
+type DomainResult = {
+  dns_records: DnsRecord[];
+  subdomains: Subdomain[];
 };
 
 export default function DomainRecon() {
+  const { activeCase } = useActiveCase();
   const [domain, setDomain] = useState("");
-  const [subdomains, setSubdomains] = useState<Subdomain[]>([]);
-  const [dorks, setDorks] = useState<Dork[]>([]);
-  const [whois, setWhois] = useState<WhoisInfo | null>(null);
-  const [ip, setIp] = useState("");
-  const [ipInfo, setIpInfo] = useState<IpInfo | null>(null);
+  const [result, setResult] = useState<DomainResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function handleDomainSearch() {
-    if (!domain) return;
+  async function handleSearch() {
+    if (!domain || !activeCase) return;
     setLoading(true);
+    setError(null);
+    setResult(null);
     try {
-      const [subs, dorkList, whoisInfo] = await Promise.all([
-        apiGet<Subdomain[]>(`/recon/domain/${encodeURIComponent(domain)}/subdomains`),
-        apiGet<Dork[]>(`/recon/domain/${encodeURIComponent(domain)}/dorks`),
-        apiGet<WhoisInfo>(`/recon/domain/${encodeURIComponent(domain)}/whois`),
-      ]);
-      setSubdomains(subs);
-      setDorks(dorkList);
-      setWhois(whoisInfo);
-    } finally {
-      setLoading(false);
-    }
-  }
+      const data = await apiGet<DomainResult>(`/identifiers/domain/recon?domain=${encodeURIComponent(domain)}`);
+      setResult(data);
 
-  async function handleIpSearch() {
-    if (!ip) return;
-    setLoading(true);
-    try {
-      setIpInfo(await apiGet<IpInfo>(`/recon/ip/${encodeURIComponent(ip)}`));
+      
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error querying domain");
     } finally {
       setLoading(false);
     }
@@ -52,78 +39,66 @@ export default function DomainRecon() {
 
   return (
     <div>
-      <h3>Domínio</h3>
-      <div style={{ display: "flex", gap: 8 }}>
+      <div style={{ display: "flex", gap: 8, maxWidth: 600 }}>
         <input
           value={domain}
           onChange={(e) => setDomain(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleDomainSearch()}
-          placeholder="exemplo.com"
+          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+          placeholder="example.com"
           style={{ flex: 1, padding: 8 }}
         />
-        <button onClick={handleDomainSearch} disabled={loading}>
-          Buscar
+        <button onClick={handleSearch} disabled={loading}>
+          {loading ? "Scanning..." : "Recon"}
         </button>
       </div>
-      {whois && (
-        <>
-          <p style={{ marginTop: 8, fontWeight: "bold" }}>WHOIS (via RDAP):</p>
-          <ul>
-            <li>
-              Registrado em: {whois.created_at ? new Date(whois.created_at).toLocaleDateString("pt-BR") : "—"}
-              {whois.age_days != null && ` (${Math.floor(whois.age_days / 365)} anos atrás)`}
-            </li>
-            <li>Registrador: {whois.registrar ?? "—"}</li>
-            <li>
-              Registrante: {whois.registrant_name ?? "protegido por privacidade (comum em .com desde 2018)"}
-            </li>
-            <li>E-mail do registrante: {whois.registrant_email ?? "protegido por privacidade"}</li>
-          </ul>
-        </>
-      )}
-      {subdomains.length > 0 && (
-        <>
-          <p style={{ marginTop: 8, fontWeight: "bold" }}>Subdomínios (crt.sh) — pode vir vazio se estiver instável:</p>
-          <ul>
-            {subdomains.slice(0, 20).map((s) => (
-              <li key={s.subdomain}>{s.subdomain}</li>
-            ))}
-          </ul>
-        </>
-      )}
-      {dorks.length > 0 && (
-        <>
-          <p style={{ marginTop: 8, fontWeight: "bold" }}>Dorks sugeridos:</p>
-          <ul>
-            {dorks.map((d) => (
-              <li key={d.query}>
-                <a href={`https://www.google.com/search?q=${encodeURIComponent(d.query)}`} target="_blank" rel="noreferrer">
-                  {d.query}
-                </a>
+      {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
+      {result && (
+        <div style={{ marginTop: 16 }}>
+          
+          
+          <h4 style={{ margin: "16px 0 8px 0", display: "flex", alignItems: "center", gap: 8 }}>
+            DNS Records
+            <SaveToCaseButton key={`${activeCase?.id}-${domain}`} 
+              identifierType="domain" 
+              identifierValue={domain} 
+              platform="dns" 
+              exists={true}
+              discoveredBy="checkers.domain" 
+              metadata={{ dns_records: result.dns_records.length, subdomains: result.subdomains.length }} 
+            />
+          </h4>
+          <table style={{ width: "100%", maxWidth: 600, textAlign: "left", fontSize: 14 }}>
+            <thead>
+              <tr>
+                <th style={{ width: "80px" }}>Type</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.dns_records.map((r, i) => (
+                <tr key={i}>
+                  <td>{r.type}</td>
+                  <td style={{ fontFamily: "monospace", wordBreak: "break-all" }}>{r.value}</td>
+                </tr>
+              ))}
+              {result.dns_records.length === 0 && (
+                <tr>
+                  <td colSpan={2}>No records found.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+
+          <h4 style={{ margin: "16px 0 8px 0" }}>Subdomains (Brute Force/CT)</h4>
+          <ul style={{ paddingLeft: 20 }}>
+            {result.subdomains.map((s, i) => (
+              <li key={i}>
+                <strong>{s.subdomain}</strong> (IP: {s.ip})
               </li>
             ))}
+            {result.subdomains.length === 0 && <li>No subdomains found.</li>}
           </ul>
-        </>
-      )}
-
-      <h3 style={{ marginTop: 24 }}>Reputação de IP</h3>
-      <div style={{ display: "flex", gap: 8 }}>
-        <input
-          value={ip}
-          onChange={(e) => setIp(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleIpSearch()}
-          placeholder="1.1.1.1"
-          style={{ flex: 1, padding: 8 }}
-        />
-        <button onClick={handleIpSearch} disabled={loading}>
-          Buscar
-        </button>
-      </div>
-      {ipInfo && (
-        <ul style={{ marginTop: 8 }}>
-          <li>ASN: {ipInfo.asn_holder ?? "—"}</li>
-          <li>País: {ipInfo.country ?? "—"}</li>
-        </ul>
+        </div>
       )}
     </div>
   );

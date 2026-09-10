@@ -17,7 +17,7 @@ class GraphEdge:
     source_id: str
     target_id: str
     relation_type: str
-    confidence: float
+    confidence: float = 1.0
 
 
 @dataclass
@@ -36,7 +36,15 @@ def build_graph(edges: list[GraphEdge]) -> nx.Graph:
 
 
 def compute_metrics(graph: nx.Graph) -> GraphMetrics:
-    communities_generator = nx.community.greedy_modularity_communities(graph)
+    if len(graph) == 0:
+        return GraphMetrics(
+            degree_centrality={},
+            betweenness_centrality={},
+            closeness_centrality={},
+            communities={},
+        )
+
+    communities_generator = nx.community.greedy_modularity_communities(graph) if len(graph) > 1 else [list(graph.nodes)]
     community_map: dict[str, int] = {}
     for index, community in enumerate(communities_generator):
         for node in community:

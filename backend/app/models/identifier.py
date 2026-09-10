@@ -14,6 +14,9 @@ class IdentifierType(str, Enum):
     PHONE = "phone"
     USERNAME = "username"
     DOMAIN = "domain"
+    CORPORATE = "corporate"
+    PERSON = "person"
+    CRYPTO = "crypto"
 
 
 class Identifier(Base):

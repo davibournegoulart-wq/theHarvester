@@ -3,7 +3,7 @@ import logging
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import bulk, cases, graph, identifiers, recon
+from app.api.routes import bulk, cases, email_forensics, graph, identifiers, recon, arsenal
 from app.auth import INSECURE_DEFAULT_KEY, require_api_key
 from app.config import settings
 
@@ -33,9 +33,11 @@ _auth = [Depends(require_api_key)]
 
 app.include_router(identifiers.router, dependencies=_auth)
 app.include_router(recon.router, dependencies=_auth)
+app.include_router(email_forensics.router, dependencies=_auth)
 app.include_router(graph.router, dependencies=_auth)
 app.include_router(bulk.router, dependencies=_auth)
 app.include_router(cases.router, dependencies=_auth)
+app.include_router(arsenal.router, prefix="/arsenal", dependencies=_auth)
 
 
 @app.get("/health")

@@ -144,11 +144,11 @@ export default function BulkExplorer() {
           value={keywords}
           onChange={(e) => setKeywords(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handlePasteScan()}
-          placeholder="keywords separadas por vírgula"
+          placeholder="comma-separated keywords"
           style={{ flex: 1, padding: 8 }}
         />
         <button onClick={handlePasteScan} disabled={loading}>
-          {loading ? "Buscando..." : "Buscar"}
+          {loading ? "Searching..." : "Search"}
         </button>
       </div>
       {pasteResults && (
@@ -161,25 +161,25 @@ export default function BulkExplorer() {
               — <strong>{m.keyword_matched}</strong>: <span style={{ fontSize: 12 }}>{m.snippet}</span>
             </li>
           ))}
-          {pasteResults.length === 0 && <li style={{ color: "var(--text-muted)" }}>Nenhum resultado (ou Pastebin indisponível no momento).</li>}
+          {pasteResults.length === 0 && <li style={{ color: "var(--text-muted)" }}>No results (or Pastebin is currently unavailable).</li>}
         </ul>
       )}
 
       <h3 style={{ marginTop: 32 }}>Monitor dark web (Ahmia via Tor)</h3>
       <p style={{ fontSize: 12 }}>
-        Requer o container <code>tor</code> do compose no ar. Serviços `.onion` caem com frequência — resultado vazio
-        pode ser instabilidade do lado deles, não bug.
+        Requires the <code>tor</code> compose container to be running. Onion services go down frequently — empty results
+        may indicate instability on their end, not a bug.
       </p>
       <div style={{ display: "flex", gap: 8 }}>
         <input
           value={darkwebKeyword}
           onChange={(e) => setDarkwebKeyword(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleDarkwebSearch()}
-          placeholder="palavra-chave"
+          placeholder="keyword"
           style={{ flex: 1, padding: 8 }}
         />
         <button onClick={handleDarkwebSearch} disabled={loading}>
-          {loading ? "Buscando..." : "Buscar"}
+          {loading ? "Searching..." : "Search"}
         </button>
       </div>
       {darkwebResults && (
@@ -193,7 +193,7 @@ export default function BulkExplorer() {
             </li>
           ))}
           {darkwebResults.length === 0 && (
-            <li style={{ color: "var(--text-muted)" }}>Nenhum resultado (ou serviço .onion indisponível no momento).</li>
+            <li style={{ color: "var(--text-muted)" }}>No results (or .onion service is currently unavailable).</li>
           )}
         </ul>
       )}
