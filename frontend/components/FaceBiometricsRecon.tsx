@@ -11,12 +11,34 @@ type ReverseSearchLink = {
   search_url: string;
 };
 
+type FaceQuality = {
+  overall_score: number;
+  sharpness: number;
+  blur_status: string;
+  illumination: string;
+  contrast: number;
+  resolution: string;
+};
+
+type FaceAttributes = {
+  pose: string;
+  yaw_angle: number;
+  pitch_angle: number;
+  roll_angle: number;
+  emotion: string;
+  estimated_age: string;
+  gender: string;
+  gender_confidence: number;
+};
+
 type DetectedFace = {
   face_id: number;
   bbox: [number, number, number, number];
   confidence: number;
   landmarks: [number, number][];
   crop_base64: string;
+  quality?: FaceQuality;
+  attributes?: FaceAttributes;
   reverse_search_links: ReverseSearchLink[];
 };
 
@@ -36,6 +58,8 @@ type ComparisonResult = {
   confidence_level: string;
   face1_crop: string;
   face2_crop: string;
+  face1_quality?: FaceQuality;
+  face2_quality?: FaceQuality;
 };
 
 type SpiderDiscoveredFace = {
@@ -44,6 +68,8 @@ type SpiderDiscoveredFace = {
   confidence: number;
   bbox: [number, number, number, number];
   crop_base64: string;
+  quality?: FaceQuality;
+  attributes?: FaceAttributes;
   match_with_target: number | null;
 };
 
@@ -54,9 +80,118 @@ type SpiderResult = {
   discovered_faces: SpiderDiscoveredFace[];
 };
 
+type HarvestDiscoveredFace = {
+  source_image_url: string;
+  face_index: number;
+  confidence: number;
+  bbox: [number, number, number, number];
+  crop_base64: string;
+  quality?: FaceQuality;
+  attributes?: FaceAttributes;
+  match_with_target: number | null;
+};
+
+type HarvestResult = {
+  target_name: string;
+  images_scanned: number;
+  faces_detected: number;
+  discovered_faces: HarvestDiscoveredFace[];
+};
+
+function FaceQualityBadge({ quality }: { quality?: FaceQuality }) {
+  if (!quality) return null;
+  const isGood = quality.overall_score >= 60;
+  const isFair = quality.overall_score >= 40 && quality.overall_score < 60;
+  const badgeColor = isGood ? "#00ffcc" : isFair ? "#ffcc00" : "#ff4466";
+  const badgeBg = isGood
+    ? "rgba(0, 255, 204, 0.12)"
+    : isFair
+    ? "rgba(255, 204, 0, 0.12)"
+    : "rgba(255, 68, 102, 0.12)";
+
+  return (
+    <div
+      style={{
+        background: "rgba(0, 0, 0, 0.4)",
+        border: "1px solid var(--panel-border)",
+        borderRadius: 4,
+        padding: "6px 8px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 3,
+        fontSize: 10,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ color: "var(--text-muted)", letterSpacing: "0.05em", fontWeight: "bold" }}>
+          FORENSIC QUALITY (SchBenedikt)
+        </span>
+        <span
+          style={{
+            padding: "1px 5px",
+            borderRadius: 3,
+            background: badgeBg,
+            color: badgeColor,
+            fontWeight: "bold",
+            fontSize: 10,
+          }}
+        >
+          {quality.overall_score}% • {quality.blur_status}
+        </span>
+      </div>
+      <div style={{ display: "flex", gap: 10, color: "var(--text-muted)", flexWrap: "wrap", marginTop: 2 }}>
+        <span>Sharpness: <strong style={{ color: "#fff" }}>{quality.sharpness}</strong></span>
+        <span>Illum: <strong style={{ color: "#fff" }}>{quality.illumination}</strong></span>
+        <span>Res: <strong style={{ color: "#fff" }}>{quality.resolution}</strong></span>
+      </div>
+    </div>
+  );
+}
+
+function FaceAttributesBadge({ attributes }: { attributes?: FaceAttributes }) {
+  if (!attributes) return null;
+  return (
+    <div
+      style={{
+        background: "rgba(0, 0, 0, 0.4)",
+        border: "1px solid var(--panel-border)",
+        borderRadius: 4,
+        padding: "6px 8px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 3,
+        fontSize: 10,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ color: "var(--text-muted)", letterSpacing: "0.05em", fontWeight: "bold" }}>
+          DEMOGRAPHICS & POSE (DeepFace + Pose)
+        </span>
+        <span
+          style={{
+            padding: "1px 5px",
+            borderRadius: 3,
+            background: "rgba(5, 217, 232, 0.12)",
+            color: "var(--cyan)",
+            fontWeight: "bold",
+            fontSize: 10,
+          }}
+        >
+          {attributes.pose}
+        </span>
+      </div>
+      <div style={{ display: "flex", gap: 10, color: "var(--text-muted)", flexWrap: "wrap", marginTop: 2 }}>
+        <span>Age: <strong style={{ color: "#fff" }}>{attributes.estimated_age}</strong></span>
+        <span>Gender: <strong style={{ color: "#fff" }}>{attributes.gender} ({Math.round(attributes.gender_confidence)}%)</strong></span>
+        <span>Emotion: <strong style={{ color: "#fff" }}>{attributes.emotion}</strong></span>
+      </div>
+    </div>
+  );
+}
+
 export default function FaceBiometricsRecon() {
   const { activeCase } = useActiveCase();
-  const [activeSubTab, setActiveSubTab] = useState<"detect" | "compare" | "spider">("detect");
+  const [activeSubTab, setActiveSubTab] = useState<"detect" | "compare" | "spider" | "harvest">("detect");
 
   // Detection states
   const [detectFile, setDetectFile] = useState<File | null>(null);
@@ -84,6 +219,51 @@ export default function FaceBiometricsRecon() {
   const [spiderLoading, setSpiderLoading] = useState(false);
   const [spiderError, setSpiderError] = useState<string | null>(null);
   const [spiderResult, setSpiderResult] = useState<SpiderResult | null>(null);
+
+  // Harvest states (Synthesized from unseen084 & 123porcristina)
+  const [harvestTarget, setHarvestTarget] = useState<string>("");
+  const [harvestRefFile, setHarvestRefFile] = useState<File | null>(null);
+  const [harvestRefPreview, setHarvestRefPreview] = useState<string | null>(null);
+  const [harvestMaxImages, setHarvestMaxImages] = useState<number>(20);
+  const [harvestUseTor, setHarvestUseTor] = useState<boolean>(false);
+  const [harvestLoading, setHarvestLoading] = useState(false);
+  const [harvestError, setHarvestError] = useState<string | null>(null);
+  const [harvestResult, setHarvestResult] = useState<HarvestResult | null>(null);
+
+  // Handle Target Name Web Harvester (unseen084 & 123porcristina)
+  async function handleRunHarvest() {
+    if (!harvestTarget.trim()) return;
+    setHarvestLoading(true);
+    setHarvestError(null);
+    setHarvestResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("target_name", harvestTarget.trim());
+      formData.append("max_images", harvestMaxImages.toString());
+      formData.append("use_tor", harvestUseTor ? "true" : "false");
+      if (harvestRefFile) {
+        formData.append("reference_file", harvestRefFile);
+      }
+
+      const res = await apiFetch("/biometrics/harvest", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.detail || `HTTP ${res.status}`);
+      }
+
+      const data: HarvestResult = await res.json();
+      setHarvestResult(data);
+    } catch (err: any) {
+      setHarvestError(err.message || "Face Web Harvester operation failed.");
+    } finally {
+      setHarvestLoading(false);
+    }
+  }
 
   // Handle Detection
   async function handleRunDetection() {
@@ -186,7 +366,7 @@ export default function FaceBiometricsRecon() {
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {/* Header section */}
       <div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
           <span style={{ color: "var(--cyan)", fontSize: 13, fontWeight: "bold", letterSpacing: "0.1em" }}>
             [BIOMETRIC & FACIAL INTELLIGENCE CORE]
           </span>
@@ -200,17 +380,32 @@ export default function FaceBiometricsRecon() {
               border: "1px solid rgba(5, 217, 232, 0.4)",
             }}
           >
-            YUNET + SFACE ONNX NEURAL ENGINE
+            YUNET + SFACE NEURAL ENGINE
+          </span>
+          <span
+            style={{
+              fontSize: 10,
+              padding: "2px 8px",
+              borderRadius: 3,
+              background: "rgba(0, 255, 204, 0.1)",
+              color: "#00ffcc",
+              border: "1px solid rgba(0, 255, 204, 0.3)",
+            }}
+          >
+            6-TOOL RECON MERGE
           </span>
         </div>
-        <p style={{ color: "var(--text-muted)", fontSize: 12, margin: 0, maxWidth: 850 }}>
-          High-precision facial biometric verification, multi-face crop extraction, 5-point facial landmarking,
-          1:1 neural vector verification (Cosine/L2), and FaceSpyder automated web crawling.
+        <p style={{ color: "var(--text-muted)", fontSize: 12, margin: 0, maxWidth: 850, lineHeight: 1.5 }}>
+          Unified neural biometrics synthesized from <strong>sriramsme/FaceSpyder</strong> (web spider),{" "}
+          <strong>unseen084 &amp; 123porcristina</strong> (target harvester),{" "}
+          <strong>SchBenedikt/face</strong> (forensic quality &amp; embedding optimizer),{" "}
+          <strong>ageitgey/face_recognition</strong> (head pose estimation), and{" "}
+          <strong>serengil/deepface</strong> (demographic &amp; emotion inference).
         </p>
       </div>
 
       {/* Sub-Navigation Buttons */}
-      <div style={{ display: "flex", gap: 8, borderBottom: "1px solid var(--panel-border)", paddingBottom: 12 }}>
+      <div style={{ display: "flex", gap: 8, borderBottom: "1px solid var(--panel-border)", paddingBottom: 12, flexWrap: "wrap" }}>
         <button
           onClick={() => setActiveSubTab("detect")}
           style={{
@@ -252,6 +447,20 @@ export default function FaceBiometricsRecon() {
           }}
         >
           3. FaceSpyder Web Crawler
+        </button>
+        <button
+          onClick={() => setActiveSubTab("harvest")}
+          style={{
+            padding: "8px 16px",
+            fontSize: 12,
+            background: activeSubTab === "harvest" ? "rgba(5, 217, 232, 0.18)" : "transparent",
+            border: activeSubTab === "harvest" ? "1px solid var(--cyan)" : "1px solid var(--panel-border)",
+            color: activeSubTab === "harvest" ? "var(--cyan)" : "var(--text-muted)",
+            cursor: "pointer",
+            fontWeight: activeSubTab === "harvest" ? "bold" : "normal",
+          }}
+        >
+          4. Target Name Web Harvester (OSINT Web Scraper)
         </button>
       </div>
 
@@ -407,6 +616,10 @@ export default function FaceBiometricsRecon() {
                           </span>
                         </div>
                       </div>
+
+                      {/* Forensic Quality & Demographics Badges */}
+                      <FaceQualityBadge quality={f.quality} />
+                      <FaceAttributesBadge attributes={f.attributes} />
 
                       <div style={{ borderTop: "1px solid var(--panel-border)", paddingTop: 8 }}>
                         <span style={{ fontSize: 10, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
@@ -648,6 +861,12 @@ export default function FaceBiometricsRecon() {
                 </div>
               </div>
 
+              {/* Forensic Quality Badges for both faces */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <FaceQualityBadge quality={compResult.face1_quality} />
+                <FaceQualityBadge quality={compResult.face2_quality} />
+              </div>
+
               <div
                 style={{
                   display: "flex",
@@ -833,7 +1052,7 @@ export default function FaceBiometricsRecon() {
                   No human faces were found in the scanned images on this URL.
                 </div>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
                   {spiderResult.discovered_faces.map((f, idx) => (
                     <div
                       key={idx}
@@ -845,14 +1064,16 @@ export default function FaceBiometricsRecon() {
                         padding: 12,
                         display: "flex",
                         flexDirection: "column",
-                        gap: 8,
+                        gap: 10,
                       }}
                     >
                       <div style={{ display: "flex", gap: 10 }}>
-                        <img
+                        <ImageMagnifier
                           src={f.crop_base64}
-                          alt="Crop"
-                          style={{ width: 75, height: 75, objectFit: "cover", borderRadius: 3, border: "1px solid var(--cyan)" }}
+                          alt={`Spider Crop ${f.face_index}`}
+                          lensSize={95}
+                          zoomLevel={2.4}
+                          style={{ width: 75, height: 75, flexShrink: 0 }}
                         />
                         <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 11, overflow: "hidden" }}>
                           <span style={{ color: "var(--cyan)", fontWeight: "bold" }}>FACE #{f.face_index}</span>
@@ -888,6 +1109,10 @@ export default function FaceBiometricsRecon() {
                         </div>
                       </div>
 
+                      {/* Forensic Quality & Demographics Badges */}
+                      <FaceQualityBadge quality={f.quality} />
+                      <FaceAttributesBadge attributes={f.attributes} />
+
                       <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 4 }}>
                         <SaveToCaseButton
                           identifierType="person"
@@ -900,6 +1125,295 @@ export default function FaceBiometricsRecon() {
                             source_url: f.source_image_url,
                             target_url: spiderResult.target_url,
                             match_with_target: f.match_with_target,
+                            quality: f.quality,
+                            attributes: f.attributes,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUB-TAB 4: TARGET NAME WEB HARVESTER (OSINT WEB SCRAPING) */}
+      {/* Synthesized from unseen084 & 123porcristina */}
+      {/* ========================================================================= */}
+      {activeSubTab === "harvest" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <div
+            style={{
+              padding: 18,
+              background: "rgba(0,0,0,0.3)",
+              border: "1px solid var(--panel-border)",
+              borderRadius: 4,
+            }}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 11, color: "var(--cyan)", marginBottom: 6 }}>
+                  TARGET PERSON NAME / USERNAME / ALIAS TO HARVEST FROM OPEN WEB
+                </label>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <input
+                    type="text"
+                    placeholder="e.g., Alan Turing, Satoshi Nakamoto, or target alias"
+                    value={harvestTarget}
+                    onChange={(e) => setHarvestTarget(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !harvestLoading && harvestTarget.trim()) {
+                        handleRunHarvest();
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      fontSize: 13,
+                      padding: "10px 12px",
+                      background: "#080c14",
+                      border: "1px solid var(--panel-border)",
+                      color: "var(--text-main)",
+                    }}
+                  />
+                  <button
+                    onClick={handleRunHarvest}
+                    disabled={harvestLoading || !harvestTarget.trim()}
+                    style={{
+                      padding: "10px 24px",
+                      fontSize: 12,
+                      fontWeight: "bold",
+                      background: harvestLoading ? "#333" : "var(--cyan)",
+                      color: "#000",
+                      border: "none",
+                      cursor: harvestLoading || !harvestTarget.trim() ? "not-allowed" : "pointer",
+                      borderRadius: 2,
+                      minWidth: 200,
+                    }}
+                  >
+                    {harvestLoading ? "HARVESTING WEB..." : "HARVEST WEB FACES"}
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>
+                    OPTIONAL: REFERENCE SUSPECT FACE (TO AUTO-RANK CANDIDATE FACES)
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] || null;
+                      setHarvestRefFile(f);
+                      if (f) setHarvestRefPreview(URL.createObjectURL(f));
+                      else setHarvestRefPreview(null);
+                    }}
+                    style={{
+                      width: "100%",
+                      fontSize: 11,
+                      padding: "6px 8px",
+                      background: "#080c14",
+                      border: "1px solid var(--panel-border)",
+                      color: "var(--text-main)",
+                    }}
+                  />
+                  {harvestRefPreview && (
+                    <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8 }}>
+                      <img
+                        src={harvestRefPreview}
+                        alt="Ref preview"
+                        style={{ height: 40, borderRadius: 3, border: "1px solid var(--cyan)" }}
+                      />
+                      <span style={{ fontSize: 10, color: "var(--cyan)" }}>Reference suspect loaded (candidates will be sorted by % match)</span>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", gap: 16, alignItems: "flex-end" }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: "block", fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>
+                      MAX IMAGES TO DOWNLOAD &amp; SCAN ({harvestMaxImages})
+                    </label>
+                    <input
+                      type="range"
+                      min="5"
+                      max="40"
+                      step="5"
+                      value={harvestMaxImages}
+                      onChange={(e) => setHarvestMaxImages(parseInt(e.target.value))}
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+
+                  <div style={{ paddingBottom: 6 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--text-muted)", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={harvestUseTor}
+                        onChange={(e) => setHarvestUseTor(e.target.checked)}
+                      />
+                      <span>ROUTE VIA TOR SOCKS5</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {harvestError && (
+            <div style={{ padding: 12, background: "rgba(255, 0, 85, 0.15)", border: "1px solid #ff0055", color: "#ff7799", fontSize: 12 }}>
+              {harvestError}
+            </div>
+          )}
+
+          {harvestResult && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "10px 16px",
+                  background: "rgba(5, 217, 232, 0.05)",
+                  border: "1px solid rgba(5, 217, 232, 0.2)",
+                  flexWrap: "wrap",
+                  gap: 8,
+                }}
+              >
+                <span style={{ fontSize: 13, color: "var(--cyan)", fontWeight: "bold" }}>
+                  TARGET HARVEST: {harvestResult.faces_detected} FACES EXTRACTED FOR &quot;{harvestResult.target_name}&quot;
+                </span>
+                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                  Scanned {harvestResult.images_scanned} open web image results
+                </span>
+              </div>
+
+              {harvestResult.discovered_faces.length === 0 ? (
+                <div style={{ padding: 20, textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
+                  No human faces were identified in web search results for &quot;{harvestResult.target_name}&quot;.
+                  Try a full name or alternate username alias.
+                </div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))", gap: 16 }}>
+                  {harvestResult.discovered_faces.map((f, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        background: "#080c14",
+                        border: f.match_with_target && f.match_with_target >= 50
+                          ? "1px solid #00ffcc"
+                          : "1px solid var(--panel-border)",
+                        padding: 14,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                      }}
+                    >
+                      <div style={{ display: "flex", gap: 12 }}>
+                        <ImageMagnifier
+                          src={f.crop_base64}
+                          alt="Crop"
+                          lensSize={100}
+                          zoomLevel={2.5}
+                          style={{ width: 85, height: 85, flexShrink: 0 }}
+                        />
+                        <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 11, overflow: "hidden" }}>
+                          <span style={{ color: "var(--cyan)", fontWeight: "bold" }}>CANDIDATE #{f.face_index}</span>
+                          <span style={{ color: "var(--text-muted)" }}>
+                            Conf: <strong style={{ color: "#fff" }}>{Math.round(f.confidence * 100)}%</strong>
+                          </span>
+                          {f.match_with_target !== null && (
+                            <span
+                              style={{
+                                color: f.match_with_target >= 50 ? "#00ffcc" : "#ffaa33",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              Biometric Match: {f.match_with_target}%
+                            </span>
+                          )}
+                          <a
+                            href={f.source_image_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              fontSize: 10,
+                              color: "var(--cyan)",
+                              textDecoration: "underline",
+                              textOverflow: "ellipsis",
+                              overflow: "hidden",
+                              whiteSpace: "nowrap",
+                              maxWidth: 160,
+                            }}
+                          >
+                            Source Image Link
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* Forensic Quality & Demographics Badges */}
+                      <FaceQualityBadge quality={f.quality} />
+                      <FaceAttributesBadge attributes={f.attributes} />
+
+                      {/* Reverse Image Search Links */}
+                      <div style={{ borderTop: "1px solid var(--panel-border)", paddingTop: 8 }}>
+                        <span style={{ fontSize: 10, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
+                          REVERSE IMAGE SEARCH PIVOTS:
+                        </span>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          <a
+                            href="https://images.google.com/"
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ fontSize: 10, padding: "3px 7px", background: "rgba(255,255,255,0.06)", borderRadius: 3 }}
+                          >
+                            Google Lens
+                          </a>
+                          <a
+                            href="https://yandex.com/images/"
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ fontSize: 10, padding: "3px 7px", background: "rgba(255,255,255,0.06)", borderRadius: 3 }}
+                          >
+                            Yandex
+                          </a>
+                          <a
+                            href="https://tineye.com/"
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ fontSize: 10, padding: "3px 7px", background: "rgba(255,255,255,0.06)", borderRadius: 3 }}
+                          >
+                            TinEye
+                          </a>
+                          <a
+                            href="https://www.bing.com/images/search?view=detailv2&iss=sbi"
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ fontSize: 10, padding: "3px 7px", background: "rgba(255,255,255,0.06)", borderRadius: 3 }}
+                          >
+                            Bing Visual
+                          </a>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 4 }}>
+                        <SaveToCaseButton
+                          identifierType="person"
+                          identifierValue={`${harvestResult.target_name} (Harvested Face #${f.face_index})`}
+                          platform="biometrics.web_harvest"
+                          url={f.source_image_url}
+                          discoveredBy="biometrics.web_harvester"
+                          metadata={{
+                            target_name: harvestResult.target_name,
+                            confidence: f.confidence,
+                            source_url: f.source_image_url,
+                            match_with_target: f.match_with_target,
+                            quality: f.quality,
+                            attributes: f.attributes,
                           }}
                         />
                       </div>
