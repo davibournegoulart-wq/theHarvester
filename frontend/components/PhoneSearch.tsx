@@ -26,6 +26,22 @@ type ExistsResult = {
 };
 type ExistenceResponse = { phone: string; platforms: { service: string; exists: boolean; rate_limited: boolean }[] };
 
+type GhostTrackPhone = {
+  raw_input: string;
+  is_valid: boolean;
+  is_possible: boolean;
+  carrier: string;
+  location: string;
+  timezones: string[];
+  international_format: string;
+  e164_format: string;
+  national_number: string;
+  country_code: number;
+  region_code: string;
+  line_type: string;
+  error?: string | null;
+};
+
 export default function PhoneSearch() {
   const { activeCase } = useActiveCase();
   const [phone, setPhone] = useState("");
@@ -33,6 +49,7 @@ export default function PhoneSearch() {
   
   const [metadata, setMetadata] = useState<PhoneMetadata | null>(null);
   const [mentionQueries, setMentionQueries] = useState<MentionQuery[]>([]);
+  const [ghostTrack, setGhostTrack] = useState<GhostTrackPhone | null>(null);
   
   const [whatsappResult, setWhatsappResult] = useState<ExistsResult | null>(null);
   const [telegramResult, setTelegramResult] = useState<ExistsResult | null>(null);
@@ -50,6 +67,7 @@ export default function PhoneSearch() {
     setTelegramResult(null);
     setPlatformsResult(null);
     setFbBreach(null);
+    setGhostTrack(null);
 
     try {
       const [data, mentions] = await Promise.all([
@@ -59,10 +77,7 @@ export default function PhoneSearch() {
       setMetadata(data);
       setMentionQueries(mentions);
 
-      if (data.is_valid) {
-        
-      }
-
+      apiGet<GhostTrackPhone>(`/recon/ghosttrack/phone?phone=${encodeURIComponent(phone)}&default_region=${region}`).then(setGhostTrack).catch(() => {});
       apiGet<ExistsResult>(`/identifiers/phone/whatsapp?phone=${encodeURIComponent(phone)}`).then(setWhatsappResult).catch(() => {});
       apiGet<ExistsResult>(`/identifiers/phone/telegram?phone=${encodeURIComponent(phone)}`).then(setTelegramResult).catch(() => {});
       apiGet<ExistenceResponse>(`/identifiers/phone/existence?phone=${encodeURIComponent(phone)}&default_region=${region}`).then(setPlatformsResult).catch(() => {});
@@ -217,6 +232,54 @@ export default function PhoneSearch() {
               )}
             </ul>
           </div>
+
+          {ghostTrack && ghostTrack.is_valid && (
+            <div style={{ width: "100%", background: "rgba(0,0,0,0.25)", border: "1px solid var(--panel-border)", borderRadius: 4, padding: 14, marginTop: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <h4 style={{ margin: 0, color: "var(--cyan)", display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+                  <PhoneIcon size={14} color="var(--cyan)" /> GhostTrack Telecom &amp; Carrier Intelligence
+                </h4>
+                <SaveToCaseButton
+                  key={`${activeCase?.id}-ghosttrack-${phone}`}
+                  identifierType="phone"
+                  identifierValue={ghostTrack.international_format || phone}
+                  platform="ghosttrack.telecom"
+                  discoveredBy="ghosttrack"
+                  metadata={{
+                    carrier: ghostTrack.carrier,
+                    location: ghostTrack.location,
+                    timezones: ghostTrack.timezones,
+                    line_type: ghostTrack.line_type,
+                    e164: ghostTrack.e164_format,
+                  }}
+                />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10, fontSize: 12 }}>
+                <div>
+                  <span style={{ color: "var(--text-muted)", display: "block" }}>CARRIER PROVIDER:</span>
+                  <strong style={{ color: ghostTrack.carrier ? "var(--cyan)" : "#fff" }}>{ghostTrack.carrier || "Unassigned / Generic"}</strong>
+                </div>
+                <div>
+                  <span style={{ color: "var(--text-muted)", display: "block" }}>REGION / LOCATION:</span>
+                  <strong>{ghostTrack.location || `${ghostTrack.region_code} (+${ghostTrack.country_code})`}</strong>
+                </div>
+                <div>
+                  <span style={{ color: "var(--text-muted)", display: "block" }}>LINE TYPE:</span>
+                  <span style={{ padding: "1px 6px", background: "rgba(5, 217, 232, 0.15)", borderRadius: 3, color: "var(--cyan)", fontWeight: "bold" }}>
+                    {ghostTrack.line_type}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ color: "var(--text-muted)", display: "block" }}>TIMEZONES:</span>
+                  <span>{ghostTrack.timezones?.length ? ghostTrack.timezones.join(", ") : "Standard local"}</span>
+                </div>
+                <div>
+                  <span style={{ color: "var(--text-muted)", display: "block" }}>STANDARDIZED E.164:</span>
+                  <code style={{ color: "var(--cyan)" }}>{ghostTrack.e164_format}</code>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

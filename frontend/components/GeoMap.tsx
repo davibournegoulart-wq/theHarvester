@@ -6,7 +6,7 @@ import "leaflet/dist/leaflet.css";
 import { useActiveCase } from "@/lib/activeCase";
 import { apiGet, apiPostJson, apiFetch } from "@/lib/api";
 import { CaseFileItem } from "./CaseFilesDatabank";
-import { MapIcon, PinIcon, PaperclipIcon, LinkIcon } from "@/components/FlatIcons";
+import { MapIcon, PinIcon, PaperclipIcon, LinkIcon, CameraIcon, CheckIcon, AlertIcon } from "@/components/FlatIcons";
 
 // Dynamically import react-leaflet components (Leaflet relies on window/DOM)
 const MapContainer = dynamic(() => import("react-leaflet").then(m => m.MapContainer), { ssr: false });
@@ -63,6 +63,62 @@ export default function GeoMap() {
   const [selectedFileId, setSelectedFileId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showTraceLine, setShowTraceLine] = useState(true);
+
+  // Photo Geolocation states (Pic2Map & Netryx Astra)
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [pic2mapResult, setPic2mapResult] = useState<{
+    has_gps: boolean;
+    latitude?: number;
+    longitude?: number;
+    altitude?: number;
+    timestamp?: string;
+    camera_make?: string;
+    camera_model?: string;
+    location_label?: string;
+    google_maps_url?: string;
+    error?: string;
+  } | null>(null);
+  const [netryxResult, setNetryxResult] = useState<{
+    has_prediction: boolean;
+    primary_location?: string;
+    latitude?: number;
+    longitude?: number;
+    confidence_score: number;
+    method: string;
+    error?: string;
+  } | null>(null);
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoLoading(true);
+    setPic2mapResult(null);
+    setNetryxResult(null);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const [picRes, netryxRes] = await Promise.all([
+        apiFetch("/recon/geo/pic2map", { method: "POST", body: formData }).then(r => r.json()).catch(() => null),
+        apiFetch("/recon/geo/netryx-astra", { method: "POST", body: formData }).then(r => r.json()).catch(() => null),
+      ]);
+      setPic2mapResult(picRes);
+      setNetryxResult(netryxRes);
+
+      if (picRes?.has_gps && picRes?.latitude && picRes?.longitude) {
+        setLatInput(String(picRes.latitude));
+        setLngInput(String(picRes.longitude));
+        setLabelInput(picRes.location_label || `Photo GPS: ${file.name}`);
+        setDescInput(`Extracted via pic2map EXIF. Camera: ${picRes.camera_make || ""} ${picRes.camera_model || ""}. Taken: ${picRes.timestamp || "N/A"}`);
+      }
+    } catch {
+      alert("Error analyzing image geolocation.");
+    } finally {
+      setPhotoLoading(false);
+    }
+  }
 
   // Load points & files whenever activeCase changes
   async function loadCaseGeolocations(caseId: string) {
@@ -214,6 +270,28 @@ export default function GeoMap() {
           >
             {showAddModal ? "Cancel" : "+ Pin Geolocation"}
           </button>
+          <button
+            onClick={() => {
+              setShowPhotoModal(!showPhotoModal);
+              if (showAddModal) setShowAddModal(false);
+            }}
+            style={{
+              padding: "6px 12px",
+              fontSize: 12,
+              background: "rgba(5, 217, 232, 0.15)",
+              color: "var(--cyan)",
+              border: "1px solid var(--cyan)",
+              fontWeight: "bold",
+              borderRadius: 4,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <CameraIcon size={13} color="var(--cyan)" />
+            {showPhotoModal ? "Close Photo GPS" : "Photo GPS (Pic2Map & Astra)"}
+          </button>
           {points.length > 0 && (
             <button
               onClick={handleClearAllPoints}
@@ -232,6 +310,139 @@ export default function GeoMap() {
           )}
         </div>
       </div>
+
+      {/* Photo Geolocation Drawer (Pic2Map & Netryx Astra) */}
+      {showPhotoModal && (
+        <div
+          style={{
+            background: "#080c14",
+            border: "1px solid var(--cyan)",
+            borderRadius: 6,
+            padding: 16,
+            marginBottom: 20,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <h4 style={{ margin: 0, color: "var(--cyan)", display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+              <CameraIcon size={16} color="var(--cyan)" />
+              Photo Geolocation Forensics (Pic2Map EXIF &amp; Netryx Astra V2)
+            </h4>
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+              Extracts hardware GPS coordinates, altitude, timestamp, and visual landmark features
+            </span>
+          </div>
+
+          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+            <label
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "8px 16px",
+                background: "var(--cyan)",
+                color: "#000",
+                fontWeight: "bold",
+                borderRadius: 4,
+                cursor: "pointer",
+                fontSize: 12,
+              }}
+            >
+              <CameraIcon size={14} color="#000" />
+              {photoLoading ? "Analyzing Metadata..." : "Choose Image (JPEG/PNG/HEIC)"}
+              <input type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: "none" }} disabled={photoLoading} />
+            </label>
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+              Select an image from an investigation to locate its capture coordinates.
+            </span>
+          </div>
+
+          {pic2mapResult && (
+            <div style={{ background: "rgba(0,0,0,0.3)", border: "1px solid var(--panel-border)", borderRadius: 4, padding: 12, marginTop: 10 }}>
+              {pic2mapResult.has_gps && pic2mapResult.latitude && pic2mapResult.longitude ? (
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--success)", fontWeight: "bold", fontSize: 13 }}>
+                      <CheckIcon size={14} color="var(--success)" />
+                      EXIF Hardware GPS Coordinates Verified
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (!activeCase || !pic2mapResult.latitude || !pic2mapResult.longitude) return;
+                        try {
+                          await apiPostJson(`/cases/${activeCase.id}/geolocations`, {
+                            latitude: pic2mapResult.latitude,
+                            longitude: pic2mapResult.longitude,
+                            label: pic2mapResult.location_label || "Photo GPS Pin (Pic2Map)",
+                            description: `Hardware EXIF GPS. Camera: ${pic2mapResult.camera_make || ""} ${pic2mapResult.camera_model || ""}. Date: ${pic2mapResult.timestamp || "N/A"}`,
+                            source: "pic2map_exif",
+                          });
+                          await loadCaseGeolocations(activeCase.id);
+                          setShowPhotoModal(false);
+                        } catch (e) {
+                          alert("Error saving geolocation: " + e);
+                        }
+                      }}
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: 11,
+                        background: "var(--cyan)",
+                        color: "#000",
+                        fontWeight: "bold",
+                        borderRadius: 3,
+                        border: "none",
+                        cursor: "pointer",
+                      }}
+                    >
+                      + Save Geolocation to Case Map
+                    </button>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8, fontSize: 12 }}>
+                    <div>
+                      <span style={{ color: "var(--text-muted)", display: "block" }}>COORDINATES:</span>
+                      <strong style={{ color: "var(--cyan)" }}>{pic2mapResult.latitude}, {pic2mapResult.longitude}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: "var(--text-muted)", display: "block" }}>ESTIMATED ADDRESS:</span>
+                      <span>{pic2mapResult.location_label || "Coordinates extracted"}</span>
+                    </div>
+                    <div>
+                      <span style={{ color: "var(--text-muted)", display: "block" }}>ALTITUDE / TIMESTAMP:</span>
+                      <span>{pic2mapResult.altitude ? `${pic2mapResult.altitude}m` : "N/A"} | {pic2mapResult.timestamp || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span style={{ color: "var(--text-muted)", display: "block" }}>CAMERA HARDWARE:</span>
+                      <span>{pic2mapResult.camera_make} {pic2mapResult.camera_model || "Sensor"}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ color: "var(--text-muted)", fontSize: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--warning)", marginBottom: 4 }}>
+                    <AlertIcon size={13} color="var(--warning)" />
+                    No embedded GPS coordinates found in image EXIF tags.
+                  </div>
+                  {pic2mapResult.camera_make && (
+                    <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                      Camera detected: {pic2mapResult.camera_make} {pic2mapResult.camera_model} ({pic2mapResult.timestamp || "No timestamp"})
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {netryxResult && (
+            <div style={{ background: "rgba(5, 217, 232, 0.04)", border: "1px solid rgba(5, 217, 232, 0.2)", borderRadius: 4, padding: 10, marginTop: 8, fontSize: 11 }}>
+              <strong style={{ color: "var(--cyan)" }}>Netryx Astra V2 Pipeline:</strong>{" "}
+              {netryxResult.has_prediction ? (
+                <span>Matched visual streetview panorama: {netryxResult.primary_location} (Confidence: {Math.round(netryxResult.confidence_score * 100)}%)</span>
+              ) : (
+                <span style={{ color: "var(--text-muted)" }}>{netryxResult.error || "Streetview panorama matching ready."}</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Pin Geolocation Form / Modal Drawer */}
       {showAddModal && (

@@ -1,14 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { apiGet, apiFetch, apiPostJson } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "@/components/SaveToCaseButton";
 import DeepScraperTool from "./DeepScraperTool";
 import ImageMagnifier from "./ImageMagnifier";
-import { CheckIcon, KeyIcon, ShieldIcon, AlertIcon, FolderIcon, CameraIcon, PinIcon, GlobeIcon, LockIcon } from "@/components/FlatIcons";
+import GhostTrackIpTool from "./GhostTrackIpTool";
+import BellingcatToolkitTool from "./BellingcatToolkitTool";
+import { CheckIcon, KeyIcon, ShieldIcon, AlertIcon, FolderIcon, CameraIcon, PinIcon, GlobeIcon, LockIcon, LinkIcon } from "@/components/FlatIcons";
 
-type ReverseImageLink = { engine: string; search_url: string };
+type ReverseImageLink = {
+  engine: string;
+  category?: string;
+  search_url: string;
+  description?: string;
+};
 type PasswordBreachResult = { times_seen: number };
 type ImageExifResult = {
   has_gps: boolean;
@@ -199,41 +206,144 @@ function ReverseImageTool() {
       )}
 
       {links.length > 0 && (
-        <ul style={{ marginTop: publicUrl ? 4 : 12 }}>
-          {links.map((l) => (
-            <li key={l.engine}>
-              <a href={l.search_url} target="_blank" rel="noreferrer">
-                Search original image on {l.engine}
-              </a>
-            </li>
+        <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+          {Array.from(new Set(links.map((l) => l.category || "General"))).map((category) => (
+            <div
+              key={category}
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                padding: 14,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: "bold",
+                  color: "var(--cyan)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                  marginBottom: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <CameraIcon size={12} color="var(--cyan)" />
+                {category} Engines (dessant/search-by-image)
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                  gap: 10,
+                }}
+              >
+                {links
+                  .filter((l) => (l.category || "General") === category)
+                  .map((l) => (
+                    <div
+                      key={l.engine}
+                      style={{
+                        background: "rgba(255, 255, 255, 0.02)",
+                        border: "1px solid rgba(255, 255, 255, 0.06)",
+                        borderRadius: 4,
+                        padding: 10,
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                        gap: 8,
+                      }}
+                    >
+                      <div>
+                        <strong style={{ fontSize: 13, color: "#fff" }}>{l.engine}</strong>
+                        {l.description && (
+                          <p style={{ margin: "2px 0 0 0", fontSize: 11, color: "var(--text-muted)", lineHeight: 1.3 }}>
+                            {l.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginTop: 4 }}>
+                        <a
+                          href={l.search_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            fontSize: 11,
+                            color: "var(--cyan)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                            textDecoration: "none",
+                            fontWeight: "bold",
+                          }}
+                        >
+                          <LinkIcon size={12} /> Search Engine
+                        </a>
+
+                        <SaveToCaseButton
+                          identifierType="corporate"
+                          identifierValue={`Reverse Image [${l.engine}]: ${publicUrl || imageUrl}`}
+                          platform={l.engine.toLowerCase().replace(/[^a-z0-9]/g, "_")}
+                          url={l.search_url}
+                          discoveredBy="Search-by-Image"
+                          metadata={{
+                            engine: l.engine,
+                            category: l.category || category,
+                            description: l.description,
+                            target_image: publicUrl || imageUrl,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
 
       {faces.length > 0 && (
-        <div style={{ marginTop: 24, padding: 16, background: "var(--surface)", borderRadius: 8 }}>
-          <h4 style={{ marginTop: 0 }}>Detected Faces ({faces.length})</h4>
+        <div style={{ marginTop: 24, padding: 16, background: "var(--surface)", borderRadius: 8, border: "1px solid var(--border)" }}>
+          <h4 style={{ marginTop: 0, color: "var(--cyan)", display: "flex", alignItems: "center", gap: 6 }}>
+            <CameraIcon size={14} color="var(--cyan)" /> Detected Faces ({faces.length})
+          </h4>
           <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
-            If searching the whole photo yields no results (due to background or noise), 
-            search specifically with the extracted crops:
+            Extracted facial crops for targeted biometrics search when full photo yields noisy background results:
           </p>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
             {faces.map((f, i) => (
-              <div key={i} style={{ border: "1px solid var(--border)", padding: 8, borderRadius: 8 }}>
+              <div key={i} style={{ border: "1px solid var(--border)", padding: 10, borderRadius: 6, background: "rgba(255, 255, 255, 0.02)" }}>
                 <ImageMagnifier
                   src={f.public_url}
                   alt="Face"
                   lensSize={100}
                   zoomLevel={2.5}
-                  style={{ width: 100, height: 100, display: "block", marginBottom: 8 }}
+                  style={{ width: 110, height: 110, display: "block", marginBottom: 10, borderRadius: 4 }}
                 />
-                <ul style={{ margin: 0, paddingLeft: 20, fontSize: 12 }}>
-                  {f.links.map(l => (
-                    <li key={l.engine}>
-                      <a href={l.search_url} target="_blank" rel="noreferrer">{l.engine}</a>
-                    </li>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {f.links.map((l) => (
+                    <div key={l.engine} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, fontSize: 11 }}>
+                      <a href={l.search_url} target="_blank" rel="noreferrer" style={{ color: "var(--cyan)" }}>
+                        {l.engine}
+                      </a>
+                      <SaveToCaseButton
+                        identifierType="person"
+                        identifierValue={`Face Crop #${i + 1} (${l.engine})`}
+                        platform={l.engine.toLowerCase().replace(/[^a-z0-9]/g, "_")}
+                        url={l.search_url}
+                        discoveredBy="Face Crop Reverse Search"
+                        metadata={{
+                          face_index: i + 1,
+                          face_url: f.public_url,
+                          engine: l.engine,
+                        }}
+                      />
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             ))}
           </div>
@@ -641,6 +751,8 @@ export default function ToolsPanel() {
       <DeepScraperTool />
       <GitleaksTruffleHogTool />
       <ReverseImageTool />
+      <GhostTrackIpTool />
+      <BellingcatToolkitTool />
       <ImageExifTool />
       <DocumentMetadataTool />
       <EmailRegistrationTool />

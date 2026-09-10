@@ -4,7 +4,7 @@ import { useState } from "react";
 import { apiFetch, apiGet, apiPostJson, apiPostFormData } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "@/components/SaveToCaseButton";
-import { CheckIcon, CrossIcon, FolderIcon, GlobeIcon } from "@/components/FlatIcons";
+import { CheckIcon, CrossIcon, FolderIcon, GlobeIcon, ShieldIcon, AlertIcon } from "@/components/FlatIcons";
 
 type EmailResult = {
   service: string;
@@ -45,6 +45,46 @@ type EmailHeaderAnalysis = {
   message_id: string | null; date: string | null; x_mailer: string | null;
 };
 
+type MailAccessResult = {
+  email: string;
+  domain: string;
+  is_valid_format: boolean;
+  mx_records: string[];
+  credibility_score: number;
+  risk_level: string;
+  hudson_rock: {
+    is_compromised: boolean;
+    total_infections: number;
+    total_passwords: number;
+    stealer_families: string[];
+    compromised_domains: string[];
+    last_infection_date: string | null;
+    raw_summary: string | null;
+  };
+  emailrep: {
+    reputation: string;
+    suspicious: boolean;
+    references: number;
+    blacklisted: boolean;
+    malicious_activity: boolean;
+    credential_leaked: boolean;
+    spam: boolean;
+    free_provider: boolean;
+    disposable: boolean;
+    deliverable: boolean;
+    details: string[] | null;
+  };
+  m365: {
+    is_m365: boolean;
+    name_space_type: string;
+    domain_name: string;
+    auth_url: string | null;
+    federation_brand: string | null;
+  };
+  key_findings: string[];
+  error?: string | null;
+};
+
 export default function EmailSearch() {
   const { activeCase } = useActiveCase();
   const [email, setEmail] = useState("");
@@ -56,6 +96,7 @@ export default function EmailSearch() {
   const [breachResult, setBreachResult] = useState<EmailBreachResult | null>(null);
   const [bdResult, setBdResult] = useState<BreachDirectoryResult | null>(null);
   const [analyticsResult, setAnalyticsResult] = useState<BreachAnalytics | null>(null);
+  const [mailAccess, setMailAccess] = useState<MailAccessResult | null>(null);
   
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -72,6 +113,7 @@ export default function EmailSearch() {
     setBreachResult(null);
     setBdResult(null);
     setAnalyticsResult(null);
+    setMailAccess(null);
 
     try {
       const data = await apiGet<{ services: EmailResult[] }>(`/identifiers/email/${encodeURIComponent(email)}`);
@@ -117,6 +159,7 @@ export default function EmailSearch() {
       apiGet<EmailBreachResult>(`/identifiers/breach/email?email=${encodeURIComponent(email)}`).then(setBreachResult).catch(() => {});
       apiGet<BreachDirectoryResult>(`/recon/breach/directory?email=${encodeURIComponent(email)}`).then(setBdResult).catch(() => {});
       apiGet<BreachAnalytics>(`/recon/breach/analytics?email=${encodeURIComponent(email)}`).then(setAnalyticsResult).catch(() => {});
+      apiGet<MailAccessResult>(`/recon/email/mailaccess?email=${encodeURIComponent(email)}`).then(setMailAccess).catch(() => {});
 
     } finally {
       setLoading(false);
@@ -357,6 +400,85 @@ export default function EmailSearch() {
                 discoveredBy="gravatar"
                 metadata={{ display_name: gravatarResult.display_name, location: gravatarResult.location }}
               />
+            </div>
+          )}
+          {mailAccess && mailAccess.is_valid_format && (
+            <div style={{ marginTop: 16, background: "#080c14", border: "1px solid var(--panel-border)", borderRadius: 4, padding: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <h4 style={{ margin: 0, color: "var(--cyan)", display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                  <ShieldIcon size={14} color="var(--cyan)" /> MailAccess Deep Identity &amp; Infostealer Intelligence
+                </h4>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: "bold",
+                      padding: "2px 8px",
+                      borderRadius: 3,
+                      background: mailAccess.risk_level === "CRITICAL" ? "rgba(255, 0, 85, 0.2)" : "rgba(0, 255, 159, 0.15)",
+                      color: mailAccess.risk_level === "CRITICAL" ? "#ff5577" : "var(--success)",
+                    }}
+                  >
+                    RISK: {mailAccess.risk_level}
+                  </span>
+                  <SaveToCaseButton
+                    key={`${activeCase?.id}-mailaccess-${email}`}
+                    identifierType="email"
+                    identifierValue={email}
+                    platform="mailaccess.identity"
+                    discoveredBy="mailaccess"
+                    metadata={{
+                      credibility_score: mailAccess.credibility_score,
+                      risk_level: mailAccess.risk_level,
+                      hudson_rock: mailAccess.hudson_rock,
+                      m365: mailAccess.m365,
+                      key_findings: mailAccess.key_findings,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, fontSize: 12 }}>
+                <div>
+                  <span style={{ color: "var(--text-muted)", display: "block" }}>CREDIBILITY SCORE:</span>
+                  <strong style={{ fontSize: 18, color: mailAccess.credibility_score >= 60 ? "var(--cyan)" : "#ffaa33" }}>
+                    {mailAccess.credibility_score} / 100
+                  </strong>
+                </div>
+                <div>
+                  <span style={{ color: "var(--text-muted)", display: "block" }}>HUDSON ROCK INFOSTEALER:</span>
+                  {mailAccess.hudson_rock.is_compromised ? (
+                    <span style={{ color: "#ff5577", fontWeight: "bold" }}>
+                      Compromised ({mailAccess.hudson_rock.total_infections} device infections)
+                    </span>
+                  ) : (
+                    <span style={{ color: "var(--success)" }}>Clean (No stealer malware logs)</span>
+                  )}
+                </div>
+                <div>
+                  <span style={{ color: "var(--text-muted)", display: "block" }}>M365 / AZURE AD TENANT:</span>
+                  <strong>{mailAccess.m365.is_m365 ? `M365 (${mailAccess.m365.name_space_type})` : "Standard / Non-M365"}</strong>
+                </div>
+                <div>
+                  <span style={{ color: "var(--text-muted)", display: "block" }}>ACTIVE MX RECORD:</span>
+                  <span style={{ fontFamily: "monospace", color: "var(--cyan)" }}>
+                    {mailAccess.mx_records.length ? mailAccess.mx_records[0] : "No MX configured"}
+                  </span>
+                </div>
+              </div>
+
+              {mailAccess.key_findings.length > 0 && (
+                <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.06)", fontSize: 11 }}>
+                  <span style={{ color: "var(--text-muted)", fontWeight: "bold" }}>KEY SIGNALS:</span>
+                  <ul style={{ margin: "4px 0 0 0", paddingLeft: 18 }}>
+                    {mailAccess.key_findings.map((f, idx) => (
+                      <li key={idx} style={{ color: f.startsWith("CRITICAL") ? "#ff5577" : "var(--text-main)" }}>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </>

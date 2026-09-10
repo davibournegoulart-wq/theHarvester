@@ -1,0 +1,191 @@
+[
+  {
+    "id": "sentinel-hub",
+    "name": "Sentinel Hub EO Browser",
+    "category": "Maps & Satellites",
+    "subcategory": "Satellite Imagery",
+    "url": "https://apps.sentinel-hub.com/eo-browser/",
+    "description": "High-resolution multi-spectral satellite imagery browser for Sentinel-1/2, Landsat, MODIS with custom band composites (NDVI, moisture, false color).",
+    "tags": ["satellite", "sentinel", "imagery", "remote sensing", "environmental"]
+  },
+  {
+    "id": "google-earth-engine",
+    "name": "Google Earth Engine Timelapse",
+    "category": "Maps & Satellites",
+    "subcategory": "Satellite Imagery",
+    "url": "https://earthengine.google.com/timelapse/",
+    "description": "Global, zoomable time-lapse video tracking planetary changes from 1984 to the present day using satellite imagery.",
+    "tags": ["timelapse", "satellite", "historical", "google earth"]
+  },
+  {
+    "id": "nasa-worldview",
+    "name": "NASA Worldview",
+    "category": "Maps & Satellites",
+    "subcategory": "Satellite Imagery",
+    "url": "https://worldview.earthdata.nasa.gov/",
+    "description": "Interactive daily global satellite imagery layers from NASA satellites within hours of acquisition, tracking smoke, dust, fires, and storms.",
+    "tags": ["nasa", "satellite", "realtime", "weather", "fire"]
+  },
+  {
+    "id": "suncalc",
+    "name": "SunCalc",
+    "category": "Geolocation",
+    "subcategory": "Chronolocation & Shadows",
+    "url": "https://www.suncalc.org/",
+    "description": "Sun position and shadow calculator for any time and location worldwide. Essential for shadow analysis and precise time verification.",
+    "tags": ["shadows", "sun", "chronolocation", "time verification", "geolocation"]
+  },
+  {
+    "id": "peakvisor",
+    "name": "PeakVisor",
+    "category": "Geolocation",
+    "subcategory": "Terrain & Mountains",
+    "url": "https://peakvisor.com/panorama.html",
+    "description": "3D mountain panorama simulation for identifying peaks and mountain horizons in photos and videos.",
+    "tags": ["mountains", "horizon", "terrain", "3d", "geolocation"]
+  },
+  {
+    "id": "overpass-turbo",
+    "name": "Overpass Turbo",
+    "category": "Maps & Satellites",
+    "subcategory": "OpenStreetMap Query",
+    "url": "https://overpass-turbo.eu/",
+    "description": "Web-based data filtering tool for OpenStreetMap. Allows querying specific combinations of landmarks, road types, building heights, or infrastructure.",
+    "tags": ["osm", "query", "mapping", "infrastructure", "features"]
+  },
+  {
+    "id": "mapillary",
+    "name": "Mapillary",
+    "category": "Geolocation",
+    "subcategory": "Street View",
+    "url": "https://www.mapillary.com/app/",
+    "description": "Crowdsourced, street-level imagery platform powered by computer vision. Useful in regions without official Google Street View coverage.",
+    "tags": ["streetview", "crowdsourced", "photos", "geolocation"]
+  },
+  {
+    "id": "invid-weverify",
+    "name": "InVID-WeVerify Video Forensics",
+    "category": "Image & Video",
+    "subcategory": "Video Verification",
+    "url": "https://www.invid-project.eu/tools-and-services/invid-verification-plugin/",
+    "description": "Verification toolbox to extract keyframes from web videos, reverse image search individual frames, analyze video metadata, and check video tampering.",
+    "tags": ["video", "verification", "keyframes", "metadata", "forensics"]
+  },
+  {
+    "id": "adsb-exchange",
+    "name": "ADS-B Exchange",
+    "category": "Transport",
+    "subcategory": "Flight Tracking",
+    "url": "https://globe.adsbexchange.com/",
+    "description": "Unfiltered flight tracking network that does not censor military, government, or private VIP aircraft movements.",
+    "tags": ["aviation", "flights", "military", "tracking", "adsb"]
+  },
+  {
+    "id": "flightradar24",
+    "name": "Flightradar24",
+    "category": "Transport",
+    "subcategory": "Flight Tracking",
+    "url": "https://www.flightradar24.com/",
+    "description": "Global flight tracking service that provides real-time information about thousands of aircraft around the world.",
+    "tags": ["flights", "commercial", "airports", "aircraft"]
+  },
+  {
+    "id": "marinetraffic",
+    "name": "MarineTraffic",
+    "category": "Transport",
+    "subcategory": "Maritime Tracking",
+    "url": "https://www.marinetraffic.com/",
+    "description": "Global vessel tracking intelligence using coastal AIS receivers and satellite tracking for ships, cargo carriers, and yachts.",
+    "tags": ["ships", "maritime", "ais", "vessels", "ports"]
+  },
+  {
+    "id": "vesselfinder",
+    "name": "VesselFinder",
+    "category": "Transport",
+    "subcategory": "Maritime Tracking",
+    "url": "https://www.vesselfinder.com/",
+    "description": "Free AIS vessel tracking service providing real-time positions, port calls, and historical vessel voyage data.",
+    "tags": ["vessels", "maritime", "ais", "shipping"]
+  },
+  {
+    "id": "wayback-machine",
+    "name": "Internet Archive Wayback Machine",
+    "category": "Archiving",
+    "subcategory": "Web History",
+    "url": "https://web.archive.org/",
+    "description": "Digital archive of billions of web pages over time. Critical for recovering deleted evidence, historic posts, and modified articles.",
+    "tags": ["archive", "deleted", "historical", "preservation"]
+  },
+  {
+    "id": "archive-today",
+    "name": "Archive.today (archive.is)",
+    "category": "Archiving",
+    "subcategory": "Web Preservation",
+    "url": "https://archive.today/",
+    "description": "Instant webpage snapshot archiver that stores text and graphic copies of a page permanently, bypassing paywalls and anti-bot checks.",
+    "tags": ["archive", "snapshot", "evidence", "legal"]
+  },
+  {
+    "id": "occrp-aleph",
+    "name": "OCCRP Aleph",
+    "category": "Companies & Finance",
+    "subcategory": "Public Records & Investigations",
+    "url": "https://aleph.occrp.org/",
+    "description": "Global archive of investigative documents, government gazettes, corporate registries, leaked datasets, and court records.",
+    "tags": ["corruption", "investigations", "leaks", "corporate", "sanctions"]
+  },
+  {
+    "id": "opensanctions",
+    "name": "OpenSanctions",
+    "category": "Companies & Finance",
+    "subcategory": "Sanctions & PEP",
+    "url": "https://www.opensanctions.org/",
+    "description": "International database of politically exposed persons (PEPs), sanctioned individuals, and corporate entities subject to asset freezes.",
+    "tags": ["sanctions", "pep", "compliance", "illicit finance"]
+  },
+  {
+    "id": "opencorporates",
+    "name": "OpenCorporates",
+    "category": "Companies & Finance",
+    "subcategory": "Company Registries",
+    "url": "https://opencorporates.com/",
+    "description": "Largest open database of corporate registry filings worldwide, linking directors, shareholder officers, and corporate hierarchies.",
+    "tags": ["companies", "directors", "corporate", "registries"]
+  },
+  {
+    "id": "liveuamap",
+    "name": "Live Universal Awareness Map (Liveuamap)",
+    "category": "Conflict & Events",
+    "subcategory": "Incident Mapping",
+    "url": "https://liveuamap.com/",
+    "description": "Real-time mapping of conflicts, military incidents, human rights emergencies, and security situations worldwide.",
+    "tags": ["conflict", "news", "geopolitical", "incidents"]
+  },
+  {
+    "id": "acled",
+    "name": "ACLED Conflict Data",
+    "category": "Conflict & Events",
+    "subcategory": "Conflict Analytics",
+    "url": "https://acleddata.com/",
+    "description": "Armed Conflict Location & Event Data Project collecting reported political violence and protest incidents across the globe.",
+    "tags": ["conflict", "protest", "violence", "datasets"]
+  },
+  {
+    "id": "shodan",
+    "name": "Shodan",
+    "category": "Infrastructure & IoT",
+    "subcategory": "Device Search Engine",
+    "url": "https://www.shodan.io/",
+    "description": "Search engine for Internet-connected devices, industrial control systems, webcams, servers, and network services.",
+    "tags": ["iot", "servers", "ports", "infrastructure"]
+  },
+  {
+    "id": "insecam",
+    "name": "Insecam",
+    "category": "Infrastructure & IoT",
+    "subcategory": "Live Camera Directory",
+    "url": "http://www.insecam.org/",
+    "description": "Directory of online live streaming cameras with geographical coordinates. Useful for real-time weather, crowd, or location checks.",
+    "tags": ["webcams", "live", "cameras", "verification"]
+  }
+]

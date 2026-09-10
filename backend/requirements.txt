@@ -25,3 +25,5 @@ holehe==1.61
 trio==0.34.0
 Scrapy==2.11.2
 sherlock-project>=0.16.0
+pic2map>=0.1.0
+exifread>=3.5.0

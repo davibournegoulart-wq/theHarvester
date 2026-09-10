@@ -4,6 +4,7 @@ import { useState } from "react";
 import { apiGet, apiPostJson } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "@/components/SaveToCaseButton";
+import GhostTrackIpTool from "./GhostTrackIpTool";
 import { 
   GlobeIcon, 
   CameraIcon, 
@@ -12,7 +13,8 @@ import {
   CheckIcon, 
   CrossIcon, 
   AlertIcon,
-  LinkIcon 
+  LinkIcon,
+  RadarIcon
 } from "@/components/FlatIcons";
 
 type DnsRecord = { type: string; value: string };
@@ -61,7 +63,7 @@ type ExposureResult = {
 
 export default function DomainRecon() {
   const { activeCase } = useActiveCase();
-  const [activeTab, setActiveTab] = useState<"dns" | "eyewitness" | "breacher">("dns");
+  const [activeTab, setActiveTab] = useState<"dns" | "eyewitness" | "breacher" | "ghosttrack">("dns");
 
   // Domain DNS / Subdomain states (theHarvester)
   const [domain, setDomain] = useState("");
@@ -219,6 +221,25 @@ export default function DomainRecon() {
         >
           <TerminalIcon size={13} color={activeTab === "breacher" ? "var(--cyan)" : "var(--text-muted)"} />
           3. Admin Panel & Surface Hunter (Breacher / RED_HAWK)
+        </button>
+
+        <button
+          onClick={() => setActiveTab("ghosttrack")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "8px 14px",
+            fontSize: 12,
+            fontWeight: activeTab === "ghosttrack" ? "bold" : "normal",
+            background: activeTab === "ghosttrack" ? "rgba(5, 217, 232, 0.15)" : "transparent",
+            border: activeTab === "ghosttrack" ? "1px solid var(--cyan)" : "1px solid var(--panel-border)",
+            color: activeTab === "ghosttrack" ? "var(--cyan)" : "var(--text-muted)",
+            cursor: "pointer",
+          }}
+        >
+          <RadarIcon size={13} color={activeTab === "ghosttrack" ? "var(--cyan)" : "var(--text-muted)"} />
+          4. IP &amp; Network Intelligence (GhostTrack)
         </button>
       </div>
 
@@ -670,6 +691,11 @@ export default function DomainRecon() {
           )}
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* 4. IP & NETWORK INTELLIGENCE (GhostTrack) */}
+      {/* ========================================================================= */}
+      {activeTab === "ghosttrack" && <GhostTrackIpTool />}
     </div>
   );
 }

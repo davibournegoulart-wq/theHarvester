@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { apiGet } from "@/lib/api";
 import { CheckIcon } from "@/components/FlatIcons";
+import SaveToCaseButton from "@/components/SaveToCaseButton";
 
 type Tool = {
   id: string;
@@ -24,14 +25,20 @@ const NATIVE_TOOL_MAP: Record<string, { tab: string; feature: string }> = {
   "blackbird": { tab: "USERNAME", feature: "Native username checker with Blackbird endpoints" },
   "whatsmyname": { tab: "USERNAME", feature: "Fast username enumeration across hundreds of sites" },
   "holehe": { tab: "EMAIL", feature: "Password reset / registered services checker" },
+  "mailaccess": { tab: "EMAIL", feature: "Infostealer malware detection, M365 tenant realm & MX checks" },
   "phoneinfoga": { tab: "PHONE", feature: "Phone carrier, line type, format & WhatsApp/TG validation" },
+  "ghosttrack": { tab: "DOMAIN/IP", feature: "IP Geolocation, ASN Network Tracer & Carrier Intel" },
   "ignorant": { tab: "PHONE", feature: "Phone registration checkers" },
   "moriarty": { tab: "PHONE", feature: "Reverse caller ID search links & spam report pivots" },
   "theharvester": { tab: "DOMAIN/IP", feature: "Subdomain discovery, DNS resolution, and TLS certs" },
   "sublist3r": { tab: "DOMAIN/IP", feature: "Certificate Transparency (crt.sh) subdomains scanner" },
   "amass": { tab: "DOMAIN/IP", feature: "Domain reconnaissance & correlation graph" },
+  "pic2map": { tab: "GEOLOCATION", feature: "Photo EXIF GPS extractor & reverse geocoding" },
+  "netryx": { tab: "GEOLOCATION", feature: "Streetview Panorama & Landmark Geolocation AI" },
   "ghunt": { tab: "TOOLS", feature: "Google GAIA ID, Hangouts, and Google Photos profile extractor" },
   "exiftool": { tab: "TOOLS", feature: "Image EXIF metadata & GPS coordinate mapper" },
+  "search-by-image": { tab: "TOOLS", feature: "Multi-engine reverse image search (Lens, Yandex, Baidu, PimEyes)" },
+  "bellingcat": { tab: "TOOLS", feature: "Bellingcat Open Source Investigation Toolkit repository" },
   "waybackpy": { tab: "TOOLS", feature: "Wayback Machine web archive historical snapshots" },
   "wayback": { tab: "TOOLS", feature: "Internet Archive Wayback Machine engine" },
   "haveibeenpwned": { tab: "TOOLS", feature: "k-Anonymity password breach & pwned email checker" },
@@ -256,14 +263,14 @@ export default function OsintArsenal() {
                   ))}
                 </div>
                 
-                <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
+                <div style={{ display: "flex", gap: 8, marginTop: "auto", alignItems: "center", flexWrap: "wrap" }}>
                   {tool.url && (
                     <a 
                       href={tool.url} 
                       target="_blank" 
                       rel="noreferrer"
                       className="btn"
-                      style={{ flex: 1, textAlign: "center", textDecoration: "none", fontSize: 12 }}
+                      style={{ flex: 1, textAlign: "center", textDecoration: "none", fontSize: 12, minWidth: 90 }}
                     >
                       Open Link ↗
                     </a>
@@ -272,11 +279,24 @@ export default function OsintArsenal() {
                     <button 
                       className="btn"
                       onClick={() => copyToClipboard(tool.install!.kali!)}
-                      style={{ flex: 1, fontSize: 12 }}
+                      style={{ flex: 1, fontSize: 12, minWidth: 90 }}
                     >
                       {copiedText === tool.install.kali ? "Copied!" : "Copy Install"}
                     </button>
                   )}
+                  <SaveToCaseButton
+                    identifierType="url"
+                    identifierValue={tool.url || tool.name}
+                    platform={`arsenal.${(tool.category || "general").toLowerCase().replace(/[^a-z0-9]/g, "_")}`}
+                    url={tool.url}
+                    discoveredBy="OSINT Arsenal"
+                    metadata={{
+                      tool_name: tool.name,
+                      category: tool.category,
+                      description: tool.description,
+                      native_tab: nativeEquiv?.tab,
+                    }}
+                  />
                 </div>
               </div>
             );

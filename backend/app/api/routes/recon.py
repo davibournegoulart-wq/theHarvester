@@ -33,6 +33,11 @@ from app.recon.tls_cert import analyze_tls_certificate
 from app.recon.web_archive import check_archive_availability, search_archive
 from app.recon.deep_scraper import scrape_url, extract_entities
 from app.recon.scrapy_crawler import run_scrapy_crawl
+from app.recon.ghost_track import trace_ip as run_ghost_ip_trace, parse_phone_intel as run_ghost_phone_intel
+from app.recon.visual_geolocation import extract_pic2map_exif, predict_visual_geolocation
+from app.recon.mail_access import run_mail_access_deep_recon
+import json
+import os
 
 router = APIRouter(prefix="/recon", tags=["recon"])
 
@@ -382,3 +387,89 @@ async def dork_engine(body: DorkEngineRequest):
         return generate_dork_engine_queries(DorkRequest(**body.model_dump()))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
+# GhostTrack (HunxByts/GhostTrack adaptation)
+# ---------------------------------------------------------------------------
+
+@router.get("/ghosttrack/ip")
+async def ghosttrack_ip(ip: str, use_tor: bool = False):
+    """GhostTrack IP Geolocation & ASN Network Tracer."""
+    return await run_ghost_ip_trace(ip, use_tor=use_tor)
+
+
+@router.get("/ghosttrack/phone")
+def ghosttrack_phone(phone: str, default_region: str = "US"):
+    """GhostTrack Phone Carrier, Timezone, and Telecommunication Parser."""
+    return run_ghost_phone_intel(phone, default_region=default_region)
+
+
+# ---------------------------------------------------------------------------
+# Pic2Map & Netryx Astra V2 (Visual Geolocation & EXIF GPS)
+# ---------------------------------------------------------------------------
+
+@router.post("/geo/pic2map")
+async def geo_pic2map(file: UploadFile = File(...)):
+    """Pic2Map: Extracts precise hardware GPS coordinates, altitude, timestamp and camera metadata."""
+    content = await file.read()
+    return await extract_pic2map_exif(content)
+
+
+@router.post("/geo/netryx-astra")
+async def geo_netryx_astra(file: UploadFile = File(...)):
+    """Netryx Astra V2: Visual street-level place recognition and landmark prediction."""
+    content = await file.read()
+    return await predict_visual_geolocation(content)
+
+
+# ---------------------------------------------------------------------------
+# MailAccess (KatrielMoses/MailAccess deep OSINT)
+# ---------------------------------------------------------------------------
+
+@router.get("/email/mailaccess")
+async def email_mailaccess(email: str, use_tor: bool = False):
+    """MailAccess: Multi-module deep email OSINT (Hudson Rock infostealers, EmailRep, M365 tenant, MX deliverability)."""
+    return await run_mail_access_deep_recon(email, use_tor=use_tor)
+
+
+# ---------------------------------------------------------------------------
+# Search-by-Image (dessant/search-by-image reverse engine links)
+# ---------------------------------------------------------------------------
+
+@router.get("/reverse-image/engines")
+def reverse_image_engines(url: str):
+    """Search-by-Image: Multi-engine reverse search link generation."""
+    return generate_reverse_image_links(url)
+
+
+# ---------------------------------------------------------------------------
+# Bellingcat Open Source Investigation Toolkit (bellingcat/toolkit)
+# ---------------------------------------------------------------------------
+
+@router.get("/bellingcat/toolkit")
+def bellingcat_toolkit(category: str | None = None, query: str | None = None):
+    """Bellingcat Open Source Investigation Toolkit directory."""
+    path = os.path.join(os.path.dirname(__file__), "../../data/bellingcat_toolkit.json")
+    if not os.path.exists(path):
+        path = "/Users/rollframe/Documents/Net_Scraper/app/backend/app/data/bellingcat_toolkit.json"
+
+    tools = []
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            tools = json.load(f)
+
+    if category and category.lower() != "all":
+        tools = [t for t in tools if t.get("category", "").lower() == category.lower()]
+
+    if query and query.strip():
+        q = query.strip().lower()
+        tools = [
+            t for t in tools
+            if q in t.get("name", "").lower()
+            or q in t.get("description", "").lower()
+            or any(q in tag.lower() for tag in t.get("tags", []))
+        ]
+
+    return tools
+
