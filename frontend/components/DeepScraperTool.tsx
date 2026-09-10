@@ -4,12 +4,22 @@ import { useState } from "react";
 import { apiGet, apiPostJson, apiFetch } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 
+type ScrapedSecret = {
+  rule_name: string;
+  severity: string;
+  masked_value: string;
+  entropy: number;
+  length: number;
+  discovered_by: string;
+};
+
 type ScrapedEntities = {
   emails: string[];
   phones: string[];
   btc_addresses: string[];
   eth_addresses: string[];
   cpfs: string[];
+  secrets?: ScrapedSecret[];
 };
 
 type ScrapyPage = {
@@ -405,6 +415,37 @@ export default function DeepScraperTool() {
                   <li key={e} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                     ETH: {e}
                     <button onClick={() => handleSave("crypto", e)} disabled={savedItems.has(`crypto:${e}`)} style={{ fontSize: 10, padding: "2px 4px" }}>+</button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {result.secrets && result.secrets.length > 0 && (
+            <div style={{ border: "1px solid #ff0055", padding: 12, background: "rgba(255, 0, 85, 0.05)", borderRadius: 4, gridColumn: "1 / -1" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <h4 style={{ margin: 0, color: "#ff5577" }}>
+                  🔑 Exposed Secrets & API Keys ({result.secrets.length})
+                </h4>
+                <span style={{ fontSize: 10, color: "var(--text-muted)" }}>
+                  Gitleaks / TruffleHog entropy engine
+                </span>
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", fontSize: 12 }}>
+                {result.secrets.map((sec, idx) => (
+                  <li key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "4px 8px", background: "#080c14", border: "1px solid var(--panel-border)" }}>
+                    <div>
+                      <span style={{ color: "#ff0055", fontWeight: "bold", marginRight: 8 }}>[{sec.severity}]</span>
+                      <strong>{sec.rule_name}:</strong> <code style={{ color: "var(--cyan)", marginLeft: 6 }}>{sec.masked_value}</code>
+                      <span style={{ color: "var(--text-muted)", fontSize: 10, marginLeft: 10 }}>Entropy: {sec.entropy}</span>
+                    </div>
+                    <button
+                      onClick={() => handleSave("corporate", `${sec.rule_name}: ${sec.masked_value}`)}
+                      disabled={savedItems.has(`corporate:${sec.rule_name}: ${sec.masked_value}`)}
+                      style={{ fontSize: 10, padding: "2px 6px", background: savedItems.has(`corporate:${sec.rule_name}: ${sec.masked_value}`) ? "var(--success)" : "var(--panel)" }}
+                    >
+                      {savedItems.has(`corporate:${sec.rule_name}: ${sec.masked_value}`) ? "Saved" : "+ Save"}
+                    </button>
                   </li>
                 ))}
               </ul>

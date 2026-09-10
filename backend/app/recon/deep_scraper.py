@@ -23,9 +23,10 @@ class ScrapedEntities(BaseModel):
     btc_addresses: list[str]
     eth_addresses: list[str]
     cpfs: list[str]
+    secrets: list[dict] = []
 
 def extract_entities(text: str) -> ScrapedEntities:
-    """Extrai todas as entidades de um texto bruto."""
+    """Extrai todas as entidades de um texto bruto, incluindo segredos e credenciais."""
     # Emails
     emails = list(set(EMAIL_RE.findall(text)))
     
@@ -46,13 +47,18 @@ def extract_entities(text: str) -> ScrapedEntities:
     
     # CPFs
     cpfs = list(set(CPF_RE.findall(text)))
+
+    # Secrets (Gitleaks / TruffleHog rules)
+    from app.recon.secret_scanner import scan_text_for_secrets
+    secrets = scan_text_for_secrets(text)
     
     return ScrapedEntities(
         emails=emails,
         phones=phones,
         btc_addresses=btc,
         eth_addresses=eth,
-        cpfs=cpfs
+        cpfs=cpfs,
+        secrets=secrets,
     )
 
 async def scrape_url(url: str, use_tor: bool = False) -> ScrapedEntities:
