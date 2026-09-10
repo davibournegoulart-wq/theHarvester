@@ -24,3 +24,4 @@ numpy>=1.26
 holehe==1.61
 trio==0.34.0
 Scrapy==2.11.2
+sherlock-project>=0.16.0

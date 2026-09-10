@@ -25,6 +25,31 @@ async def username_lookup(username: str):
     return {"username": username, "accounts": results}
 
 
+@router.get("/username/{username}/sherlock")
+async def username_sherlock_lookup(
+    username: str,
+    use_tor: bool = False,
+    timeout: int = 15,
+):
+    """Executa a engine oficial do Sherlock (430+ sites) para o username especificado."""
+    from app.checkers.sherlock_runner import run_sherlock_scan
+    return await run_sherlock_scan(username=username, use_tor=use_tor, timeout=timeout)
+
+
+@router.get("/sherlock/sites")
+async def sherlock_sites_list():
+    """Retorna o catálogo de todos os 430+ sites suportados pelo Sherlock."""
+    from app.checkers.sherlock_runner import get_sherlock_sites_data
+    sites = get_sherlock_sites_data()
+    return {
+        "total": len(sites),
+        "sites": [
+            {"platform": k, "url_main": v.get("urlMain", ""), "url_pattern": v.get("url", "")}
+            for k, v in sorted(sites.items())
+        ],
+    }
+
+
 @router.get("/email/{email}")
 async def email_lookup(email: str):
     results = await check_email(email)
