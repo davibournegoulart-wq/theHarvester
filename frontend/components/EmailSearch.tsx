@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { apiFetch, apiGet, apiPostJson, apiPostFormData } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
-import { CheckIcon, CrossIcon, FolderIcon } from "@/components/FlatIcons";
+import { CheckIcon, CrossIcon, FolderIcon, GlobeIcon } from "@/components/FlatIcons";
 
 type EmailResult = {
   service: string;
@@ -155,7 +155,9 @@ export default function EmailSearch() {
   return (
     <div>
       {/* SECTION 1: EMAIL SEARCH */}
-      <h3 style={{ marginTop: 0 }}>Email Search (OSINT)</h3>
+      <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+        <GlobeIcon size={18} color="var(--cyan)" /> Email Search (OSINT)
+      </h3>
       <div style={{ display: "flex", gap: 8, maxWidth: 600 }}>
         <input
           value={email}
@@ -223,10 +225,11 @@ export default function EmailSearch() {
         </>
       )}
 
-      <hr style={{ margin: "32px 0", borderColor: "var(--border)" }} />
-
       {/* SECTION 2: EMAIL HEADER FORENSICS */}
-      <h3 style={{ marginTop: 0 }}>Header Forensics (Header Analysis)</h3>
+      <hr style={{ margin: "24px 0", borderColor: "var(--panel-border)" }} />
+      <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+        <FolderIcon size={18} color="var(--cyan)" /> Header Forensics (Header Analysis)
+      </h3>
       <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>
         Paste raw message headers or upload a .eml file to extract hops, anomalies, and SPF/DKIM/DMARC failures.
       </p>

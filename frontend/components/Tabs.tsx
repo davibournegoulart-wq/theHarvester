@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 
-type Tab = { label: string; content: ReactNode };
+type Tab = { label: string; content: ReactNode; icon?: ReactNode };
 
 export default function Tabs({ tabs }: { tabs: Tab[] }) {
   const [active, setActive] = useState(0);
@@ -25,16 +25,26 @@ export default function Tabs({ tabs }: { tabs: Tab[] }) {
             key={tab.label}
             onClick={() => setActive(i)}
             style={{
-              padding: "10px 18px",
-              fontSize: 13,
+              padding: "10px 16px",
+              fontSize: 12,
+              letterSpacing: "0.05em",
               border: "none",
               borderBottom: i === active ? "2px solid var(--cyan)" : "2px solid transparent",
               background: i === active ? "rgba(5, 217, 232, 0.08)" : "transparent",
               color: i === active ? "var(--cyan)" : "var(--text-muted)",
               clipPath: "none",
               boxShadow: i === active ? "0 2px 8px rgba(5, 217, 232, 0.3)" : "none",
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
+            {tab.icon && (
+              <span style={{ display: "inline-flex", alignItems: "center", opacity: i === active ? 1 : 0.7 }}>
+                {tab.icon}
+              </span>
+            )}
             {tab.label}
           </button>
         ))}

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { apiGet, apiPostJson } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "@/components/SaveToCaseButton";
-import { CheckIcon, CrossIcon, AlertIcon } from "@/components/FlatIcons";
+import { CheckIcon, CrossIcon, AlertIcon, PhoneIcon } from "@/components/FlatIcons";
 
 type PhoneMetadata = {
   country: string | null;
@@ -79,6 +79,9 @@ export default function PhoneSearch() {
 
   return (
     <div>
+      <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8, margin: "0 0 10px 0" }}>
+        <PhoneIcon size={18} color="var(--cyan)" /> Phone Intelligence &amp; Digital Footprint
+      </h3>
       <div style={{ display: "flex", gap: 8, maxWidth: 600 }}>
         <input
           value={phone}

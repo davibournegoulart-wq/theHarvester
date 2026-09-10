@@ -6,7 +6,7 @@ import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "@/components/SaveToCaseButton";
 import DeepScraperTool from "./DeepScraperTool";
 import ImageMagnifier from "./ImageMagnifier";
-import { CheckIcon, KeyIcon, ShieldIcon, AlertIcon } from "@/components/FlatIcons";
+import { CheckIcon, KeyIcon, ShieldIcon, AlertIcon, FolderIcon, CameraIcon, PinIcon, GlobeIcon, LockIcon } from "@/components/FlatIcons";
 
 type ReverseImageLink = { engine: string; search_url: string };
 type PasswordBreachResult = { times_seen: number };
@@ -75,7 +75,9 @@ function DocumentMetadataTool() {
 
   return (
     <div style={{ marginTop: 32 }}>
-      <h3>Document Metadata (PDF/DOCX/XLSX)</h3>
+      <h3 style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 6px 0" }}>
+        <FolderIcon size={18} color="var(--cyan)" /> Document Metadata (PDF/DOCX/XLSX)
+      </h3>
       <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
         Extracts author information, creation software, and revision history.
       </p>
@@ -145,7 +147,9 @@ function ReverseImageTool() {
 
   return (
     <div>
-      <h3>Reverse Image Search</h3>
+      <h3 style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 6px 0" }}>
+        <CameraIcon size={18} color="var(--cyan)" /> Reverse Image Search
+      </h3>
       <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
         Generates ready-to-use links for each search engine. Provide a public URL or upload a file.
         <br />
@@ -311,7 +315,9 @@ function ImageExifTool() {
 
   return (
     <div style={{ marginTop: 32 }}>
-      <h3>Image EXIF Metadata (location/GPS)</h3>
+      <h3 style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 6px 0" }}>
+        <PinIcon size={18} color="var(--cyan)" /> Image EXIF Metadata (location/GPS)
+      </h3>
       <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
         Reads embedded GPS/date/camera from the original file — pure metadata, no third party. Most social networks
         strip this when processing uploads, so it only works with the original file (e.g. sent directly via
@@ -395,7 +401,9 @@ function EmailRegistrationTool() {
 
   return (
     <div style={{ marginTop: 32 }}>
-      <h3>Email Registrations</h3>
+      <h3 style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 6px 0" }}>
+        <GlobeIcon size={18} color="var(--cyan)" /> Email Registrations
+      </h3>
       <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
         Scans over 120 websites, social networks, and forums checking if the email is associated with a registered account, using the password recovery mechanism.
       </p>
@@ -448,7 +456,9 @@ function PasswordBreachTool() {
 
   return (
     <div style={{ marginTop: 32 }}>
-      <h3>Breached Password (Have I Been Pwned)</h3>
+      <h3 style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 6px 0" }}>
+        <LockIcon size={18} color="var(--cyan)" /> Breached Password (Have I Been Pwned)
+      </h3>
       <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
         K-anonymity: only the first 5 characters of the SHA-1 hash leave your machine, never the plain-text password.
       </p>
