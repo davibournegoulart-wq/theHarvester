@@ -457,7 +457,7 @@ function PasswordBreachTool() {
   return (
     <div style={{ marginTop: 32 }}>
       <h3 style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 6px 0" }}>
-        <LockIcon size={18} color="var(--cyan)" /> Breached Password (Have I Been Pwned)
+        <LockIcon size={18} color="var(--cyan)" /> Breached Password
       </h3>
       <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
         K-anonymity: only the first 5 characters of the SHA-1 hash leave your machine, never the plain-text password.
