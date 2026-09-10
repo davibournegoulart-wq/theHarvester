@@ -94,7 +94,7 @@ function InstagramRecon() {
         Instagram Deep Recon & ID Pivot
       </h3>
       <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
-        Natively extracts permanent numeric `profile_id` to track targets across username changes, and generates direct links to web mirror viewers (Imginn, Picuki, Dumpoir).
+        Natively extracts permanent numeric `profile_id` to track targets across username changes, and generates direct links to web mirror viewers (Imginn, Picuki).
       </p>
       <div style={{ display: "flex", gap: 8, maxWidth: 600 }}>
         <input 
@@ -150,9 +150,6 @@ function InstagramRecon() {
             </a>
             <a href={`https://www.picuki.com/profile/${clean}`} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ textDecoration: "none" }}>
               Picuki Viewer ↗
-            </a>
-            <a href={`https://dumpoir.com/v/${clean}`} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ textDecoration: "none" }}>
-              Dumpoir ↗
             </a>
             <a href={`https://www.instagram.com/${clean}/`} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ textDecoration: "none" }}>
               Instagram Official ↗
