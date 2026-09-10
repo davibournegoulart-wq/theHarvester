@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { apiFetch, apiGet, apiPostJson, apiPostFormData } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
+import SaveToCaseButton from "@/components/SaveToCaseButton";
 import { CheckIcon, CrossIcon, FolderIcon, GlobeIcon } from "@/components/FlatIcons";
 
 type EmailResult = {
@@ -174,18 +175,43 @@ export default function EmailSearch() {
       {searched && !loading && (
         <>
           <h4 style={{ marginTop: 16, marginBottom: 8 }}>Registrations and Platforms (Login/Recovery Test)</h4>
-          <ul style={{ margin: 0 }}>
+          <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
             {results.map((r) => (
-              <li key={r.service} style={{ marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
-                <strong>{r.service}</strong>:{" "}
-                {r.exists ? (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--success)" }}>
-                    <CheckIcon size={12} color="var(--success)" /> Registered
-                  </span>
-                ) : (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--text-muted)" }}>
-                    <CrossIcon size={12} color="var(--danger)" /> Not registered
-                  </span>
+              <li
+                key={r.service}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  maxWidth: 600,
+                  background: "rgba(0,0,0,0.2)",
+                  padding: "6px 10px",
+                  borderRadius: 4,
+                  border: "1px solid var(--panel-border)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <strong>{r.service}</strong>:{" "}
+                  {r.exists ? (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--success)" }}>
+                      <CheckIcon size={12} color="var(--success)" /> Registered
+                    </span>
+                  ) : (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--text-muted)" }}>
+                      <CrossIcon size={12} color="var(--danger)" /> Not registered
+                    </span>
+                  )}
+                </div>
+                {r.exists && (
+                  <SaveToCaseButton
+                    key={`${activeCase?.id}-${r.service}`}
+                    identifierType="email"
+                    identifierValue={email}
+                    platform={r.service}
+                    exists={r.exists}
+                    discoveredBy="checkers.email"
+                    metadata={{ rate_limited: r.rate_limited, leaked_recovery_hint: r.leaked_recovery_hint }}
+                  />
                 )}
               </li>
             ))}
@@ -193,19 +219,86 @@ export default function EmailSearch() {
           </ul>
 
           <h4 style={{ marginTop: 16, marginBottom: 8 }}>Breaches (Breach Intelligence)</h4>
-          <ul>
-            <li>
-              <strong>XposedOrNot:</strong>{" "}
-              {breachResult?.breaches.length ? `Found in ${breachResult.breaches.length} breach(es) (${breachResult.breaches.slice(0, 5).join(", ")}...)` : "No breaches found"}
+          <ul style={{ paddingLeft: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
+            <li
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                maxWidth: 600,
+                background: "rgba(0,0,0,0.2)",
+                padding: "6px 10px",
+                borderRadius: 4,
+                border: "1px solid var(--panel-border)",
+              }}
+            >
+              <div>
+                <strong>XposedOrNot:</strong>{" "}
+                {breachResult?.breaches.length ? `Found in ${breachResult.breaches.length} breach(es) (${breachResult.breaches.slice(0, 5).join(", ")}...)` : "No breaches found"}
+              </div>
+              {breachResult && breachResult.breaches.length > 0 && (
+                <SaveToCaseButton
+                  key={`${activeCase?.id}-xposedornot`}
+                  identifierType="email"
+                  identifierValue={email}
+                  platform="xposedornot"
+                  discoveredBy="breach.xposedornot"
+                  metadata={{ breaches_count: breachResult.breaches.length, sample: breachResult.breaches.slice(0, 5) }}
+                />
+              )}
             </li>
-            <li>
-              <strong>BreachDirectory:</strong>{" "}
-              {bdResult?.sources_count ? `Found in ${bdResult.sources_count} public breach(es)` : "No breaches found"}
+            <li
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                maxWidth: 600,
+                background: "rgba(0,0,0,0.2)",
+                padding: "6px 10px",
+                borderRadius: 4,
+                border: "1px solid var(--panel-border)",
+              }}
+            >
+              <div>
+                <strong>BreachDirectory:</strong>{" "}
+                {bdResult?.sources_count ? `Found in ${bdResult.sources_count} public breach(es)` : "No breaches found"}
+              </div>
+              {bdResult && bdResult.sources_count > 0 && (
+                <SaveToCaseButton
+                  key={`${activeCase?.id}-breachdirectory`}
+                  identifierType="email"
+                  identifierValue={email}
+                  platform="breachdirectory"
+                  discoveredBy="breach.directory"
+                  metadata={{ sources_count: bdResult.sources_count }}
+                />
+              )}
             </li>
             {analyticsResult && analyticsResult.breach_count > 0 && (
-              <li>
-                <strong>Metrics:</strong> Risk {analyticsResult.risk_score ?? "?"}/10. 
-                First: {analyticsResult.first_breach}, Latest: {analyticsResult.latest_breach}
+              <li
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  maxWidth: 600,
+                  background: "rgba(0,0,0,0.2)",
+                  padding: "6px 10px",
+                  borderRadius: 4,
+                  border: "1px solid var(--panel-border)",
+                }}
+              >
+                <div>
+                  <strong>Metrics:</strong> Risk {analyticsResult.risk_score ?? "?"}/10. 
+                  First: {analyticsResult.first_breach}, Latest: {analyticsResult.latest_breach}
+                </div>
+                <SaveToCaseButton
+                  key={`${activeCase?.id}-breachmetrics`}
+                  identifierType="email"
+                  identifierValue={email}
+                  platform="breach_analytics"
+                  discoveredBy="breach.analytics"
+                  metadata={{ risk_score: analyticsResult.risk_score, breach_count: analyticsResult.breach_count }}
+                />
               </li>
             )}
           </ul>
@@ -213,14 +306,58 @@ export default function EmailSearch() {
           <h4 style={{ marginTop: 16, marginBottom: 8 }}>Accounts and Public Profiles</h4>
           {googleError && <p style={{ color: "var(--danger)", fontSize: 13 }}>{googleError}</p>}
           {googleResult && (
-            <ul>
-              <li><strong>Google:</strong> Gaia ID: {googleResult.gaia_id ?? "N/A"} (Public: {googleResult.is_public_profile ? "Yes" : "No"})</li>
-            </ul>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                maxWidth: 600,
+                background: "rgba(0,0,0,0.2)",
+                padding: "6px 10px",
+                borderRadius: 4,
+                border: "1px solid var(--panel-border)",
+                marginBottom: 6,
+              }}
+            >
+              <div>
+                <strong>Google:</strong> Gaia ID: {googleResult.gaia_id ?? "N/A"} (Public: {googleResult.is_public_profile ? "Yes" : "No"})
+              </div>
+              <SaveToCaseButton
+                key={`${activeCase?.id}-google`}
+                identifierType="email"
+                identifierValue={email}
+                platform="google"
+                discoveredBy="google.gaia"
+                metadata={{ gaia_id: googleResult.gaia_id, is_public: googleResult.is_public_profile }}
+              />
+            </div>
           )}
           {gravatarResult?.exists && (
-            <ul>
-              <li><strong>Gravatar:</strong> {gravatarResult.display_name} ({gravatarResult.location})</li>
-            </ul>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                maxWidth: 600,
+                background: "rgba(0,0,0,0.2)",
+                padding: "6px 10px",
+                borderRadius: 4,
+                border: "1px solid var(--panel-border)",
+              }}
+            >
+              <div>
+                <strong>Gravatar:</strong> {gravatarResult.display_name} ({gravatarResult.location || "Location not set"})
+              </div>
+              <SaveToCaseButton
+                key={`${activeCase?.id}-gravatar`}
+                identifierType="email"
+                identifierValue={email}
+                platform="gravatar"
+                url={gravatarResult.profile_url}
+                discoveredBy="gravatar"
+                metadata={{ display_name: gravatarResult.display_name, location: gravatarResult.location }}
+              />
+            </div>
           )}
         </>
       )}
@@ -259,7 +396,25 @@ Received: from mx.domain.com..."
 
       {headerAnalysis && (
         <div style={{ marginTop: 16, background: "var(--surface)", padding: 16, borderRadius: 8 }}>
-          <h4 style={{ marginTop: 0 }}>Analysis Results</h4>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <h4 style={{ margin: 0 }}>Analysis Results</h4>
+            <SaveToCaseButton
+              key={`${activeCase?.id}-${headerAnalysis.message_id || headerAnalysis.from_address || 'email-header'}`}
+              identifierType="email"
+              identifierValue={headerAnalysis.from_address || headerAnalysis.return_path || email || "email-forensics"}
+              platform="email_header_forensics"
+              discoveredBy="email_header_analyzer"
+              metadata={{
+                from: headerAnalysis.from_address,
+                return_path: headerAnalysis.return_path,
+                subject: headerAnalysis.subject,
+                date: headerAnalysis.date,
+                anomalies: headerAnalysis.anomalies,
+                auth_results: headerAnalysis.auth_results,
+                hops_count: headerAnalysis.hops.length,
+              }}
+            />
+          </div>
           <ul style={{ fontSize: 13 }}>
             <li><strong>From:</strong> {headerAnalysis.from_address}</li>
             <li><strong>Return-Path:</strong> {headerAnalysis.return_path}</li>

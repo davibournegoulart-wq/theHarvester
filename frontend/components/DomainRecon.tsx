@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPostJson } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "@/components/SaveToCaseButton";
 import { 
@@ -68,6 +68,8 @@ export default function DomainRecon() {
   const [result, setResult] = useState<DomainResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savingSubdomains, setSavingSubdomains] = useState(false);
+  const [savedSubdomainsCount, setSavedSubdomainsCount] = useState<number | null>(null);
 
   // EyeWitness / Gowitness states
   const [visualTarget, setVisualTarget] = useState("");
@@ -88,6 +90,7 @@ export default function DomainRecon() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setSavedSubdomainsCount(null);
     try {
       const data = await apiGet<DomainResult>(`/identifiers/domain/recon?domain=${encodeURIComponent(domain)}`);
       setResult(data);
@@ -95,6 +98,31 @@ export default function DomainRecon() {
       setError(e instanceof Error ? e.message : "Error querying domain");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleSaveAllSubdomains() {
+    if (!activeCase || !result?.subdomains?.length) return;
+    setSavingSubdomains(true);
+    const investigator = localStorage.getItem("investigator_name") || "anonymous_investigator";
+    try {
+      let count = 0;
+      for (const s of result.subdomains) {
+        await apiPostJson(`/cases/${activeCase.id}/findings`, {
+          identifier_type: "domain",
+          identifier_value: s.subdomain,
+          platform: "theharvester.subdomain",
+          exists: true,
+          discovered_by: `theHarvester (${investigator})`,
+          metadata_json: { ip: s.ip, parent_domain: domain },
+        });
+        count++;
+      }
+      setSavedSubdomainsCount(count);
+    } catch {
+      alert("Error saving subdomains to case.");
+    } finally {
+      setSavingSubdomains(false);
     }
   }
 
@@ -253,13 +281,65 @@ export default function DomainRecon() {
                 </tbody>
               </table>
 
-              <h4 style={{ margin: "20px 0 8px 0", color: "var(--cyan)" }}>
-                Subdomains Discovered ({result.subdomains.length})
-              </h4>
-              <ul style={{ paddingLeft: 18, fontSize: 13 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "20px 0 8px 0" }}>
+                <h4 style={{ margin: 0, color: "var(--cyan)" }}>
+                  Subdomains Discovered ({result.subdomains.length})
+                </h4>
+                {result.subdomains.length > 0 && (
+                  <button
+                    onClick={handleSaveAllSubdomains}
+                    disabled={savingSubdomains || !activeCase}
+                    style={{
+                      fontSize: 11,
+                      padding: "4px 10px",
+                      background: savedSubdomainsCount !== null ? "rgba(0, 255, 159, 0.2)" : "var(--cyan)",
+                      color: savedSubdomainsCount !== null ? "var(--success)" : "#000",
+                      border: "1px solid var(--border)",
+                      fontWeight: "bold",
+                      cursor: activeCase ? "pointer" : "not-allowed",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    {savedSubdomainsCount !== null ? (
+                      <>
+                        <CheckIcon size={12} color="var(--success)" /> Added {savedSubdomainsCount} to Case
+                      </>
+                    ) : savingSubdomains ? (
+                      "Saving to Case..."
+                    ) : (
+                      `+ Add All (${result.subdomains.length}) to Case`
+                    )}
+                  </button>
+                )}
+              </div>
+              <ul style={{ paddingLeft: 0, listStyle: "none", fontSize: 13, display: "flex", flexDirection: "column", gap: 6 }}>
                 {result.subdomains.map((s, i) => (
-                  <li key={i} style={{ marginBottom: 4 }}>
-                    <strong>{s.subdomain}</strong> <span style={{ color: "var(--text-muted)" }}>({s.ip})</span>
+                  <li
+                    key={i}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      background: "rgba(0,0,0,0.2)",
+                      padding: "6px 10px",
+                      borderRadius: 4,
+                      border: "1px solid var(--panel-border)",
+                    }}
+                  >
+                    <div>
+                      <strong>{s.subdomain}</strong> <span style={{ color: "var(--text-muted)", marginLeft: 6 }}>({s.ip})</span>
+                    </div>
+                    <SaveToCaseButton
+                      key={`${activeCase?.id}-${s.subdomain}`}
+                      identifierType="domain"
+                      identifierValue={s.subdomain}
+                      platform="theharvester.subdomain"
+                      exists={true}
+                      discoveredBy="theHarvester"
+                      metadata={{ ip: s.ip, parent_domain: domain }}
+                    />
                   </li>
                 ))}
                 {result.subdomains.length === 0 && <li style={{ color: "var(--text-muted)" }}>No subdomains found.</li>}

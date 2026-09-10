@@ -296,7 +296,7 @@ export default function CaseManagement() {
                   </svg>
                   Merge Case
                 </button>
-                {selected.status === "OPEN" && (
+                {selected.status === "OPEN" ? (
                   <>
                     <button onClick={() => handleChangeStatus(selected, "CLOSED")} disabled={loading} style={{ borderColor: "var(--success)", color: "var(--success)" }}>
                       Close Case
@@ -304,6 +304,27 @@ export default function CaseManagement() {
                     <button onClick={() => handleChangeStatus(selected, "COLD")} disabled={loading} style={{ borderColor: "var(--text-muted)", color: "var(--text-muted)" }}>
                       Mark as Cold
                     </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => handleChangeStatus(selected, "OPEN")}
+                      disabled={loading}
+                      style={{
+                        borderColor: "var(--cyan)",
+                        color: "var(--cyan)",
+                        background: "rgba(5, 217, 232, 0.15)",
+                        fontWeight: "bold",
+                        boxShadow: "0 0 8px rgba(5, 217, 232, 0.4)",
+                      }}
+                    >
+                      Reopen Case
+                    </button>
+                    {selected.status !== "COLD" && (
+                      <button onClick={() => handleChangeStatus(selected, "COLD")} disabled={loading} style={{ borderColor: "var(--text-muted)", color: "var(--text-muted)" }}>
+                        Mark as Cold
+                      </button>
+                    )}
                   </>
                 )}
                 <button onClick={() => handleDelete(selected)} disabled={loading} style={{ borderColor: "var(--danger)", color: "var(--danger)", background: "rgba(255,0,0,0.1)" }}>

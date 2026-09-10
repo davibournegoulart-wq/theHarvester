@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { apiGet, apiPostJson, apiFetch } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
-import { SpiderIcon, KeyIcon } from "@/components/FlatIcons";
+import { SpiderIcon, KeyIcon, CheckIcon, FolderIcon } from "@/components/FlatIcons";
 
 type ScrapedSecret = {
   rule_name: string;
@@ -61,6 +61,7 @@ export default function DeepScraperTool() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedItems, setSavedItems] = useState<Set<string>>(new Set());
+  const [savingAll, setSavingAll] = useState(false);
 
   async function handleExtract() {
     setLoading(true);
@@ -111,6 +112,53 @@ export default function DeepScraperTool() {
     } catch (e) {
       alert("Error saving finding.");
     }
+  }
+
+  async function handleSaveAll() {
+    if (!activeCase) {
+      alert("Please select an active case first.");
+      return;
+    }
+    const investigator = localStorage.getItem("investigator_name") || "anonymous_investigator";
+    const toSave: { type: string; value: string; platform?: string }[] = [];
+
+    if (scrapyResult) {
+      scrapyResult.summary.emails_found.forEach((em) => toSave.push({ type: "email", value: em, platform: url }));
+      scrapyResult.summary.phones_found.forEach((ph) => toSave.push({ type: "phone", value: ph, platform: url }));
+      scrapyResult.summary.btc_wallets.forEach((b) => toSave.push({ type: "crypto", value: b, platform: url }));
+      scrapyResult.summary.eth_wallets.forEach((e) => toSave.push({ type: "crypto", value: e, platform: url }));
+      scrapyResult.summary.documents_found.forEach((d) => toSave.push({ type: "domain", value: d.url, platform: `Document: ${d.filename}` }));
+    } else if (result) {
+      result.emails.forEach((em) => toSave.push({ type: "email", value: em, platform: mode === "text" ? "Text Dump" : url }));
+      result.phones.forEach((ph) => toSave.push({ type: "phone", value: ph, platform: mode === "text" ? "Text Dump" : url }));
+      result.btc_addresses.forEach((b) => toSave.push({ type: "crypto", value: b, platform: mode === "text" ? "Text Dump" : url }));
+      result.eth_addresses.forEach((e) => toSave.push({ type: "crypto", value: e, platform: mode === "text" ? "Text Dump" : url }));
+      result.cpfs.forEach((c) => toSave.push({ type: "corporate", value: `CPF/CNPJ: ${c}`, platform: mode === "text" ? "Text Dump" : url }));
+      if (result.secrets) {
+        result.secrets.forEach((s) => toSave.push({ type: "corporate", value: `${s.rule_name}: ${s.masked_value}`, platform: "Secret Scanner" }));
+      }
+    }
+
+    if (toSave.length === 0) return;
+    setSavingAll(true);
+    const newSaved = new Set(savedItems);
+
+    for (const item of toSave) {
+      try {
+        await apiPostJson(`/cases/${activeCase.id}/findings`, {
+          identifier_type: item.type,
+          identifier_value: item.value,
+          platform: item.platform || url,
+          exists: true,
+          discovered_by: `scrapy_spider (${investigator})`
+        });
+        newSaved.add(`${item.type}:${item.value}`);
+      } catch (err) {
+        // continue
+      }
+    }
+    setSavedItems(newSaved);
+    setSavingAll(false);
   }
 
   const hasResults = result && (
@@ -199,11 +247,31 @@ export default function DeepScraperTool() {
       {/* Scrapy Spider Results UI */}
       {scrapyResult && (
         <div style={{ marginTop: 20 }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
             <h4 style={{ margin: 0, color: "var(--cyan)", display: "flex", alignItems: "center", gap: 8 }}>
               <SpiderIcon size={18} color="var(--cyan)" />
               Scrapy Crawl Complete: {scrapyResult.pages_crawled} pages analyzed
             </h4>
+            <button
+              onClick={handleSaveAll}
+              disabled={savingAll || !activeCase}
+              style={{
+                fontSize: 12,
+                fontWeight: "bold",
+                padding: "6px 14px",
+                background: "var(--cyan)",
+                color: "#000",
+                border: "none",
+                borderRadius: 4,
+                cursor: savingAll || !activeCase ? "not-allowed" : "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <FolderIcon size={13} color="#000" />
+              {savingAll ? "Adding all to Case..." : "+ Add All Results to Case"}
+            </button>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12, marginBottom: 16 }}>
@@ -215,14 +283,29 @@ export default function DeepScraperTool() {
               ) : (
                 <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", fontSize: 12, wordBreak: "break-all" }}>
                   {scrapyResult.summary.emails_found.map((em) => (
-                    <li key={em} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <li key={em} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "2px 0" }}>
                       <span>{em}</span>
                       <button
                         onClick={() => handleSave("email", em)}
                         disabled={savedItems.has(`email:${em}`)}
-                        style={{ fontSize: 10, padding: "2px 6px", background: savedItems.has(`email:${em}`) ? "var(--success)" : "var(--panel)" }}
+                        style={{
+                          fontSize: 10,
+                          padding: "3px 8px",
+                          background: savedItems.has(`email:${em}`) ? "rgba(57, 255, 136, 0.2)" : "rgba(5, 217, 232, 0.15)",
+                          border: savedItems.has(`email:${em}`) ? "1px solid var(--success)" : "1px solid var(--cyan)",
+                          color: savedItems.has(`email:${em}`) ? "var(--success)" : "var(--cyan)",
+                          cursor: savedItems.has(`email:${em}`) ? "default" : "pointer",
+                          borderRadius: 3,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
                       >
-                        {savedItems.has(`email:${em}`) ? "Saved" : "+"}
+                        {savedItems.has(`email:${em}`) ? (
+                          <><CheckIcon size={11} color="var(--success)" /> Added</>
+                        ) : (
+                          "+ Add"
+                        )}
                       </button>
                     </li>
                   ))}
@@ -238,14 +321,29 @@ export default function DeepScraperTool() {
               ) : (
                 <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", fontSize: 12, wordBreak: "break-all" }}>
                   {scrapyResult.summary.phones_found.map((ph) => (
-                    <li key={ph} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <li key={ph} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "2px 0" }}>
                       <span>{ph}</span>
                       <button
                         onClick={() => handleSave("phone", ph)}
                         disabled={savedItems.has(`phone:${ph}`)}
-                        style={{ fontSize: 10, padding: "2px 6px", background: savedItems.has(`phone:${ph}`) ? "var(--success)" : "var(--panel)" }}
+                        style={{
+                          fontSize: 10,
+                          padding: "3px 8px",
+                          background: savedItems.has(`phone:${ph}`) ? "rgba(57, 255, 136, 0.2)" : "rgba(5, 217, 232, 0.15)",
+                          border: savedItems.has(`phone:${ph}`) ? "1px solid var(--success)" : "1px solid var(--cyan)",
+                          color: savedItems.has(`phone:${ph}`) ? "var(--success)" : "var(--cyan)",
+                          cursor: savedItems.has(`phone:${ph}`) ? "default" : "pointer",
+                          borderRadius: 3,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
                       >
-                        {savedItems.has(`phone:${ph}`)}
+                        {savedItems.has(`phone:${ph}`) ? (
+                          <><CheckIcon size={11} color="var(--success)" /> Added</>
+                        ) : (
+                          "+ Add"
+                        )}
                       </button>
                     </li>
                   ))}
@@ -263,26 +361,56 @@ export default function DeepScraperTool() {
               ) : (
                 <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", fontSize: 12, wordBreak: "break-all" }}>
                   {scrapyResult.summary.btc_wallets.map((b) => (
-                    <li key={b} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <li key={b} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "2px 0" }}>
                       <span>BTC: {b.slice(0, 10)}...</span>
                       <button
                         onClick={() => handleSave("crypto", b)}
                         disabled={savedItems.has(`crypto:${b}`)}
-                        style={{ fontSize: 10, padding: "2px 6px" }}
+                        style={{
+                          fontSize: 10,
+                          padding: "3px 8px",
+                          background: savedItems.has(`crypto:${b}`) ? "rgba(57, 255, 136, 0.2)" : "rgba(5, 217, 232, 0.15)",
+                          border: savedItems.has(`crypto:${b}`) ? "1px solid var(--success)" : "1px solid var(--cyan)",
+                          color: savedItems.has(`crypto:${b}`) ? "var(--success)" : "var(--cyan)",
+                          cursor: savedItems.has(`crypto:${b}`) ? "default" : "pointer",
+                          borderRadius: 3,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
                       >
-                        +
+                        {savedItems.has(`crypto:${b}`) ? (
+                          <><CheckIcon size={11} color="var(--success)" /> Added</>
+                        ) : (
+                          "+ Add"
+                        )}
                       </button>
                     </li>
                   ))}
                   {scrapyResult.summary.eth_wallets.map((eth) => (
-                    <li key={eth} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <li key={eth} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "2px 0" }}>
                       <span>ETH: {eth.slice(0, 10)}...</span>
                       <button
                         onClick={() => handleSave("crypto", eth)}
                         disabled={savedItems.has(`crypto:${eth}`)}
-                        style={{ fontSize: 10, padding: "2px 6px" }}
+                        style={{
+                          fontSize: 10,
+                          padding: "3px 8px",
+                          background: savedItems.has(`crypto:${eth}`) ? "rgba(57, 255, 136, 0.2)" : "rgba(5, 217, 232, 0.15)",
+                          border: savedItems.has(`crypto:${eth}`) ? "1px solid var(--success)" : "1px solid var(--cyan)",
+                          color: savedItems.has(`crypto:${eth}`) ? "var(--success)" : "var(--cyan)",
+                          cursor: savedItems.has(`crypto:${eth}`) ? "default" : "pointer",
+                          borderRadius: 3,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
                       >
-                        +
+                        {savedItems.has(`crypto:${eth}`) ? (
+                          <><CheckIcon size={11} color="var(--success)" /> Added</>
+                        ) : (
+                          "+ Add"
+                        )}
                       </button>
                     </li>
                   ))}
@@ -298,11 +426,28 @@ export default function DeepScraperTool() {
               ) : (
                 <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", fontSize: 12, wordBreak: "break-all" }}>
                   {scrapyResult.summary.documents_found.slice(0, 8).map((doc, idx) => (
-                    <li key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                      <span title={doc.url}>[{doc.ext.toUpperCase()}] {doc.filename.slice(0, 20)}</span>
-                      <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "var(--cyan)" }}>
-                        Link
-                      </a>
+                    <li key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, padding: "2px 0" }}>
+                      <span title={doc.url}>[{doc.ext.toUpperCase()}] {doc.filename.slice(0, 16)}</span>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "var(--cyan)" }}>
+                          Link
+                        </a>
+                        <button
+                          onClick={() => handleSave("domain", doc.url)}
+                          disabled={savedItems.has(`domain:${doc.url}`)}
+                          style={{
+                            fontSize: 10,
+                            padding: "2px 6px",
+                            background: savedItems.has(`domain:${doc.url}`) ? "rgba(57, 255, 136, 0.2)" : "rgba(5, 217, 232, 0.15)",
+                            border: savedItems.has(`domain:${doc.url}`) ? "1px solid var(--success)" : "1px solid var(--cyan)",
+                            color: savedItems.has(`domain:${doc.url}`) ? "var(--success)" : "var(--cyan)",
+                            cursor: savedItems.has(`domain:${doc.url}`) ? "default" : "pointer",
+                            borderRadius: 3,
+                          }}
+                        >
+                          {savedItems.has(`domain:${doc.url}`) ? "Added" : "+ Add"}
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -345,83 +490,177 @@ export default function DeepScraperTool() {
       )}
 
       {hasResults && (
-        <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 16 }}>
-          {result.emails.length > 0 && (
-            <div style={{ border: "1px solid var(--border)", padding: 12, background: "var(--surface)", borderRadius: 4 }}>
-              <h4 style={{ margin: "0 0 8px 0", color: "var(--cyan)" }}>Emails ({result.emails.length})</h4>
-              <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", fontSize: 13, wordBreak: "break-all" }}>
-                {result.emails.map(e => (
-                  <li key={e} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    {e} 
-                    <button 
-                      onClick={() => handleSave("email", e)} 
-                      disabled={savedItems.has(`email:${e}`)}
-                      style={{ fontSize: 10, padding: "2px 4px", background: savedItems.has(`email:${e}`) ? "var(--success)" : "var(--panel)" }}>
-                      {savedItems.has(`email:${e}`) ? "Saved" : "+"}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+        <div style={{ marginTop: 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <h4 style={{ margin: 0, color: "var(--cyan)" }}>Extracted Entities</h4>
+            <button
+              onClick={handleSaveAll}
+              disabled={savingAll || !activeCase}
+              style={{
+                fontSize: 12,
+                fontWeight: "bold",
+                padding: "6px 14px",
+                background: "var(--cyan)",
+                color: "#000",
+                border: "none",
+                borderRadius: 4,
+                cursor: savingAll || !activeCase ? "not-allowed" : "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <FolderIcon size={13} color="#000" />
+              {savingAll ? "Adding all to Case..." : "+ Add All Results to Case"}
+            </button>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 16 }}>
+            {result.emails.length > 0 && (
+              <div style={{ border: "1px solid var(--border)", padding: 12, background: "var(--surface)", borderRadius: 4 }}>
+                <h4 style={{ margin: "0 0 8px 0", color: "var(--cyan)" }}>Emails ({result.emails.length})</h4>
+                <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", fontSize: 13, wordBreak: "break-all" }}>
+                  {result.emails.map(e => (
+                    <li key={e} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span>{e}</span>
+                      <button 
+                        onClick={() => handleSave("email", e)} 
+                        disabled={savedItems.has(`email:${e}`)}
+                        style={{
+                          fontSize: 10,
+                          padding: "3px 8px",
+                          background: savedItems.has(`email:${e}`) ? "rgba(57, 255, 136, 0.2)" : "rgba(5, 217, 232, 0.15)",
+                          border: savedItems.has(`email:${e}`) ? "1px solid var(--success)" : "1px solid var(--cyan)",
+                          color: savedItems.has(`email:${e}`) ? "var(--success)" : "var(--cyan)",
+                          cursor: savedItems.has(`email:${e}`) ? "default" : "pointer",
+                          borderRadius: 3,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        {savedItems.has(`email:${e}`) ? <><CheckIcon size={11} color="var(--success)" /> Added</> : "+ Add"}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           
           {result.phones.length > 0 && (
             <div style={{ border: "1px solid var(--border)", padding: 12, background: "var(--surface)", borderRadius: 4 }}>
               <h4 style={{ margin: "0 0 8px 0", color: "var(--cyan)" }}>Phones ({result.phones.length})</h4>
               <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", fontSize: 13, wordBreak: "break-all" }}>
                 {result.phones.map(e => (
-                  <li key={e} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    {e}
-                    <button 
-                      onClick={() => handleSave("phone", e)} 
-                      disabled={savedItems.has(`phone:${e}`)}
-                      style={{ fontSize: 10, padding: "2px 4px", background: savedItems.has(`phone:${e}`) ? "var(--success)" : "var(--panel)" }}>
-                      {savedItems.has(`phone:${e}`) ? "Saved" : "+"}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          
-          {result.cpfs.length > 0 && (
-            <div style={{ border: "1px solid var(--border)", padding: 12, background: "var(--surface)", borderRadius: 4 }}>
-              <h4 style={{ margin: "0 0 8px 0", color: "var(--cyan)" }}>CPFs / CNPJs ({result.cpfs.length})</h4>
-              <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", fontSize: 13, wordBreak: "break-all" }}>
-                {result.cpfs.map(e => (
-                  <li key={e} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    {e}
-                    <button 
-                      onClick={() => handleSave("corporate", e)} 
-                      disabled={savedItems.has(`corporate:${e}`)}
-                      style={{ fontSize: 10, padding: "2px 4px", background: savedItems.has(`corporate:${e}`) ? "var(--success)" : "var(--panel)" }}>
-                      {savedItems.has(`corporate:${e}`) ? "Saved" : "+"}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          
-          {(result.btc_addresses.length > 0 || result.eth_addresses.length > 0) && (
-            <div style={{ border: "1px solid var(--border)", padding: 12, background: "var(--surface)", borderRadius: 4 }}>
-              <h4 style={{ margin: "0 0 8px 0", color: "var(--cyan)" }}>Crypto</h4>
-              <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", fontSize: 13, wordBreak: "break-all" }}>
-                {result.btc_addresses.map(e => (
-                  <li key={e} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    BTC: {e}
-                    <button onClick={() => handleSave("crypto", e)} disabled={savedItems.has(`crypto:${e}`)} style={{ fontSize: 10, padding: "2px 4px" }}>+</button>
-                  </li>
-                ))}
-                {result.eth_addresses.map(e => (
-                  <li key={e} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    ETH: {e}
-                    <button onClick={() => handleSave("crypto", e)} disabled={savedItems.has(`crypto:${e}`)} style={{ fontSize: 10, padding: "2px 4px" }}>+</button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+                    <li key={e} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span>{e}</span>
+                      <button 
+                        onClick={() => handleSave("phone", e)} 
+                        disabled={savedItems.has(`phone:${e}`)}
+                        style={{
+                          fontSize: 10,
+                          padding: "3px 8px",
+                          background: savedItems.has(`phone:${e}`) ? "rgba(57, 255, 136, 0.2)" : "rgba(5, 217, 232, 0.15)",
+                          border: savedItems.has(`phone:${e}`) ? "1px solid var(--success)" : "1px solid var(--cyan)",
+                          color: savedItems.has(`phone:${e}`) ? "var(--success)" : "var(--cyan)",
+                          cursor: savedItems.has(`phone:${e}`) ? "default" : "pointer",
+                          borderRadius: 3,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        {savedItems.has(`phone:${e}`) ? <><CheckIcon size={11} color="var(--success)" /> Added</> : "+ Add"}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {result.cpfs.length > 0 && (
+              <div style={{ border: "1px solid var(--border)", padding: 12, background: "var(--surface)", borderRadius: 4 }}>
+                <h4 style={{ margin: "0 0 8px 0", color: "var(--cyan)" }}>CPFs / CNPJs ({result.cpfs.length})</h4>
+                <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", fontSize: 13, wordBreak: "break-all" }}>
+                  {result.cpfs.map(e => (
+                    <li key={e} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span>{e}</span>
+                      <button 
+                        onClick={() => handleSave("corporate", e)} 
+                        disabled={savedItems.has(`corporate:${e}`)}
+                        style={{
+                          fontSize: 10,
+                          padding: "3px 8px",
+                          background: savedItems.has(`corporate:${e}`) ? "rgba(57, 255, 136, 0.2)" : "rgba(5, 217, 232, 0.15)",
+                          border: savedItems.has(`corporate:${e}`) ? "1px solid var(--success)" : "1px solid var(--cyan)",
+                          color: savedItems.has(`corporate:${e}`) ? "var(--success)" : "var(--cyan)",
+                          cursor: savedItems.has(`corporate:${e}`) ? "default" : "pointer",
+                          borderRadius: 3,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        {savedItems.has(`corporate:${e}`) ? <><CheckIcon size={11} color="var(--success)" /> Added</> : "+ Add"}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {(result.btc_addresses.length > 0 || result.eth_addresses.length > 0) && (
+              <div style={{ border: "1px solid var(--border)", padding: 12, background: "var(--surface)", borderRadius: 4 }}>
+                <h4 style={{ margin: "0 0 8px 0", color: "var(--cyan)" }}>Crypto</h4>
+                <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", fontSize: 13, wordBreak: "break-all" }}>
+                  {result.btc_addresses.map(e => (
+                    <li key={e} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span>BTC: {e}</span>
+                      <button
+                        onClick={() => handleSave("crypto", e)}
+                        disabled={savedItems.has(`crypto:${e}`)}
+                        style={{
+                          fontSize: 10,
+                          padding: "3px 8px",
+                          background: savedItems.has(`crypto:${e}`) ? "rgba(57, 255, 136, 0.2)" : "rgba(5, 217, 232, 0.15)",
+                          border: savedItems.has(`crypto:${e}`) ? "1px solid var(--success)" : "1px solid var(--cyan)",
+                          color: savedItems.has(`crypto:${e}`) ? "var(--success)" : "var(--cyan)",
+                          cursor: savedItems.has(`crypto:${e}`) ? "default" : "pointer",
+                          borderRadius: 3,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        {savedItems.has(`crypto:${e}`) ? <><CheckIcon size={11} color="var(--success)" /> Added</> : "+ Add"}
+                      </button>
+                    </li>
+                  ))}
+                  {result.eth_addresses.map(e => (
+                    <li key={e} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span>ETH: {e}</span>
+                      <button
+                        onClick={() => handleSave("crypto", e)}
+                        disabled={savedItems.has(`crypto:${e}`)}
+                        style={{
+                          fontSize: 10,
+                          padding: "3px 8px",
+                          background: savedItems.has(`crypto:${e}`) ? "rgba(57, 255, 136, 0.2)" : "rgba(5, 217, 232, 0.15)",
+                          border: savedItems.has(`crypto:${e}`) ? "1px solid var(--success)" : "1px solid var(--cyan)",
+                          color: savedItems.has(`crypto:${e}`) ? "var(--success)" : "var(--cyan)",
+                          cursor: savedItems.has(`crypto:${e}`) ? "default" : "pointer",
+                          borderRadius: 3,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        {savedItems.has(`crypto:${e}`) ? <><CheckIcon size={11} color="var(--success)" /> Added</> : "+ Add"}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
           {result.secrets && result.secrets.length > 0 && (
             <div style={{ border: "1px solid #ff0055", padding: 12, background: "rgba(255, 0, 85, 0.05)", borderRadius: 4, gridColumn: "1 / -1" }}>
@@ -455,7 +694,8 @@ export default function DeepScraperTool() {
             </div>
           )}
         </div>
-      )}
-    </div>
-  );
+      </div>
+    )}
+  </div>
+);
 }

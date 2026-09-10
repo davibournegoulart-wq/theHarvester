@@ -94,6 +94,12 @@ async def run_domain_auto_recon(domain: str, case_id: uuid.UUID, db: AsyncSessio
     from app.recon.visual_inspector import audit_web_visual_and_headers
     from app.recon.web_exposure import scan_web_exposure
 
+    domain = domain.strip().lower()
+    if "://" in domain:
+        from urllib.parse import urlparse
+        domain = urlparse(domain).netloc
+    domain = domain.split("/")[0].split(":")[0]
+
     results: dict[str, Any] = {
         "seed_type": "domain",
         "target": domain,

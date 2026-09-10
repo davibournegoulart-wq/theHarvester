@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
+import SaveToCaseButton from "@/components/SaveToCaseButton";
 
 type DorkQuery = { query: string; intent: string; category?: string };
 
@@ -166,21 +167,45 @@ export default function DorkEngine() {
             <p style={{ fontWeight: "bold", marginBottom: 4 }}>{category}</p>
             <ul style={{ marginTop: 0 }}>
               {group.map((d, i) => (
-                <li key={i} style={{ marginBottom: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <a href={`https://www.google.com/search?q=${encodeURIComponent(d.query)}`} target="_blank" rel="noreferrer" style={{ fontWeight: "bold" }}>
-                      {d.query}
-                    </a>
-                    <a
-                      href={`https://www.google.com/search?q=${encodeURIComponent(d.query)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3, background: "rgba(5, 217, 232, 0.15)", color: "var(--cyan)", textDecoration: "none", border: "1px solid rgba(5, 217, 232, 0.4)" }}
-                    >
-                      Open Google ↗
-                    </a>
+                <li
+                  key={i}
+                  style={{
+                    marginBottom: 10,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    background: "rgba(0,0,0,0.2)",
+                    padding: "8px 12px",
+                    borderRadius: 4,
+                    border: "1px solid var(--panel-border)",
+                  }}
+                >
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <a href={`https://www.google.com/search?q=${encodeURIComponent(d.query)}`} target="_blank" rel="noreferrer" style={{ fontWeight: "bold" }}>
+                        {d.query}
+                      </a>
+                      <a
+                        href={`https://www.google.com/search?q=${encodeURIComponent(d.query)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3, background: "rgba(5, 217, 232, 0.15)", color: "var(--cyan)", textDecoration: "none", border: "1px solid rgba(5, 217, 232, 0.4)" }}
+                      >
+                        Open Google ↗
+                      </a>
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{INTENT_LABELS[d.intent] ?? d.intent}</div>
                   </div>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{INTENT_LABELS[d.intent] ?? d.intent}</div>
+                  <SaveToCaseButton
+                    key={`${activeCase?.id}-${d.query}`}
+                    identifierType="url"
+                    identifierValue={d.query}
+                    platform="google.dork"
+                    discoveredBy="dork_engine"
+                    metadata={{ category, intent: d.intent }}
+                  />
                 </li>
               ))}
             </ul>

@@ -81,7 +81,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends
 
 class AutoReconRequest(BaseModel):
-    target: str
+    target: str | None = None
+    email: str | None = None
     target_type: str = "email"  # "email" or "domain"
     case_id: uuid.UUID
 
@@ -89,9 +90,10 @@ class AutoReconRequest(BaseModel):
 async def trigger_auto_recon(body: AutoReconRequest, db: AsyncSession = Depends(get_db)):
     """Executes automated multi-engine reconnaissance and injects findings into case graph."""
     from app.recon.auto_recon import run_email_auto_recon, run_domain_auto_recon
+    val = (body.target or body.email or "").strip()
     if body.target_type == "domain":
-        return await run_domain_auto_recon(body.target, body.case_id, db)
-    return await run_email_auto_recon(body.target, body.case_id, db)
+        return await run_domain_auto_recon(val, body.case_id, db)
+    return await run_email_auto_recon(val, body.case_id, db)
 
 
 # ---------------------------------------------------------------------------

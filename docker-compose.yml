@@ -18,6 +18,7 @@ services:
 
   api:
     build: ./backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       NETSCRAPER_DATABASE_URL: postgresql+asyncpg://netscraper:netscraper@postgres:5432/netscraper
       NETSCRAPER_TOR_PROXY_URL: socks5://tor:9050
