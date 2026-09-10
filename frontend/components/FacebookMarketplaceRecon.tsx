@@ -4,6 +4,7 @@ import { useState } from "react";
 import { apiGet } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "./SaveToCaseButton";
+import { PinIcon, BoxIcon } from "@/components/FlatIcons";
 
 type FBItem = {
   item_id: string;
@@ -202,9 +203,17 @@ export default function FacebookMarketplaceRecon() {
                     {item.price || "Contact for price"}
                   </div>
                   
-                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: "auto", marginBottom: 8 }}>
-                    {item.location && <div>📍 {item.location}</div>}
-                    {item.delivery && <div>📦 {item.delivery}</div>}
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: "auto", marginBottom: 8, display: "flex", flexDirection: "column", gap: 3 }}>
+                    {item.location && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <PinIcon size={12} color="var(--cyan)" /> {item.location}
+                      </div>
+                    )}
+                    {item.delivery && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <BoxIcon size={12} color="var(--text-muted)" /> {item.delivery}
+                      </div>
+                    )}
                   </div>
                   
                   <div style={{ display: "flex", gap: 8 }}>

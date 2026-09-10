@@ -4,6 +4,7 @@ import { useState } from "react";
 import { apiGet, apiPostJson } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "@/components/SaveToCaseButton";
+import { CheckIcon, CrossIcon, AlertIcon } from "@/components/FlatIcons";
 
 type PhoneMetadata = {
   country: string | null;
@@ -105,7 +106,18 @@ export default function PhoneSearch() {
           <div style={{ flex: 1, minWidth: 200 }}>
             <h4 style={{ margin: "0 0 8px 0" }}>Number Metadata</h4>
             <ul style={{ margin: 0, paddingLeft: 20 }}>
-              <li>Valid: {metadata.is_valid ? "✅ Yes" : "❌ No"}</li>
+              <li style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                Valid:{" "}
+                {metadata.is_valid ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--success)" }}>
+                    <CheckIcon size={12} color="var(--success)" /> Yes
+                  </span>
+                ) : (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--danger)" }}>
+                    <CrossIcon size={12} color="var(--danger)" /> No
+                  </span>
+                )}
+              </li>
               <li>Country: {metadata.country ?? "—"}</li>
               <li>Carrier: {metadata.carrier ?? "—"}</li>
               <li>Line type: {metadata.line_type ?? "—"}</li>
@@ -131,7 +143,15 @@ export default function PhoneSearch() {
                 <strong>WhatsApp:</strong>{" "}
                 {whatsappResult ? (
                   <>
-                    {whatsappResult.exists ? "✅ Has account" : "❌ Does not have account"}{" "}
+                    {whatsappResult.exists ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--success)" }}>
+                        <CheckIcon size={12} color="var(--success)" /> Has account
+                      </span>
+                    ) : (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--text-muted)" }}>
+                        <CrossIcon size={12} color="var(--danger)" /> No account
+                      </span>
+                    )}{" "}
                     {whatsappResult.exists && (
                       <SaveToCaseButton
                         identifierType="phone"
@@ -142,13 +162,21 @@ export default function PhoneSearch() {
                       />
                     )}
                   </>
-                ) : "⏳ Checking..."}
+                ) : "Checking..."}
               </li>
               <li>
                 <strong>Telegram:</strong>{" "}
                 {telegramResult ? (
                   <>
-                    {telegramResult.exists ? "✅ Has account" : "❌ Does not have account"}{" "}
+                    {telegramResult.exists ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--success)" }}>
+                        <CheckIcon size={12} color="var(--success)" /> Has account
+                      </span>
+                    ) : (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--text-muted)" }}>
+                        <CrossIcon size={12} color="var(--danger)" /> No account
+                      </span>
+                    )}{" "}
                     {telegramResult.exists && (
                       <SaveToCaseButton
                         identifierType="phone"
@@ -159,14 +187,16 @@ export default function PhoneSearch() {
                       />
                     )}
                   </>
-                ) : "⏳ Checking..."}
+                ) : "Checking..."}
               </li>
               {fbBreach && (
                 <li>
                   <strong>Facebook 533M:</strong>{" "}
                   {fbBreach.breached ? (
                     <>
-                      🚨 Breached ({fbBreach.message}){" "}
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--danger)" }}>
+                        <AlertIcon size={12} color="var(--danger)" /> Breached ({fbBreach.message})
+                      </span>{" "}
                       <SaveToCaseButton
                         identifierType="phone"
                         identifierValue={phone}
@@ -175,7 +205,11 @@ export default function PhoneSearch() {
                         discoveredBy="checkers.phone.breach"
                       />
                     </>
-                  ) : "✅ Clean"}
+                  ) : (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--success)" }}>
+                      <CheckIcon size={12} color="var(--success)" /> Clean
+                    </span>
+                  )}
                 </li>
               )}
             </ul>
@@ -207,8 +241,22 @@ export default function PhoneSearch() {
           <h4 style={{ margin: "0 0 8px 0" }}>Registrations (Login/Recovery Test)</h4>
           <ul style={{ margin: 0, paddingLeft: 20 }}>
             {platformsResult.platforms.map((p) => (
-              <li key={`${activeCase?.id}-${phone}-${p.service}`}>
-                <strong>{p.service}:</strong> {p.exists ? "✅ Registered" : "❌ Not registered"} {p.rate_limited && "(⚠️ Rate Limited)"}
+              <li key={`${activeCase?.id}-${phone}-${p.service}`} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                <strong>{p.service}:</strong>{" "}
+                {p.exists ? (
+                  <span style={{ color: "#34d399", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <CheckIcon size={12} color="#34d399" /> Registered
+                  </span>
+                ) : (
+                  <span style={{ color: "#94a3b8", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <CrossIcon size={11} color="#94a3b8" /> Not registered
+                  </span>
+                )}
+                {p.rate_limited && (
+                  <span style={{ color: "#f59e0b", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    (<AlertIcon size={11} color="#f59e0b" /> Rate Limited)
+                  </span>
+                )}
               </li>
             ))}
           </ul>

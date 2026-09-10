@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { apiGet, apiPostJson, apiFetch } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
+import { SpiderIcon, KeyIcon } from "@/components/FlatIcons";
 
 type ScrapedSecret = {
   rule_name: string;
@@ -199,8 +200,9 @@ export default function DeepScraperTool() {
       {scrapyResult && (
         <div style={{ marginTop: 20 }}>
           <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
-            <h4 style={{ margin: 0, color: "var(--cyan)" }}>
-              🕷️ Scrapy Crawl Complete: {scrapyResult.pages_crawled} pages analyzed
+            <h4 style={{ margin: 0, color: "var(--cyan)", display: "flex", alignItems: "center", gap: 8 }}>
+              <SpiderIcon size={18} color="var(--cyan)" />
+              Scrapy Crawl Complete: {scrapyResult.pages_crawled} pages analyzed
             </h4>
           </div>
 
@@ -424,8 +426,9 @@ export default function DeepScraperTool() {
           {result.secrets && result.secrets.length > 0 && (
             <div style={{ border: "1px solid #ff0055", padding: 12, background: "rgba(255, 0, 85, 0.05)", borderRadius: 4, gridColumn: "1 / -1" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <h4 style={{ margin: 0, color: "#ff5577" }}>
-                  🔑 Exposed Secrets & API Keys ({result.secrets.length})
+                <h4 style={{ margin: 0, color: "#ff5577", display: "flex", alignItems: "center", gap: 8 }}>
+                  <KeyIcon size={16} color="#ff5577" />
+                  Exposed Secrets &amp; API Keys ({result.secrets.length})
                 </h4>
                 <span style={{ fontSize: 10, color: "var(--text-muted)" }}>
                   Gitleaks / TruffleHog entropy engine

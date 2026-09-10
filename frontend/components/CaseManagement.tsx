@@ -6,6 +6,7 @@ import { useActiveCase } from "@/lib/activeCase";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import CaseFilesDatabank from "./CaseFilesDatabank";
+import { LinkIcon } from "@/components/FlatIcons";
 
 type CaseStatus = "OPEN" | "CLOSED" | "COLD" | "ARCHIVED";
 
@@ -395,9 +396,12 @@ export default function CaseManagement() {
                     </div>
                     {entry.action === "evidence_saved" ? (
                       <div style={{ fontSize: 13, marginTop: 4, background: "var(--panel)", padding: 8, border: "1px solid var(--panel-border)", borderRadius: 4 }}>
-                        🔗 <a href={String(entry.payload.url)} target="_blank" rel="noreferrer" style={{ wordBreak: "break-all" }}>
-                          {String(entry.payload.url)}
-                        </a>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, verticalAlign: "middle" }}>
+                          <LinkIcon size={12} color="var(--cyan)" />
+                          <a href={String(entry.payload.url)} target="_blank" rel="noreferrer" style={{ wordBreak: "break-all" }}>
+                            {String(entry.payload.url)}
+                          </a>
+                        </span>
                         {!!entry.payload.note && <div style={{ color: "var(--text-muted)", marginTop: 4 }}>Note: {String(entry.payload.note)}</div>}
                       </div>
                     ) : (

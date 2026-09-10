@@ -9,6 +9,7 @@ import { bidirectional } from "graphology-shortest-path/unweighted";
 import "@react-sigma/core/lib/style.css";
 import { useActiveCase } from "@/lib/activeCase";
 import { apiGet, apiPostJson } from "@/lib/api";
+import { CheckIcon, CrossIcon, BoltIcon, AlertIcon } from "@/components/FlatIcons";
 
 type NodeData = {
   id: string;
@@ -537,7 +538,11 @@ export default function GraphView() {
                     fontWeight: isChecked ? "bold" : "normal",
                   }}
                 >
-                  <span>{isChecked ? "☑" : "☐"}</span>
+                  {isChecked ? (
+                    <CheckIcon size={12} color="var(--cyan)" />
+                  ) : (
+                    <span style={{ width: 12, height: 12, border: "1px solid var(--text-muted)", display: "inline-block", borderRadius: 2 }} />
+                  )}
                   <span>{c.name}</span>
                 </button>
               );
@@ -557,9 +562,9 @@ export default function GraphView() {
             { id: "all", label: "All Typologies" },
             { id: "identifiers", label: "Targets & IDs" },
             { id: "accounts", label: "Social Accounts" },
-            { id: "geolocations", label: "📍 Geolocations" },
-            { id: "files", label: "📁 Databank Files" },
-            { id: "evidence_secrets", label: "🔑 Evidence & Leaks" },
+            { id: "geolocations", label: "Geolocations" },
+            { id: "files", label: "Databank Files" },
+            { id: "evidence_secrets", label: "Evidence & Leaks" },
           ].map((f) => (
             <button
               key={f.id}
@@ -718,14 +723,16 @@ export default function GraphView() {
       {/* Main Canvas Container with Inspector Drawer */}
       <div style={{ height: "620px", width: "100%", background: "#060812", border: "1px solid var(--cyan)", borderRadius: 8, position: "relative", overflow: "hidden" }}>
         {loading && (
-          <div style={{ position: "absolute", top: 12, left: 12, zIndex: 10, color: "var(--cyan)", fontSize: 13, background: "rgba(6,8,18,0.85)", padding: "6px 12px", borderRadius: 4, border: "1px solid rgba(5,217,232,0.3)" }}>
-            ⚡ Computing ForceAtlas2 Graph Topology...
+          <div style={{ position: "absolute", top: 12, left: 12, zIndex: 10, color: "var(--cyan)", fontSize: 12, background: "rgba(6,8,18,0.85)", padding: "6px 12px", borderRadius: 4, border: "1px solid rgba(5,217,232,0.3)", display: "flex", alignItems: "center", gap: 6 }}>
+            <BoltIcon size={14} color="var(--cyan)" />
+            Computing ForceAtlas2 Graph Topology...
           </div>
         )}
         
         {viewMode === "all" && (
-          <div style={{ position: "absolute", bottom: 12, left: 12, zIndex: 10, color: "var(--danger)", fontSize: 11, background: "rgba(0,0,0,0.8)", padding: "6px 10px", borderRadius: 4, border: "1px solid var(--danger)" }}>
-            🚨 MACRO MULTI-CASE VIEW: Shared identifiers are linked by highlighted correlation lines.
+          <div style={{ position: "absolute", bottom: 12, left: 12, zIndex: 10, color: "var(--danger)", fontSize: 11, background: "rgba(0,0,0,0.8)", padding: "6px 10px", borderRadius: 4, border: "1px solid var(--danger)", display: "flex", alignItems: "center", gap: 6 }}>
+            <AlertIcon size={14} color="var(--danger)" />
+            MACRO MULTI-CASE VIEW: Shared identifiers are linked by highlighted correlation lines.
           </div>
         )}
 
@@ -797,9 +804,9 @@ export default function GraphView() {
               </div>
               <button 
                 onClick={() => setInspectedNodeId(null)}
-                style={{ background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 16 }}
+                style={{ background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center" }}
               >
-                ✕
+                <CrossIcon size={14} color="var(--text-muted)" />
               </button>
             </div>
 
@@ -930,12 +937,12 @@ export default function GraphView() {
             { label: "Company / CNPJ", color: "#9C27B0" },
             { label: "Domain / Network", color: "#00BCD4" },
             { label: "Crypto Wallet", color: "#FFD600" },
-            { label: "📍 Geolocation", color: "#FF0055" },
-            { label: "🔑 Exposed Secret", color: "#FF5500" },
-            { label: "👤 Face Biometric", color: "#E040FB" },
-            { label: "📁 Databank Document", color: "#05D9E8" },
-            { label: "🛡️ Evidence URL", color: "#00FF9F" },
-            { label: "🌐 Social Footprint", color: "#1877F2" },
+            { label: "Geolocation", color: "#FF0055" },
+            { label: "Exposed Secret", color: "#FF5500" },
+            { label: "Face Biometric", color: "#E040FB" },
+            { label: "Databank Document", color: "#05D9E8" },
+            { label: "Evidence URL", color: "#00FF9F" },
+            { label: "Social Footprint", color: "#1877F2" },
           ].map((item) => (
             <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--text)" }}>
               <span style={{ width: 9, height: 9, borderRadius: "50%", background: item.color, display: "inline-block", boxShadow: `0 0 6px ${item.color}` }} />

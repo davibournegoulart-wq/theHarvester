@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { apiGet, apiFetch } from "@/lib/api";
+import { DownloadIcon } from "@/components/FlatIcons";
 
 export type CaseFileItem = {
   id: string;
@@ -500,7 +501,7 @@ export default function CaseFilesDatabank({
                       fontWeight: "bold",
                     }}
                   >
-                    ⬇ Download
+                    <DownloadIcon size={12} color="var(--cyan)" /> Download
                   </a>
                   <button
                     onClick={() => handleDeleteFile(file.id, file.original_filename)}

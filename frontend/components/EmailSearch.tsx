@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { apiFetch, apiGet, apiPostJson, apiPostFormData } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
+import { CheckIcon, CrossIcon, FolderIcon } from "@/components/FlatIcons";
 
 type EmailResult = {
   service: string;
@@ -173,8 +174,17 @@ export default function EmailSearch() {
           <h4 style={{ marginTop: 16, marginBottom: 8 }}>Registrations and Platforms (Login/Recovery Test)</h4>
           <ul style={{ margin: 0 }}>
             {results.map((r) => (
-              <li key={r.service} style={{ marginBottom: 6 }}>
-                <strong>{r.service}</strong>: {r.exists ? "✅ Registered" : "❌ Not registered"}
+              <li key={r.service} style={{ marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                <strong>{r.service}</strong>:{" "}
+                {r.exists ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--success)" }}>
+                    <CheckIcon size={12} color="var(--success)" /> Registered
+                  </span>
+                ) : (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--text-muted)" }}>
+                    <CrossIcon size={12} color="var(--danger)" /> Not registered
+                  </span>
+                )}
               </li>
             ))}
             {results.length === 0 && <li>No service available.</li>}
@@ -234,10 +244,11 @@ Received: from mx.domain.com..."
             {headerLoading ? "Analyzing..." : "Analyze Text"}
           </button>
           <label style={{
-            display: "inline-block", padding: "8px 16px", background: "var(--surface)", 
+            display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 16px", background: "var(--surface)", 
             border: "1px solid var(--border)", cursor: "pointer", textAlign: "center", fontSize: 13, borderRadius: 4
           }}>
-            📁 Upload .eml
+            <FolderIcon size={14} color="var(--cyan)" />
+            Upload .eml
             <input type="file" accept=".eml" style={{ display: "none" }} onChange={handleFileUpload} />
           </label>
         </div>

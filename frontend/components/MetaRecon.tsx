@@ -5,6 +5,7 @@ import FacebookMarketplaceRecon from "./FacebookMarketplaceRecon";
 import FacebookRelationsRecon from "./FacebookRelationsRecon";
 import { apiGet } from "@/lib/api";
 import SaveToCaseButton from "./SaveToCaseButton";
+import { CheckIcon, CrossIcon } from "@/components/FlatIcons";
 
 // The ID Pivot from ToolsPanel
 function FacebookPivot() {
@@ -197,8 +198,17 @@ function WhatsAppRecon() {
           {result.error ? (
             <span style={{ color: "var(--danger)" }}>{result.error}</span>
           ) : (
-            <div style={{ padding: 12, background: "var(--bg-primary)", borderRadius: 4 }}>
-              <strong>Status:</strong> {result.exists ? "✅ Registered on WhatsApp" : "❌ Not registered"}
+            <div style={{ padding: 12, background: "var(--bg-primary)", borderRadius: 4, display: "flex", alignItems: "center", gap: 6 }}>
+              <strong>Status:</strong>{" "}
+              {result.exists ? (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--success)" }}>
+                  <CheckIcon size={12} color="var(--success)" /> Registered on WhatsApp
+                </span>
+              ) : (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--danger)" }}>
+                  <CrossIcon size={12} color="var(--danger)" /> Not registered
+                </span>
+              )}
             </div>
           )}
         </div>

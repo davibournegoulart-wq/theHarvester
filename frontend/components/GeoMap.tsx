@@ -6,6 +6,7 @@ import "leaflet/dist/leaflet.css";
 import { useActiveCase } from "@/lib/activeCase";
 import { apiGet, apiPostJson, apiFetch } from "@/lib/api";
 import { CaseFileItem } from "./CaseFilesDatabank";
+import { MapIcon, PinIcon, PaperclipIcon, LinkIcon } from "@/components/FlatIcons";
 
 // Dynamically import react-leaflet components (Leaflet relies on window/DOM)
 const MapContainer = dynamic(() => import("react-leaflet").then(m => m.MapContainer), { ssr: false });
@@ -180,7 +181,7 @@ export default function GeoMap() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: 16 }}>
         <div>
           <h2 style={{ color: "var(--cyan)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-            <span>🗺️</span> GEOINTELLIGENCE & TRACING MAP
+            <MapIcon size={20} color="var(--cyan)" /> GEOINTELLIGENCE &amp; TRACING MAP
           </h2>
           <p style={{ color: "var(--text-muted)", fontSize: 13, margin: "6px 0 0 0", maxWidth: 750 }}>
             Geospatial tracking of evidence, photo EXIF coordinates, and physical locations linked to case <strong>"{activeCase.name}"</strong>.
@@ -379,7 +380,7 @@ export default function GeoMap() {
             <span>Fetching case coordinates...</span>
           ) : (
             <>
-              <span style={{ fontSize: 32 }}>📍</span>
+              <PinIcon size={36} color="var(--text-muted)" />
               <span>No geolocated coordinates recorded for <strong>{activeCase.name}</strong>.</span>
               <span style={{ fontSize: 12, maxWidth: 500, textAlign: "center" }}>
                 Extract GPS coordinates from images via <strong>TOOLS &gt; Image EXIF</strong>, or click <strong>+ Pin Geolocation</strong> to pinpoint where documents and links were found.
@@ -461,8 +462,8 @@ export default function GeoMap() {
                           border: "1px solid #d0d7de",
                         }}
                       >
-                        <div style={{ fontWeight: "bold", color: "#0969da" }}>
-                          📎 Pinned Document:
+                        <div style={{ fontWeight: "bold", color: "#0969da", display: "flex", alignItems: "center", gap: 4 }}>
+                          <PaperclipIcon size={12} color="#0969da" /> Pinned Document:
                         </div>
                         <div style={{ fontSize: 11 }}>{p.attached_file.original_filename}</div>
                         <a
@@ -545,18 +546,18 @@ export default function GeoMap() {
                           href={getDownloadUrl(pt.attached_file.id)}
                           target="_blank"
                           rel="noreferrer"
-                          style={{ color: "var(--cyan)", textDecoration: "underline" }}
+                          style={{ color: "var(--cyan)", textDecoration: "underline", display: "inline-flex", alignItems: "center", gap: 4 }}
                         >
-                          📎 {pt.attached_file.original_filename}
+                          <PaperclipIcon size={12} color="var(--cyan)" /> {pt.attached_file.original_filename}
                         </a>
                       ) : pt.source_url ? (
                         <a
                           href={pt.source_url}
                           target="_blank"
                           rel="noreferrer"
-                          style={{ color: "var(--accent)" }}
+                          style={{ color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 4 }}
                         >
-                          🔗 Source Link
+                          <LinkIcon size={12} color="var(--accent)" /> Source Link
                         </a>
                       ) : (
                         <span style={{ color: "var(--text-muted)" }}>—</span>

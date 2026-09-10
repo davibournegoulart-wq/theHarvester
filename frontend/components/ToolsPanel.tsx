@@ -6,6 +6,7 @@ import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "@/components/SaveToCaseButton";
 import DeepScraperTool from "./DeepScraperTool";
 import ImageMagnifier from "./ImageMagnifier";
+import { CheckIcon, KeyIcon, ShieldIcon, AlertIcon } from "@/components/FlatIcons";
 
 type ReverseImageLink = { engine: string; search_url: string };
 type PasswordBreachResult = { times_seen: number };
@@ -352,7 +353,15 @@ function ImageExifTool() {
                   fontWeight: "bold",
                 }}
               >
-                {pinned ? "✓ Pinned to Case Geointelligence Map" : pinning ? "Pinning & Storing..." : "+ Pin Location & Photo to Active Case Map"}
+                {pinned ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <CheckIcon size={12} color="#000" /> Pinned to Case Geointelligence Map
+                  </span>
+                ) : pinning ? (
+                  "Pinning & Storing..."
+                ) : (
+                  "+ Pin Location & Photo to Active Case Map"
+                )}
               </button>
               {!activeCase && <span style={{ fontSize: 11, color: "var(--warning)", marginLeft: 8 }}>(Select an active case first)</span>}
             </div>
@@ -467,10 +476,160 @@ function PasswordBreachTool() {
   );
 }
 
+function GitleaksTruffleHogTool() {
+  const [text, setText] = useState("");
+  const [entropyThreshold, setEntropyThreshold] = useState(3.2);
+  const [result, setResult] = useState<{ total_findings: number; findings: any[] } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleScan() {
+    if (!text.trim()) return;
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const data = await apiPostJson<{ total_findings: number; findings: any[] }>("/recon/secrets/scan", {
+        text: text.trim(),
+        entropy_threshold: entropyThreshold,
+      });
+      setResult(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error scanning for credentials");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 32, borderTop: "1px solid var(--panel-border)", paddingTop: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <KeyIcon size={16} color="var(--cyan)" />
+        <h3 style={{ margin: 0, color: "var(--cyan)" }}>
+          Secret &amp; Credential Scanner (Gitleaks + TruffleHog)
+        </h3>
+      </div>
+      <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+        Scans code snippets, config files, pastes, and API responses for exposed credentials, AWS keys, GitHub PATs, private keys, and high-entropy secrets.
+      </p>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 800 }}>
+        <textarea
+          rows={6}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Paste raw text, configuration files, Git commit diffs, or env dumps here..."
+          style={{ width: "100%", padding: 10, fontSize: 13, fontFamily: "monospace" }}
+        />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11, color: "var(--text-muted)" }}>
+            <span>Entropy Threshold: {entropyThreshold}</span>
+            <input
+              type="range"
+              min="2.0"
+              max="5.0"
+              step="0.2"
+              value={entropyThreshold}
+              onChange={(e) => setEntropyThreshold(parseFloat(e.target.value))}
+            />
+          </div>
+          <button onClick={handleScan} disabled={loading || !text.trim()} style={{ fontWeight: "bold", minWidth: 160 }}>
+            {loading ? "SCANNING TOKENS..." : "SCAN SECRETS"}
+          </button>
+        </div>
+      </div>
+
+      {error && <p style={{ color: "var(--danger)", marginTop: 8 }}>{error}</p>}
+
+      {result && (
+        <div style={{ marginTop: 16, maxWidth: 800 }}>
+          <div
+            style={{
+              padding: "8px 12px",
+              background: result.total_findings > 0 ? "rgba(255, 0, 85, 0.12)" : "rgba(0, 255, 159, 0.1)",
+              border: result.total_findings > 0 ? "1px solid #ff0055" : "1px solid #00ff9f",
+              color: result.total_findings > 0 ? "#ff7799" : "#00ff9f",
+              fontSize: 12,
+              fontWeight: "bold",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            {result.total_findings > 0 ? (
+              <>
+                <AlertIcon size={14} color="#ff0055" />
+                FOUND {result.total_findings} POTENTIAL EXPOSED SECRET(S)
+              </>
+            ) : (
+              <>
+                <CheckIcon size={14} color="#00ff9f" />
+                NO KNOWN SECRETS OR EXPOSED TOKENS DETECTED
+              </>
+            )}
+          </div>
+
+          {result.findings.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+              {result.findings.map((f, i) => (
+                <div
+                  key={i}
+                  style={{
+                    background: "var(--surface)",
+                    border: "1px solid var(--border)",
+                    padding: 10,
+                    borderRadius: 4,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: "bold",
+                        padding: "1px 5px",
+                        borderRadius: 3,
+                        background: f.severity === "CRITICAL" ? "rgba(255, 0, 85, 0.2)" : "rgba(255, 170, 51, 0.2)",
+                        color: f.severity === "CRITICAL" ? "#ff5577" : "#ffaa33",
+                        marginRight: 8,
+                      }}
+                    >
+                      {f.severity}
+                    </span>
+                    <strong style={{ fontSize: 12, color: "#fff" }}>{f.rule}</strong>
+                    <div style={{ fontSize: 12, fontFamily: "monospace", color: "var(--cyan)", marginTop: 4 }}>
+                      Value: {f.masked_value}
+                    </div>
+                  </div>
+                  <SaveToCaseButton
+                    identifierType="corporate"
+                    identifierValue={`${f.rule}: ${f.masked_value}`}
+                    platform="secret_scanner"
+                    discoveredBy="gitleaks"
+                    metadata={{
+                      rule: f.rule,
+                      severity: f.severity,
+                      entropy: f.entropy,
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ToolsPanel() {
   return (
     <div>
       <DeepScraperTool />
+      <GitleaksTruffleHogTool />
       <ReverseImageTool />
       <ImageExifTool />
       <DocumentMetadataTool />

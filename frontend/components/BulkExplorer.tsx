@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { apiGet } from "@/lib/api";
+import { FolderIcon, SearchIcon } from "@/components/FlatIcons";
 
 type DatasetPreview = {
   columns: string[];
@@ -41,7 +42,7 @@ export default function BulkExplorer() {
     try {
       setPreview(await apiGet<DatasetPreview>(`/bulk/inspect?path=${encodeURIComponent(path)}`));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro ao inspecionar arquivo");
+      setError(e instanceof Error ? e.message : "Error inspecting file");
       setPreview(null);
     } finally {
       setLoading(false);
@@ -80,34 +81,36 @@ export default function BulkExplorer() {
 
   return (
     <div>
-      <h3>Explorador de dump/CSV</h3>
-      <p style={{ fontSize: 12 }}>
-        Coloque o arquivo em <code>data/bulk_uploads/</code> (mapeado como volume no compose) e informe o caminho
-        dentro do container, ex: <code>/data/bulk_uploads/dump.csv</code>.
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <FolderIcon size={18} color="var(--cyan)" />
+        <h3 style={{ margin: 0 }}>Dump & CSV Dataset Explorer</h3>
+      </div>
+      <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 14 }}>
+        Place datasets or breach dumps inside <code>data/bulk_uploads/</code> (mounted volume) and specify the container path, e.g.: <code>/data/bulk_uploads/dump.csv</code>.
       </p>
       <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
         <input value={path} onChange={(e) => setPath(e.target.value)} style={{ flex: 1, padding: 8 }} />
-        <button onClick={handleInspect} disabled={loading}>
-          Inspecionar
+        <button onClick={handleInspect} disabled={loading} style={{ padding: "8px 16px" }}>
+          {loading ? "Inspecting..." : "Inspect"}
         </button>
       </div>
       {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
 
       {preview && (
         <>
-          <p style={{ fontSize: 13 }}>
-            {preview.row_count} linha(s) · colunas: {preview.columns.join(", ")}
+          <p style={{ fontSize: 13, color: "var(--cyan)", fontWeight: 500 }}>
+            {preview.row_count.toLocaleString()} row(s) detected &middot; columns: {preview.columns.join(", ")}
           </p>
           <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
             <input
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleFilter()}
-              placeholder="filtrar (busca full-text em qualquer coluna)"
+              placeholder="Filter (full-text search across any column)..."
               style={{ flex: 1, padding: 8 }}
             />
-            <button onClick={handleFilter} disabled={loading}>
-              Filtrar
+            <button onClick={handleFilter} disabled={loading} style={{ padding: "8px 16px" }}>
+              Filter
             </button>
           </div>
           <div style={{ overflowX: "auto" }}>
@@ -137,17 +140,17 @@ export default function BulkExplorer() {
         </>
       )}
 
-      <h3 style={{ marginTop: 32 }}>Monitor de paste site (Pastebin)</h3>
-      <p style={{ fontSize: 12 }}>Busca keyword no archive público — pode ficar instável sob rate-limit do Pastebin.</p>
+      <h3 style={{ marginTop: 32 }}>Paste Site Monitor (Pastebin)</h3>
+      <p style={{ fontSize: 12, color: "var(--text-muted)" }}>Search keyword across public paste archives — may be throttled under public Pastebin rate-limits.</p>
       <div style={{ display: "flex", gap: 8 }}>
         <input
           value={keywords}
           onChange={(e) => setKeywords(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handlePasteScan()}
-          placeholder="comma-separated keywords"
+          placeholder="comma-separated keywords..."
           style={{ flex: 1, padding: 8 }}
         />
-        <button onClick={handlePasteScan} disabled={loading}>
+        <button onClick={handlePasteScan} disabled={loading} style={{ padding: "8px 16px" }}>
           {loading ? "Searching..." : "Search"}
         </button>
       </div>
@@ -165,8 +168,8 @@ export default function BulkExplorer() {
         </ul>
       )}
 
-      <h3 style={{ marginTop: 32 }}>Monitor dark web (Ahmia via Tor)</h3>
-      <p style={{ fontSize: 12 }}>
+      <h3 style={{ marginTop: 32 }}>Dark Web Monitor (Ahmia via Tor)</h3>
+      <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
         Requires the <code>tor</code> compose container to be running. Onion services go down frequently — empty results
         may indicate instability on their end, not a bug.
       </p>

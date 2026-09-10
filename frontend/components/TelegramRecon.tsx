@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { apiGet } from "@/lib/api";
 import SaveToCaseButton from "./SaveToCaseButton";
+import { CheckIcon } from "@/components/FlatIcons";
 
 type TelegramDeepData = {
   username: string;
@@ -111,7 +112,9 @@ export default function TelegramRecon() {
                       {result.deep.title || `@${result.query}`}
                     </h3>
                     {result.deep.is_verified && (
-                      <span style={{ color: "#0088cc", fontSize: 14 }} title="Verified Channel">✓ VERIFIED</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#0088cc", fontSize: 12, fontWeight: "bold" }} title="Verified Channel">
+                        <CheckIcon size={12} color="#0088cc" /> VERIFIED
+                      </span>
                     )}
                   </div>
                   <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
@@ -169,8 +172,15 @@ export default function TelegramRecon() {
                   </h4>
                   <div style={{ padding: "10px 14px", background: "var(--bg-primary)", borderRadius: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
-                      <span style={{ fontSize: 13 }}>
-                        Status in TGStat Directory: <strong>{result.deep.tgstat_info.indexed ? "✓ Indexed & Tracked" : "Not yet indexed"}</strong>
+                      <span style={{ fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        Status in TGStat Directory:{" "}
+                        {result.deep.tgstat_info.indexed ? (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--success)" }}>
+                            <CheckIcon size={12} color="var(--success)" /> Indexed &amp; Tracked
+                          </span>
+                        ) : (
+                          <strong>Not yet indexed</strong>
+                        )}
                       </span>
                       {result.deep.tgstat_info.title && (
                         <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>

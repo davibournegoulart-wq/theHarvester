@@ -4,6 +4,7 @@ import { useState } from "react";
 import { apiGet } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "./SaveToCaseButton";
+import { StarIcon, BoltIcon } from "@/components/FlatIcons";
 
 type AccountResult = {
   platform: string;
@@ -134,7 +135,10 @@ export default function UsernameSearch() {
               cursor: "pointer",
             }}
           >
-            ★ Sherlock Project Core (430+ sites)
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <StarIcon size={12} color={mode === "sherlock" ? "var(--cyan)" : "var(--text-muted)"} />
+              Sherlock Project Core (430+ sites)
+            </span>
           </button>
         </div>
       </div>
@@ -207,7 +211,9 @@ export default function UsernameSearch() {
 
         {mode === "sherlock" && (
           <div style={{ fontSize: 11, color: "var(--cyan)", display: "flex", alignItems: "center", gap: 6 }}>
-            <span>⚡ Sherlock Official Engine:</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <BoltIcon size={12} color="var(--cyan)" /> Sherlock Official Engine:
+            </span>
             <span style={{ color: "var(--text-muted)" }}>
               Scans all 431 registered platforms including GitHub, GitLab, Twitter, Reddit, TikTok, OnlyFans, Telegram, Steam, Spotify, and 400+ others.
             </span>

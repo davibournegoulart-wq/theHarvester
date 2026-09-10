@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { apiGet } from "@/lib/api";
+import { CheckIcon } from "@/components/FlatIcons";
 
 type Tool = {
   id: string;
@@ -141,7 +142,13 @@ export default function OsintArsenal() {
               fontWeight: "bold",
             }}
           >
-            {filterNativeOnly ? "✓ Showing Native In-App Only" : "Filter: Native In-App Modules"}
+            {filterNativeOnly ? (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <CheckIcon size={13} color="var(--cyan)" /> Showing Native In-App Only
+              </span>
+            ) : (
+              "Filter: Native In-App Modules"
+            )}
           </button>
           <span className="badge" style={{ background: "rgba(5, 217, 232, 0.1)", color: "var(--cyan)", padding: "6px 12px", fontSize: 13 }}>
             {displayedTools.length} {filterNativeOnly ? "Native Tools" : "Total Tools"}

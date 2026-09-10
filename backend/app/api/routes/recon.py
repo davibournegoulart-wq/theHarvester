@@ -72,7 +72,8 @@ async def scrapy_crawl_endpoint(body: ScrapyCrawlRequest):
 
 
 # ---------------------------------------------------------------------------
-# Auto-Recon (Cross-Correlation)
+# ---------------------------------------------------------------------------
+# Auto-Recon (reconFTW + ReconSpider + SpiderFoot synthesis)
 # ---------------------------------------------------------------------------
 import uuid
 from app.db import get_db
@@ -80,14 +81,45 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends
 
 class AutoReconRequest(BaseModel):
-    email: str
+    target: str
+    target_type: str = "email"  # "email" or "domain"
     case_id: uuid.UUID
 
 @router.post("/auto-recon")
 async def trigger_auto_recon(body: AutoReconRequest, db: AsyncSession = Depends(get_db)):
-    """Executa a correlação cruzada ativa e salva no caso."""
-    from app.recon.auto_recon import run_email_auto_recon
-    return await run_email_auto_recon(body.email, body.case_id, db)
+    """Executes automated multi-engine reconnaissance and injects findings into case graph."""
+    from app.recon.auto_recon import run_email_auto_recon, run_domain_auto_recon
+    if body.target_type == "domain":
+        return await run_domain_auto_recon(body.target, body.case_id, db)
+    return await run_email_auto_recon(body.target, body.case_id, db)
+
+
+# ---------------------------------------------------------------------------
+# EyeWitness, Gowitness, Breacher, RED_HAWK, Gitleaks, TruffleHog Endpoints
+# ---------------------------------------------------------------------------
+from app.recon.visual_inspector import audit_web_visual_and_headers
+from app.recon.web_exposure import scan_web_exposure
+from app.recon.secret_scanner import scan_text_for_secrets
+
+class SecretScanRequest(BaseModel):
+    text: str
+    entropy_threshold: float = 3.2
+
+@router.get("/visual/audit")
+async def visual_audit_endpoint(target: str, use_tor: bool = False):
+    """EyeWitness & Gowitness visual web inspection, security headers, and tech signatures."""
+    return await audit_web_visual_and_headers(target, use_tor)
+
+@router.get("/web/exposure")
+async def web_exposure_endpoint(target: str, use_tor: bool = False):
+    """Breacher & RED_HAWK admin panel hunter and exposure scan."""
+    return await scan_web_exposure(target, use_tor)
+
+@router.post("/secrets/scan")
+async def secret_scan_endpoint(body: SecretScanRequest):
+    """Gitleaks & TruffleHog secret, token and credential scanner."""
+    findings = scan_text_for_secrets(body.text, body.entropy_threshold)
+    return {"total_findings": len(findings), "findings": findings}
 
 
 # ---------------------------------------------------------------------------
