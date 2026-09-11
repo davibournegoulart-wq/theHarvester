@@ -523,89 +523,118 @@ export default function CaseManagement() {
                 )}
                 <span style={{ fontSize: 14, color: "var(--text-muted)", fontWeight: "normal" }}>({selected.status})</span>
               </h3>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button
-                  onClick={() => handleExportZip(selected)}
-                  disabled={loading}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    background: "rgba(0, 255, 159, 0.12)",
-                    borderColor: "#00FF9F",
-                    color: "#00FF9F",
-                    fontWeight: "bold",
-                    cursor: "pointer",
-                  }}
-                  title="Export complete case dossier and all files to hard drive in ZIP format"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                  </svg>
-                  EXPORT ZIP
-                </button>
-                <button onClick={generateSTIX} disabled={loading} style={{ display: "flex", alignItems: "center", background: "rgba(156,39,176,0.1)", borderColor: "#9C27B0", color: "#9C27B0", fontWeight: "bold" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg> STIX 2.1
-                </button>
-                <button onClick={generatePDF} disabled={loading} style={{ display: "flex", alignItems: "center", background: "rgba(5,217,232,0.1)", borderColor: "var(--cyan)", fontWeight: "bold" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> PDF
-                </button>
-                <button
-                  onClick={() => setIsMerging(!isMerging)}
-                  disabled={loading || cases.filter((c) => c.id !== selected.id).length === 0}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    background: isMerging ? "rgba(0, 255, 100, 0.2)" : "rgba(0, 255, 100, 0.08)",
-                    borderColor: "#00ff66",
-                    color: "#00ff66",
-                    fontWeight: "bold",
-                  }}
-                  title="Merge findings from another case into this one"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="18" cy="18" r="3" />
-                    <circle cx="6" cy="6" r="3" />
-                    <path d="M6 21V9a9 9 0 0 0 9 9" />
-                  </svg>
-                  Merge Case
-                </button>
-                {selected.status === "OPEN" ? (
-                  <>
-                    <button onClick={() => handleChangeStatus(selected, "CLOSED")} disabled={loading} style={{ borderColor: "var(--success)", color: "var(--success)" }}>
-                      Close Case
-                    </button>
-                    <button onClick={() => handleChangeStatus(selected, "COLD")} disabled={loading} style={{ borderColor: "var(--text-muted)", color: "var(--text-muted)" }}>
-                      Mark as Cold
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => handleChangeStatus(selected, "OPEN")}
-                      disabled={loading}
-                      style={{
-                        borderColor: "var(--cyan)",
-                        color: "var(--cyan)",
-                        background: "rgba(5, 217, 232, 0.15)",
-                        fontWeight: "bold",
-                        boxShadow: "0 0 8px rgba(5, 217, 232, 0.4)",
-                      }}
-                    >
-                      Reopen Case
-                    </button>
-                    {selected.status !== "COLD" && (
-                      <button onClick={() => handleChangeStatus(selected, "COLD")} disabled={loading} style={{ borderColor: "var(--text-muted)", color: "var(--text-muted)" }}>
-                        Mark as Cold
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                {/* Group 1: Forensic Exports */}
+                <div style={{ display: "inline-flex", gap: 6, alignItems: "center", background: "rgba(255,255,255,0.02)", padding: "4px 6px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <button
+                    onClick={() => handleExportZip(selected)}
+                    disabled={loading}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      background: "rgba(0, 255, 159, 0.14)",
+                      borderColor: "#00FF9F",
+                      color: "#00FF9F",
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                      padding: "6px 12px",
+                      fontSize: 12,
+                      boxShadow: "0 0 10px rgba(0, 255, 159, 0.2)",
+                    }}
+                    title="Export complete case dossier and all files to hard drive in ZIP format"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    EXPORT ZIP
+                  </button>
+                  <button onClick={generateSTIX} disabled={loading} style={{ display: "flex", alignItems: "center", background: "rgba(156,39,176,0.12)", borderColor: "#9C27B0", color: "#9C27B0", fontWeight: "bold", padding: "6px 10px", fontSize: 12 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg> STIX 2.1
+                  </button>
+                  <button onClick={generatePDF} disabled={loading} style={{ display: "flex", alignItems: "center", background: "rgba(5,217,232,0.12)", borderColor: "var(--cyan)", fontWeight: "bold", padding: "6px 10px", fontSize: 12 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> PDF
+                  </button>
+                </div>
+
+                {/* Group 2: Tactical Operations & Status */}
+                <div style={{ display: "inline-flex", gap: 6, alignItems: "center", background: "rgba(255,255,255,0.02)", padding: "4px 6px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <button
+                    onClick={() => setIsMerging(!isMerging)}
+                    disabled={loading || cases.filter((c) => c.id !== selected.id).length === 0}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      background: isMerging ? "rgba(0, 255, 100, 0.2)" : "rgba(0, 255, 100, 0.08)",
+                      borderColor: "#00ff66",
+                      color: "#00ff66",
+                      fontWeight: "bold",
+                      padding: "6px 10px",
+                      fontSize: 12,
+                    }}
+                    title="Merge findings from another case into this one"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="18" cy="18" r="3" />
+                      <circle cx="6" cy="6" r="3" />
+                      <path d="M6 21V9a9 9 0 0 0 9 9" />
+                    </svg>
+                    Merge
+                  </button>
+                  {selected.status === "OPEN" ? (
+                    <>
+                      <button onClick={() => handleChangeStatus(selected, "CLOSED")} disabled={loading} style={{ borderColor: "var(--success)", color: "var(--success)", padding: "6px 10px", fontSize: 12 }}>
+                        Close
                       </button>
-                    )}
-                  </>
-                )}
-                <button onClick={() => handleDelete(selected)} disabled={loading} style={{ borderColor: "var(--danger)", color: "var(--danger)", background: "rgba(255,0,0,0.1)" }}>
-                  Delete
-                </button>
+                      <button onClick={() => handleChangeStatus(selected, "COLD")} disabled={loading} style={{ borderColor: "var(--text-muted)", color: "var(--text-muted)", padding: "6px 10px", fontSize: 12 }}>
+                        Mark Cold
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => handleChangeStatus(selected, "OPEN")}
+                        disabled={loading}
+                        style={{
+                          borderColor: "var(--cyan)",
+                          color: "var(--cyan)",
+                          background: "rgba(5, 217, 232, 0.15)",
+                          fontWeight: "bold",
+                          boxShadow: "0 0 8px rgba(5, 217, 232, 0.4)",
+                          padding: "6px 10px",
+                          fontSize: 12,
+                        }}
+                      >
+                        Reopen
+                      </button>
+                      {selected.status !== "COLD" && (
+                        <button onClick={() => handleChangeStatus(selected, "COLD")} disabled={loading} style={{ borderColor: "var(--text-muted)", color: "var(--text-muted)", padding: "6px 10px", fontSize: 12 }}>
+                          Mark Cold
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Group 3: Danger Zone */}
+                <div style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+                  <button
+                    onClick={() => handleDelete(selected)}
+                    disabled={loading}
+                    style={{
+                      borderColor: "var(--danger)",
+                      color: "var(--danger)",
+                      background: "rgba(255,0,0,0.08)",
+                      padding: "6px 12px",
+                      fontSize: 12,
+                    }}
+                    title="Move case to 30-day trash bin"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
 
