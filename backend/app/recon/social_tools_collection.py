@@ -1413,6 +1413,34 @@ ALL_TOOLS: List[Dict[str, Any]] = [
         "url": "https://grep.app/",
         "category": "Code & Secrets Search",
         "description": "Lightning-fast regex search across half a million public Git repositories."
+    },
+    {
+        "platform": "Social Media Monitoring",
+        "name": "Hootsuite",
+        "url": "https://www.hootsuite.com/",
+        "category": "Auditing & Analytics",
+        "description": "Social media management and multi-stream real-time monitoring platform for tracking mentions, campaigns, and team response workflows."
+    },
+    {
+        "platform": "Social Media Monitoring",
+        "name": "Buffer",
+        "url": "https://buffer.com/",
+        "category": "Activity & Tracking",
+        "description": "Scheduling and monitoring of social media activity, analyzing posting cadence, audience engagement rates, and peak publishing windows."
+    },
+    {
+        "platform": "Social Media Monitoring",
+        "name": "Brandwatch",
+        "url": "https://www.brandwatch.com/",
+        "category": "Auditing & Analytics",
+        "description": "Leading social listening and consumer intelligence platform monitoring conversations across 100M+ web sources with real-time spike alerts and AI sentiment radar."
+    },
+    {
+        "platform": "Social Media Monitoring",
+        "name": "Audiense",
+        "url": "https://www.audiense.com/",
+        "category": "Audience & Valuation",
+        "description": "Advanced audience segmentation and Twitter/X analytics identifying community tribe clusters, socio-demographic traits, and social graph connections."
     }
 ]
 

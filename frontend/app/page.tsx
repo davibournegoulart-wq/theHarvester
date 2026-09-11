@@ -27,6 +27,7 @@ import VkRecon from "@/components/VkRecon";
 import YouTubeRecon from "@/components/YouTubeRecon";
 import XRecon from "@/components/XRecon";
 import FaceBiometricsRecon from "@/components/FaceBiometricsRecon";
+import SocialAnalyticsRecon from "@/components/SocialAnalyticsRecon";
 import { ActiveCaseProvider } from "@/lib/activeCase";
 import {
   NetScraperLogo,
@@ -47,6 +48,7 @@ import {
   VkIcon,
   YouTubeIcon,
   XIcon,
+  BarChartIcon,
 } from "@/components/FlatIcons";
 
 export default function Home() {
@@ -100,6 +102,7 @@ export default function Home() {
                 { label: "VKONTAKTE", icon: <VkIcon size={13} />, content: <VkRecon /> },
                 { label: "YOUTUBE", icon: <YouTubeIcon size={13} />, content: <YouTubeRecon /> },
                 { label: "X (TWITTER)", icon: <XIcon size={13} />, content: <XRecon /> },
+                { label: "ANALYTICS & MONITORING", icon: <BarChartIcon size={13} />, content: <SocialAnalyticsRecon /> },
                 { label: "DARK WEB", icon: <ShieldIcon size={13} />, content: <DarkWebSearch /> },
                 { label: "CRYPTO", icon: <BoltIcon size={13} />, content: <CryptoTrace /> },
                 { label: "GRAPH", icon: <RadarIcon size={13} />, content: <GraphView /> },

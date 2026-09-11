@@ -1184,6 +1184,101 @@ async def x_attach_evidence(
     }
 
 
+# ---------------------------------------------------------------------------
+# Social Media Analytics & Monitoring Engine
+# ---------------------------------------------------------------------------
+
+@router.get("/social-analytics/analyze")
+async def social_analytics_analyze(
+    target: str,
+    query_type: str = "keyword",
+    limit: int = 50,
+    use_tor: bool = False,
+):
+    """Executes multi-platform stream discovery, sentiment radar, threat levels, and posting cadence analytics."""
+    from app.recon.social_analytics import run_social_media_analytics
+    return await run_social_media_analytics(
+        target=target,
+        query_type=query_type,
+        limit=limit,
+        use_tor=use_tor,
+    )
+
+
+@router.get("/social-analytics/tools")
+async def social_analytics_tools():
+    """Returns curated Social Media Monitoring & Analytics platforms (Hootsuite, Buffer, Brandwatch, Audiense)."""
+    from app.recon.social_analytics import MONITORING_PLATFORMS
+    return {"tools": MONITORING_PLATFORMS}
+
+
+@router.post("/social-analytics/attach-evidence")
+async def social_analytics_attach_evidence(
+    case_id: uuid.UUID,
+    target: str,
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    """Attaches a full social media analytics forensic report to the active case file vault."""
+    from app.models.case import Case, CaseFile
+    from app.case.incident import log_action
+
+    case = await db.get(Case, case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    storage_dir = "/data/case_files"
+    os.makedirs(storage_dir, exist_ok=True)
+
+    file_id = uuid.uuid4()
+    filename = f"social_analytics_{re.sub(r'[^a-zA-Z0-9_-]', '_', target)}.json"
+    safe_stored_name = f"{case_id}_{file_id}.json"
+    dest_path = os.path.join(storage_dir, safe_stored_name)
+
+    import json
+    content_str = json.dumps(payload, indent=2, ensure_ascii=False)
+    content_bytes = content_str.encode("utf-8")
+
+    with open(dest_path, "wb") as f:
+        f.write(content_bytes)
+
+    case_file = CaseFile(
+        id=file_id,
+        case_id=case_id,
+        filename=safe_stored_name,
+        original_filename=filename,
+        typology="document",
+        source_url=f"internal://social-analytics/{target}",
+        file_size=len(content_bytes),
+        mime_type="application/json",
+        storage_path=dest_path,
+    )
+    db.add(case_file)
+    await db.commit()
+    await db.refresh(case_file)
+
+    await log_action(
+        db,
+        case_id,
+        actor="SocialMediaAnalytics",
+        action="analytics_dossier_vaulted",
+        payload={
+            "target": target,
+            "filename": filename,
+            "total_mentions": payload.get("total_mentions", 0),
+            "threat_level": payload.get("threat_level", "ROUTINE"),
+        },
+    )
+
+    return {
+        "status": "success",
+        "file_id": str(file_id),
+        "filename": safe_stored_name,
+        "original_filename": filename,
+        "file_size": len(content_bytes),
+    }
+
+
 
 
 
