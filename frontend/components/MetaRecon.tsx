@@ -3,7 +3,9 @@
 import { useState } from "react";
 import FacebookMarketplaceRecon from "./FacebookMarketplaceRecon";
 import FacebookRelationsRecon from "./FacebookRelationsRecon";
+import FacebookStalkerTool from "./FacebookStalkerTool";
 import InstaLooterTool from "./InstaLooterTool";
+import OsintgramTool from "./OsintgramTool";
 import { apiGet } from "@/lib/api";
 import SaveToCaseButton from "./SaveToCaseButton";
 import { CheckIcon, CrossIcon } from "@/components/FlatIcons";
@@ -263,6 +265,7 @@ export default function MetaRecon() {
       <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
         {activeSubTab === "facebook" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            <FacebookStalkerTool />
             <FacebookPivot />
             <div style={{ border: "1px solid var(--border)", borderRadius: 6, overflow: "hidden" }}>
               <div style={{ padding: "8px 16px", background: "rgba(255,255,255,0.05)", borderBottom: "1px solid var(--border)", fontWeight: "bold" }}>
@@ -281,8 +284,9 @@ export default function MetaRecon() {
 
         {activeSubTab === "instagram" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            <InstagramRecon />
+            <OsintgramTool />
             <InstaLooterTool />
+            <InstagramRecon />
           </div>
         )}
 

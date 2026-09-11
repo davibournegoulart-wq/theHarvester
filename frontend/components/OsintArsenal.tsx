@@ -55,6 +55,12 @@ const NATIVE_TOOL_MAP: Record<string, { tab: string; feature: string }> = {
   "instalooter": { tab: "META (FB/IG/WA)", feature: "InstaLooter Profile, Post, and Media Scraping Suite" },
   "insta-looter": { tab: "META (FB/IG/WA)", feature: "Clojure-adapted Instagram Profile & Post Looting API" },
   "ofxinstalooter": { tab: "META (FB/IG/WA)", feature: "Interactive Media Looting & Case Databank Attachment UI" },
+  "facebook-stalker": { tab: "META (FB/IG/WA)", feature: "Facebook-Stalker Profile & Social Closeness Weight Matrix" },
+  "osintgram": { tab: "META (FB/IG/WA)", feature: "Osintgram Deep Instagram Shell & AI Scene Reconnaissance" },
+  "instaloader": { tab: "META (FB/IG/WA)", feature: "Instaloader Post, Reel, Highlight & Media Downloader" },
+  "linkdtime": { tab: "CORPORATE", feature: "LinkdTime 41-bit Snowflake LinkedIn Activity Timelines" },
+  "social-media-osint-tools-collection": { tab: "TOOLS", feature: "165+ Social Media OSINT Tools Directory across 15+ networks" },
+  "social-osint": { tab: "TOOLS", feature: "Social Media OSINT Tools Collection" },
 };
 
 function getNativeEquivalent(tool: Tool) {

@@ -29,3 +29,4 @@ pic2map>=0.1.0
 exifread>=3.5.0
 setuptools<70
 instalooter>=2.4.4
+instaloader>=4.14.0

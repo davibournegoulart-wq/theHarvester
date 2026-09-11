@@ -4,6 +4,8 @@ import { useState } from "react";
 import { apiGet } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "@/components/SaveToCaseButton";
+import LinkdTimeTool from "./LinkdTimeTool";
+import { LinkedinIcon } from "./FlatIcons";
 
 type CompanyInfo = {
   cnpj: string;
@@ -50,7 +52,7 @@ type GlobalCorporateResult = {
 
 export default function CorporateSearch() {
   const { activeCase } = useActiveCase();
-  const [subTab, setSubTab] = useState<"global" | "cnpj">("global");
+  const [subTab, setSubTab] = useState<"global" | "cnpj" | "linkedin">("global");
 
   // Global search state
   const [globalQuery, setGlobalQuery] = useState("");
@@ -146,6 +148,25 @@ export default function CorporateSearch() {
             <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
           </svg>
           BRAZIL CNPJ (RECEITA FEDERAL)
+        </button>
+        <button
+          onClick={() => setSubTab("linkedin")}
+          style={{
+            padding: "8px 16px",
+            background: "transparent",
+            border: "none",
+            borderBottom: subTab === "linkedin" ? "2px solid #0077b5" : "2px solid transparent",
+            color: subTab === "linkedin" ? "#70b5f9" : "var(--text-muted)",
+            fontWeight: subTab === "linkedin" ? "bold" : "normal",
+            cursor: "pointer",
+            fontSize: 14,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <LinkedinIcon size={16} color={subTab === "linkedin" ? "#70b5f9" : "var(--text-muted)"} />
+          LINKEDIN FORENSICS &amp; TIMELINES (LINKDTIME)
         </button>
       </div>
 
@@ -440,6 +461,14 @@ export default function CorporateSearch() {
           )}
         </div>
       )}
+
+      {/* LinkedIn Forensics & Timelines (LinkdTime) */}
+      {subTab === "linkedin" && (
+        <div style={{ marginTop: 12 }}>
+          <LinkdTimeTool />
+        </div>
+      )}
     </div>
   );
 }
+

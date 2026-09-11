@@ -5,6 +5,7 @@ cloud enum, corporate registry, document metadata, breach analytics,
 Facebook breach, BSC e Polygon crypto trace.
 """
 
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, File, HTTPException, UploadFile, Depends
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
@@ -585,5 +586,120 @@ async def instalooter_attach_case(
         "original_filename": filename,
         "file_size": len(content),
     }
+
+
+# ---------------------------------------------------------------------------
+# LinkdTime (Luca Garofalo / Lucksi/LinkdTime adaptation)
+# ---------------------------------------------------------------------------
+
+class LinkdTimelineRequest(BaseModel):
+    urls: List[str]
+    timezone_offset: float = 0.0
+
+
+@router.get("/linkedin/linkdtime")
+def linkedin_linkdtime_decode(url_or_id: str, timezone_offset: float = 0.0):
+    """Decompiles a single LinkedIn snowflake ID or activity link to exact publication time."""
+    from app.recon.linkdtime_engine import parse_linkedin_url
+    result = parse_linkedin_url(url_or_id, timezone_offset)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@router.post("/linkedin/linkdtime/timeline")
+def linkedin_linkdtime_timeline(req: LinkdTimelineRequest):
+    """Generates an interactive chronological activity timeline and active-hour pattern analysis."""
+    from app.recon.linkdtime_engine import build_linkedin_timeline
+    return build_linkedin_timeline(req.urls, req.timezone_offset)
+
+
+# ---------------------------------------------------------------------------
+# Facebook-Stalker (Anand Mudgerikar / Facebook-Stalker adaptation)
+# ---------------------------------------------------------------------------
+
+class FacebookStalkerMatrixRequest(BaseModel):
+    target: str
+    contacts: List[Dict[str, Any]]
+
+
+@router.get("/facebook/stalker/profile")
+async def facebook_stalker_profile(target: str, use_tor: bool = False):
+    """Resolves Facebook target UID, generates Graph Search dorks and mobile bypass endpoints."""
+    from app.recon.facebook_stalker import resolve_facebook_id, generate_stalker_graph_dorks
+    profile = await resolve_facebook_id(target, use_tor=use_tor)
+    dorks = generate_stalker_graph_dorks(profile.get("uid") or target)
+    return {
+        "profile": profile,
+        "dorks": dorks,
+    }
+
+
+@router.post("/facebook/stalker/matrix")
+def facebook_stalker_matrix(req: FacebookStalkerMatrixRequest):
+    """Calculates social closeness edge weights (+5, +4, +3, +2, +1) and ranks associates."""
+    from app.recon.facebook_stalker import calculate_interaction_matrix
+    return calculate_interaction_matrix(req.target, req.contacts)
+
+
+# ---------------------------------------------------------------------------
+# Osintgram (Datalux/Osintgram adaptation)
+# ---------------------------------------------------------------------------
+
+@router.get("/instagram/osintgram")
+async def instagram_osintgram_recon(username: str, use_tor: bool = False):
+    """Full Osintgram scan: info, photodes AI alt-text, hashtags, fwersemail, fwersnumber, addrs."""
+    from app.recon.osintgram_engine import run_osintgram_recon
+    return await run_osintgram_recon(username, use_tor=use_tor)
+
+
+# ---------------------------------------------------------------------------
+# Instaloader (instaloader/instaloader adaptation)
+# ---------------------------------------------------------------------------
+
+@router.get("/instagram/instaloader/profile")
+async def instagram_instaloader_profile(
+    username: str,
+    use_tor: bool = False,
+    username_auth: str | None = None,
+    password_auth: str | None = None,
+):
+    """Fetches profile metrics via Instaloader with crawler fallback."""
+    from app.recon.instaloader_engine import instaloader_fetch_profile
+    return await instaloader_fetch_profile(
+        target_username=username,
+        username_auth=username_auth,
+        password_auth=password_auth,
+        use_tor=use_tor,
+    )
+
+
+@router.get("/instagram/instaloader/post")
+async def instagram_instaloader_post(shortcode: str, use_tor: bool = False):
+    """Fetches post details and CDN media via Instaloader."""
+    from app.recon.instaloader_engine import instaloader_fetch_post
+    return await instaloader_fetch_post(shortcode, use_tor=use_tor)
+
+
+# ---------------------------------------------------------------------------
+# Social Media OSINT Tools Collection (osintambition adaptation)
+# ---------------------------------------------------------------------------
+
+@router.get("/social-tools-collection")
+def get_social_tools_collection(
+    query: str | None = None,
+    platform: str | None = None,
+    category: str | None = None,
+):
+    """Search and filter the 165+ social media OSINT tools catalog."""
+    from app.recon.social_tools_collection import search_social_tools, get_platforms, get_categories
+    tools = search_social_tools(query=query, platform=platform, category=category)
+    return {
+        "total": len(tools),
+        "platforms": get_platforms(),
+        "categories": get_categories(),
+        "tools": tools,
+    }
+
 
 

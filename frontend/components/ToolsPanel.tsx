@@ -9,6 +9,10 @@ import ImageMagnifier from "./ImageMagnifier";
 import GhostTrackIpTool from "./GhostTrackIpTool";
 import BellingcatToolkitTool from "./BellingcatToolkitTool";
 import InstaLooterTool from "./InstaLooterTool";
+import SocialToolsDirectory from "./SocialToolsDirectory";
+import FacebookStalkerTool from "./FacebookStalkerTool";
+import OsintgramTool from "./OsintgramTool";
+import LinkdTimeTool from "./LinkdTimeTool";
 import { CheckIcon, KeyIcon, ShieldIcon, AlertIcon, FolderIcon, CameraIcon, PinIcon, GlobeIcon, LockIcon, LinkIcon } from "@/components/FlatIcons";
 
 type ReverseImageLink = {
@@ -748,7 +752,11 @@ function GitleaksTruffleHogTool() {
 
 export default function ToolsPanel() {
   return (
-    <div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <SocialToolsDirectory />
+      <FacebookStalkerTool />
+      <OsintgramTool />
+      <LinkdTimeTool />
       <DeepScraperTool />
       <GitleaksTruffleHogTool />
       <ReverseImageTool />
@@ -762,4 +770,5 @@ export default function ToolsPanel() {
     </div>
   );
 }
+
 
