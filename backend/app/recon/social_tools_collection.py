@@ -401,10 +401,45 @@ ALL_TOOLS: List[Dict[str, Any]] = [
     },
     {
         "platform": "Twitter",
+        "name": "Twint",
+        "url": "https://github.com/twintproject/twint",
+        "category": "Media & Scraping",
+        "description": "An advanced Twitter scraping tool written in Python that allows for scraping Tweets from Twitter profiles without using Twitter's API."
+    },
+    {
+        "platform": "Twitter",
+        "name": "snscrape",
+        "url": "https://github.com/JustAnotherArchivist/snscrape",
+        "category": "Media & Scraping",
+        "description": "A social networking service scraper in Python that scrapes things like user profiles, hashtags, searches, and threads."
+    },
+    {
+        "platform": "Twitter",
         "name": "Twitonomy",
         "url": "https://www.twitonomy.com/",
-        "category": "Activity & Tracking",
-        "description": "Twitter #analytics and much more."
+        "category": "Auditing & Analytics",
+        "description": "Visual analytics on tweets, retweets, replies, mentions, hashtags, platforms, and follower engagement graphs."
+    },
+    {
+        "platform": "Twitter",
+        "name": "Bot Sentinel",
+        "url": "https://botsentinel.com/",
+        "category": "Bot & Inauthenticity Detection",
+        "description": "Machine-learning assessment of automated accounts, disruptive troll behavior, and coordinated bot activity."
+    },
+    {
+        "platform": "Twitter",
+        "name": "Wayback Tweets",
+        "url": "https://waybacktweets.streamlit.app/",
+        "category": "Archival & Recovery",
+        "description": "Retrieve deleted, modified, or historical tweets from the Internet Archive Wayback Machine."
+    },
+    {
+        "platform": "Twitter",
+        "name": "Nitter",
+        "url": "https://nitter.net/",
+        "category": "Alternative Frontend",
+        "description": "A free and open source alternative Twitter front-end focused on privacy and performance."
     },
     {
         "platform": "Twitter",

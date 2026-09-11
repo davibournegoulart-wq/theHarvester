@@ -1078,6 +1078,112 @@ async def youtube_attach_evidence(
     }
 
 
+# ---------------------------------------------------------------------------
+# X (former Twitter) Ultimate Recon & Forensic Scraper
+# ---------------------------------------------------------------------------
+
+@router.get("/x/ultimate-scrape")
+async def x_ultimate_scrape(
+    target: str = Query(..., description="X / Twitter username (@handle), profile URL, or tweet URL/ID"),
+    limit: int = Query(50, ge=1, le=100, description="Max tweets to ingest"),
+    use_tor: bool = Query(False, description="Route request through Tor SOCKS5 proxy"),
+):
+    """Scrapes X / Twitter profile dossier, timeline tweets, bot analysis, and entities."""
+    from app.recon.x_twitter_ultimate_scraper import scrape_x_profile_ultimate
+    return await scrape_x_profile_ultimate(
+        username_or_url=target,
+        limit=limit,
+        use_tor=use_tor,
+    )
+
+
+@router.get("/x/tweet-details")
+async def x_tweet_details(
+    tweet_id: str = Query(..., description="X / Twitter tweet ID or status URL"),
+    use_tor: bool = Query(False, description="Route request through Tor SOCKS5 proxy"),
+):
+    """Deep-dives into a single tweet: author, metrics, media attachments, and entities."""
+    from app.recon.x_twitter_ultimate_scraper import scrape_x_tweet_details
+    return await scrape_x_tweet_details(
+        tweet_id_or_url=tweet_id,
+        use_tor=use_tor,
+    )
+
+
+@router.post("/x/attach-evidence")
+async def x_attach_evidence(
+    case_id: uuid.UUID,
+    media_url: str,
+    filename: str = "x_evidence.jpg",
+    typology: str = "image",
+    db: AsyncSession = Depends(get_db),
+):
+    """Downloads X / Twitter media (avatar, banner, tweet photos) into active case evidence vault."""
+    from app.models.case import Case, CaseFile
+    from app.case.incident import log_action
+
+    case = await db.get(Case, case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    storage_dir = "/data/case_files"
+    os.makedirs(storage_dir, exist_ok=True)
+
+    file_id = uuid.uuid4()
+    ext = os.path.splitext(filename)[1] or ".jpg"
+    safe_stored_name = f"{case_id}_{file_id}{ext}"
+    dest_path = os.path.join(storage_dir, safe_stored_name)
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Referer": "https://x.com/",
+    }
+
+    async with httpx.AsyncClient(headers=headers, timeout=30.0, follow_redirects=True) as client:
+        r = await client.get(media_url)
+        if r.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed downloading media from X / Twitter CDN")
+        content = r.content
+
+    with open(dest_path, "wb") as out_f:
+        out_f.write(content)
+
+    case_file = CaseFile(
+        id=file_id,
+        case_id=case_id,
+        filename=safe_stored_name,
+        original_filename=filename,
+        typology=typology,
+        source_url=media_url,
+        file_size=len(content),
+        mime_type="image/jpeg" if ext.lower() in [".jpg", ".jpeg"] else "application/octet-stream",
+        storage_path=dest_path,
+    )
+    db.add(case_file)
+    await db.commit()
+    await db.refresh(case_file)
+
+    await log_action(
+        db,
+        case_id,
+        actor="XUltimateScraper",
+        action="file_looted_from_x",
+        payload={
+            "filename": filename,
+            "source_url": media_url,
+            "size": len(content),
+        },
+    )
+
+    return {
+        "status": "success",
+        "file_id": str(file_id),
+        "filename": safe_stored_name,
+        "original_filename": filename,
+        "file_size": len(content),
+    }
+
+
 
 
 
