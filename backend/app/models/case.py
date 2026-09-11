@@ -26,8 +26,8 @@ class Case(Base):
     status: Mapped[CaseStatus] = mapped_column(default=CaseStatus.OPEN)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    audit_log: Mapped[list["AuditLogEntry"]] = relationship(back_populates="case")
-    files: Mapped[list["CaseFile"]] = relationship(back_populates="case")
+    audit_log: Mapped[list["AuditLogEntry"]] = relationship(back_populates="case", cascade="all, delete-orphan")
+    files: Mapped[list["CaseFile"]] = relationship(back_populates="case", cascade="all, delete-orphan")
     geolocations: Mapped[list["CaseGeolocation"]] = relationship(back_populates="case", cascade="all, delete-orphan")
 
 

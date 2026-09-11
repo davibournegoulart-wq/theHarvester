@@ -4,11 +4,12 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from sqlalchemy import select, delete
+from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.case.incident import archive_case, create_case, log_action
 from app.db import get_db
 from app.models.case import AuditLogEntry, Case, CaseFile, CaseGeolocation, CaseStatus
+from app.models.correlation import Correlation
 from app.models.identifier import Account, Identifier, IdentifierType
 
 from app.report.export import accounts_by_discovery_source, accounts_by_platform
@@ -140,23 +141,58 @@ async def merge_cases_route(case_id: uuid.UUID, source_case_id: uuid.UUID, actor
 
 @router.delete("/{case_id}")
 async def delete_case_route(case_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    from sqlalchemy import delete
     case = await db.get(Case, case_id)
     if case is None:
         raise HTTPException(status_code=404, detail="Case not found")
 
-    # Manually delete related to avoid foreign key constraints since cascade is not set
-    identifiers = await db.execute(select(Identifier.id).where(Identifier.case_id == case_id))
-    identifier_ids = identifiers.scalars().all()
+    # 1. Clean up physical files from disk for all case files
+    files_res = await db.execute(select(CaseFile).where(CaseFile.case_id == case_id))
+    case_files = files_res.scalars().all()
+    for cf in case_files:
+        if cf.storage_path and os.path.exists(cf.storage_path):
+            try:
+                os.remove(cf.storage_path)
+            except OSError:
+                pass
+
+    # 2. Delete CaseGeolocation records (reference case_files via attached_file_id)
+    await db.execute(delete(CaseGeolocation).where(CaseGeolocation.case_id == case_id))
+
+    # 3. Delete CaseFile records
+    await db.execute(delete(CaseFile).where(CaseFile.case_id == case_id))
+
+    # 4. Find all identifiers in this case
+    identifiers_res = await db.execute(select(Identifier.id).where(Identifier.case_id == case_id))
+    identifier_ids = identifiers_res.scalars().all()
+
     if identifier_ids:
-        await db.execute(delete(Account).where(Account.identifier_id.in_(identifier_ids)))
-    
-    await db.execute(delete(Identifier).where(Identifier.case_id == case_id))
+        # Find all accounts under these identifiers
+        accounts_res = await db.execute(select(Account.id).where(Account.identifier_id.in_(identifier_ids)))
+        account_ids = accounts_res.scalars().all()
+
+        if account_ids:
+            # Delete any correlation graph edges referencing these accounts
+            await db.execute(
+                delete(Correlation).where(
+                    or_(
+                        Correlation.source_account_id.in_(account_ids),
+                        Correlation.target_account_id.in_(account_ids),
+                    )
+                )
+            )
+            # Delete accounts
+            await db.execute(delete(Account).where(Account.id.in_(account_ids)))
+
+        # Delete identifiers
+        await db.execute(delete(Identifier).where(Identifier.id.in_(identifier_ids)))
+
+    # 5. Delete audit log entries
     await db.execute(delete(AuditLogEntry).where(AuditLogEntry.case_id == case_id))
-    
+
+    # 6. Delete the case itself and commit
     await db.delete(case)
     await db.commit()
-    return {"status": "deleted"}
+    return {"status": "deleted", "id": str(case_id)}
 
 
 @router.get("/{case_id}/report")

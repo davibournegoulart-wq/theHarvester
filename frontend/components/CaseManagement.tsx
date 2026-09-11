@@ -136,7 +136,11 @@ export default function CaseManagement() {
     if (!window.confirm(`Are you sure you want to completely delete the case "${c.name}"? This action cannot be undone.`)) return;
     setLoading(true);
     try {
-      await apiFetch(`/cases/${c.id}`, { method: "DELETE" });
+      const res = await apiFetch(`/cases/${c.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Failed to delete case (${res.status}): ${errorText}`);
+      }
       if (selected?.id === c.id) setSelected(null);
       if (activeCase?.id === c.id) setActiveCase(null);
       await loadCases();
