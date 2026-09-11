@@ -702,4 +702,97 @@ def get_social_tools_collection(
     }
 
 
+# ---------------------------------------------------------------------------
+# Telegram Ultimate Scraper & Forensic Intelligence Engine
+# ---------------------------------------------------------------------------
+
+@router.get("/telegram/ultimate-scrape")
+async def telegram_ultimate_scrape(
+    target: str,
+    limit: int = 50,
+    query: str | None = None,
+    media_type: str | None = None,
+    use_tor: bool = False,
+):
+    """Scrapes Telegram channel messages, forward origins, media, and extracts forensic entities."""
+    from app.recon.telegram_ultimate_scraper import scrape_telegram_channel_ultimate
+    return await scrape_telegram_channel_ultimate(
+        target=target,
+        limit=limit,
+        query_filter=query,
+        media_filter=media_type,
+        use_tor=use_tor,
+    )
+
+
+@router.post("/telegram/attach-evidence")
+async def telegram_attach_evidence(
+    case_id: uuid.UUID,
+    media_url: str,
+    filename: str = "telegram_evidence.jpg",
+    typology: str = "image",
+    db: AsyncSession = Depends(get_db),
+):
+    """Downloads Telegram media directly into the active case evidence vault."""
+    from app.models.case import Case, CaseFile
+    from app.models.audit import log_action
+
+    case = await db.get(Case, case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    storage_dir = "/data/case_files"
+    os.makedirs(storage_dir, exist_ok=True)
+
+    file_id = uuid.uuid4()
+    ext = os.path.splitext(filename)[1] or ".jpg"
+    safe_stored_name = f"{case_id}_{file_id}{ext}"
+    dest_path = os.path.join(storage_dir, safe_stored_name)
+
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        r = await client.get(media_url)
+        if r.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed downloading media from Telegram CDN")
+        content = r.content
+
+    with open(dest_path, "wb") as out_f:
+        out_f.write(content)
+
+    case_file = CaseFile(
+        id=file_id,
+        case_id=case_id,
+        filename=safe_stored_name,
+        original_filename=filename,
+        typology=typology,
+        source_url=media_url,
+        file_size=len(content),
+        mime_type="image/jpeg" if ext.lower() in [".jpg", ".jpeg"] else "video/mp4",
+        storage_path=dest_path,
+    )
+    db.add(case_file)
+    await db.commit()
+    await db.refresh(case_file)
+
+    await log_action(
+        db,
+        case_id,
+        actor="TelegramUltimateScraper",
+        action="file_looted_from_telegram",
+        payload={
+            "filename": filename,
+            "source_url": media_url,
+            "size": len(content),
+        },
+    )
+
+    return {
+        "status": "success",
+        "file_id": str(file_id),
+        "filename": safe_stored_name,
+        "original_filename": filename,
+        "file_size": len(content),
+    }
+
+
+
 
