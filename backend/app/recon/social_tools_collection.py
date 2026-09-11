@@ -1245,6 +1245,139 @@ ALL_TOOLS: List[Dict[str, Any]] = [
         "url": "https://vk.com/search/people",
         "category": "Search & People",
         "description": "Native VK user search with filters for age, location, university, military service, and relationships."
+    },
+    {
+        "platform": "YouTube",
+        "name": "YouTube Metadata (Mattw.io)",
+        "url": "https://mattw.io/youtube-metadata/",
+        "category": "Metadata & Tags",
+        "description": "Inspect comprehensive video metadata, EXIF tags, thumbnails, timestamps, and channel details."
+    },
+    {
+        "platform": "YouTube",
+        "name": "YouTube Geolocation (Mattw.io)",
+        "url": "https://mattw.io/youtube-geofind/location",
+        "category": "Geospatial Recon",
+        "description": "Search and map YouTube videos by geographic coordinate radius and publication dates."
+    },
+    {
+        "platform": "YouTube",
+        "name": "YouTube Video Finder",
+        "url": "https://findyoutubevideo.thetechrobo.ca/",
+        "category": "Archival & Recovery",
+        "description": "Recover deleted, private, or unlisted YouTube videos across Wayback Machine, Filmot, and GhostArchive."
+    },
+    {
+        "platform": "YouTube",
+        "name": "YTCommentSearch & Geo-Restrictions",
+        "url": "https://polsy.org.uk/stuff/ytrestrict.cgi",
+        "category": "Comments & Restrictions",
+        "description": "Search through comments and check worldwide regional licensing and country blocking restrictions."
+    },
+    {
+        "platform": "YouTube",
+        "name": "Social Blade",
+        "url": "https://socialblade.com/",
+        "category": "Auditing & Analytics",
+        "description": "Historical subscriber and view metrics, growth trajectories, rankings, and projected earnings."
+    },
+    {
+        "platform": "YouTube",
+        "name": "Noxinfluencer",
+        "url": "https://www.noxinfluencer.com/",
+        "category": "Audience & Valuation",
+        "description": "Channel analytics, audience engagement metrics, commercial evaluation, and market comparison."
+    },
+    {
+        "platform": "YouTube",
+        "name": "Channel Crawler",
+        "url": "https://channelcrawler.com/",
+        "category": "Search & People",
+        "description": "Advanced YouTube channel discovery engine filtering by subscriber count, views, country, and topic."
+    },
+    {
+        "platform": "YouTube",
+        "name": "Filmot",
+        "url": "https://filmot.com/",
+        "category": "Speech & Subtitles",
+        "description": "Search spoken text across hundreds of millions of YouTube video subtitles and automated captions."
+    },
+    {
+        "platform": "YouTube",
+        "name": "Hadzy",
+        "url": "https://hadzy.com/",
+        "category": "Comments & Sentiment",
+        "description": "Deep comments analyzer, sentiment breakdown, user mention maps, and engagement rankings for YouTube."
+    },
+    {
+        "platform": "YouTube",
+        "name": "Invidious",
+        "url": "https://invidious.io/",
+        "category": "Alternative Frontend",
+        "description": "Open-source privacy-focused decentralized YouTube alternative frontend without tracking or ads."
+    },
+    {
+        "platform": "BlueSky",
+        "name": "BlueSky Search",
+        "url": "https://bsky.app/search",
+        "category": "Search & People",
+        "description": "Native AT Protocol search for BlueSky posts, profiles, and feeds."
+    },
+    {
+        "platform": "BlueSky",
+        "name": "Skyline",
+        "url": "https://skyline.site/",
+        "category": "Activity & Tracking",
+        "description": "3D visualizer and timeline explorer for BlueSky social network activity."
+    },
+    {
+        "platform": "BlueSky",
+        "name": "BlueSky Directory",
+        "url": "https://blueskydirectory.com/",
+        "category": "Search & People",
+        "description": "Curated directory of popular and verified BlueSky creators and communities."
+    },
+    {
+        "platform": "BlueSky",
+        "name": "BlueSky Counter",
+        "url": "https://bsky.jazco.dev/",
+        "category": "Auditing & Analytics",
+        "description": "Real-time user statistics, firehose speed, and network growth counters for BlueSky."
+    },
+    {
+        "platform": "Discord",
+        "name": "Discord ID Lookup",
+        "url": "https://discord.id/",
+        "category": "Contact & Pivot",
+        "description": "Resolve numeric Snowflake Discord IDs to account creation dates, badges, and avatars."
+    },
+    {
+        "platform": "Discord",
+        "name": "Discords.com",
+        "url": "https://discords.com/",
+        "category": "Search & People",
+        "description": "Public Discord server directory, bot lists, and community discovery engine."
+    },
+    {
+        "platform": "Discord",
+        "name": "Discord Lookup Guru",
+        "url": "https://lookup.guru/",
+        "category": "Search & People",
+        "description": "Lookup Discord users, bots, servers, and inspect public profiles and avatars."
+    },
+    {
+        "platform": "GitHub",
+        "name": "GitHub User Search",
+        "url": "https://github.com/search?type=users",
+        "category": "Search & People",
+        "description": "Locate developer accounts by location, email domain, follower counts, and language."
+    },
+    {
+        "platform": "GitHub",
+        "name": "Grep.app",
+        "url": "https://grep.app/",
+        "category": "Code & Secrets Search",
+        "description": "Lightning-fast regex search across half a million public Git repositories."
     }
 ]
 

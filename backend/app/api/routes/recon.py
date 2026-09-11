@@ -6,7 +6,7 @@ Facebook breach, BSC e Polygon crypto trace.
 """
 
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, File, HTTPException, UploadFile, Depends
+from fastapi import APIRouter, File, HTTPException, UploadFile, Depends, Query
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 import httpx
@@ -960,6 +960,108 @@ async def tiktok_attach_evidence(
         case_id,
         actor="TikTokUltimateScraper",
         action="file_looted_from_tiktok",
+        payload={
+            "filename": filename,
+            "source_url": media_url,
+            "size": len(content),
+        },
+    )
+
+    return {
+        "status": "success",
+        "file_id": str(file_id),
+        "filename": safe_stored_name,
+        "original_filename": filename,
+        "file_size": len(content),
+    }
+
+
+@router.get("/youtube/ultimate-scrape")
+async def youtube_ultimate_scrape(
+    target: str = Query(..., description="YouTube channel handle, channel ID, vanity URL, or video URL/ID"),
+    limit: int = Query(30, ge=1, le=100, description="Max videos to parse"),
+    use_tor: bool = Query(False, description="Route request through Tor SOCKS5 proxy"),
+):
+    """Scrapes YouTube channel dossier, video catalog, or single video with speech captions."""
+    from app.recon.youtube_ultimate_scraper import scrape_youtube_channel_ultimate
+    return await scrape_youtube_channel_ultimate(
+        target=target,
+        limit=limit,
+        use_tor=use_tor,
+    )
+
+
+@router.get("/youtube/video-details")
+async def youtube_video_details(
+    video_id: str = Query(..., description="YouTube video ID or URL"),
+    use_tor: bool = Query(False, description="Route request through Tor SOCKS5 proxy"),
+):
+    """Deep-dives into a single video: extracts full metadata, speech transcript, and entities."""
+    from app.recon.youtube_ultimate_scraper import scrape_youtube_video_details
+    return await scrape_youtube_video_details(
+        video_id_or_url=video_id,
+        use_tor=use_tor,
+    )
+
+
+@router.post("/youtube/attach-evidence")
+async def youtube_attach_evidence(
+    case_id: uuid.UUID,
+    media_url: str,
+    filename: str = "youtube_evidence.jpg",
+    typology: str = "image",
+    db: AsyncSession = Depends(get_db),
+):
+    """Downloads YouTube media (avatar, banner, video thumbnail) directly into the active case evidence vault."""
+    from app.models.case import Case, CaseFile
+    from app.case.incident import log_action
+
+    case = await db.get(Case, case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    storage_dir = "/data/case_files"
+    os.makedirs(storage_dir, exist_ok=True)
+
+    file_id = uuid.uuid4()
+    ext = os.path.splitext(filename)[1] or ".jpg"
+    safe_stored_name = f"{case_id}_{file_id}{ext}"
+    dest_path = os.path.join(storage_dir, safe_stored_name)
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Referer": "https://www.youtube.com/",
+    }
+
+    async with httpx.AsyncClient(headers=headers, timeout=30.0, follow_redirects=True) as client:
+        r = await client.get(media_url)
+        if r.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed downloading media from YouTube CDN")
+        content = r.content
+
+    with open(dest_path, "wb") as out_f:
+        out_f.write(content)
+
+    case_file = CaseFile(
+        id=file_id,
+        case_id=case_id,
+        filename=safe_stored_name,
+        original_filename=filename,
+        typology=typology,
+        source_url=media_url,
+        file_size=len(content),
+        mime_type="image/jpeg" if ext.lower() in [".jpg", ".jpeg"] else "application/octet-stream",
+        storage_path=dest_path,
+    )
+    db.add(case_file)
+    await db.commit()
+    await db.refresh(case_file)
+
+    await log_action(
+        db,
+        case_id,
+        actor="YouTubeUltimateScraper",
+        action="file_looted_from_youtube",
         payload={
             "filename": filename,
             "source_url": media_url,

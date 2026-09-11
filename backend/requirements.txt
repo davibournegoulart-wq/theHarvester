@@ -30,3 +30,4 @@ exifread>=3.5.0
 setuptools<70
 instalooter>=2.4.4
 instaloader>=4.14.0
+youtube-transcript-api>=1.2.4
