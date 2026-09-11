@@ -41,6 +41,18 @@ app.include_router(arsenal.router, prefix="/arsenal", dependencies=_auth)
 app.include_router(biometrics.router, dependencies=_auth)
 
 
+@app.on_event("startup")
+async def ensure_db_schema():
+    try:
+        from sqlalchemy import text
+        from app.db import engine
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE cases ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;"))
+        logger.info("Database schema check completed: cases.deleted_at verified.")
+    except Exception as e:
+        logger.error(f"Error ensuring database schema: {e}")
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}

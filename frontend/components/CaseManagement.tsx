@@ -17,6 +17,16 @@ type CaseSummary = {
   created_at: string;
 };
 
+type TrashCase = {
+  id: string;
+  name: string;
+  status: CaseStatus;
+  created_at: string;
+  deleted_at: string;
+  days_remaining: number;
+  retention_days: number;
+};
+
 type AuditLogEntry = {
   id: string;
   actor: string;
@@ -34,7 +44,9 @@ type CaseReport = {
 
 export default function CaseManagement() {
   const { activeCase, setActiveCase } = useActiveCase();
+  const [activeTab, setActiveTab] = useState<"active" | "trash">("active");
   const [cases, setCases] = useState<CaseSummary[]>([]);
+  const [trashCases, setTrashCases] = useState<TrashCase[]>([]);
   const [newCaseName, setNewCaseName] = useState("");
   const [selected, setSelected] = useState<CaseSummary | null>(null);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
@@ -67,7 +79,16 @@ export default function CaseManagement() {
   }
 
   async function loadCases() {
-    setCases(await apiGet<CaseSummary[]>("/cases/"));
+    try {
+      const [activeList, trashList] = await Promise.all([
+        apiGet<CaseSummary[]>("/cases/"),
+        apiGet<TrashCase[]>("/cases/trash").catch(() => []),
+      ]);
+      setCases(activeList || []);
+      setTrashCases(trashList || []);
+    } catch (e) {
+      console.error("Error loading cases:", e);
+    }
   }
 
   useEffect(() => {
@@ -133,19 +154,100 @@ export default function CaseManagement() {
   }
 
   async function handleDelete(c: CaseSummary) {
-    if (!window.confirm(`Are you sure you want to completely delete the case "${c.name}"? This action cannot be undone.`)) return;
+    if (!window.confirm(`Move "${c.name}" to Trash Bin?\n\nIt will remain preserved in the Trash Bin for 30 days before permanent deletion, during which you can restore or permanently wipe it.`)) return;
     setLoading(true);
     try {
       const res = await apiFetch(`/cases/${c.id}`, { method: "DELETE" });
       if (!res.ok) {
         const errorText = await res.text();
-        throw new Error(`Failed to delete case (${res.status}): ${errorText}`);
+        throw new Error(`Failed to move case to trash (${res.status}): ${errorText}`);
       }
       if (selected?.id === c.id) setSelected(null);
       if (activeCase?.id === c.id) setActiveCase(null);
       await loadCases();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Error deleting case");
+      alert(e instanceof Error ? e.message : "Error moving case to trash");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRestore(tc: TrashCase) {
+    setLoading(true);
+    try {
+      const res = await apiFetch(`/cases/${tc.id}/restore`, { method: "POST" });
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Failed to restore case (${res.status}): ${errorText}`);
+      }
+      await loadCases();
+      alert(`Case "${tc.name}" restored to active investigations.`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Error restoring case");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handlePermanentDelete(tc: TrashCase) {
+    if (!window.confirm(`Permanently delete "${tc.name}"?\n\nThis will completely wipe all forensic files from disk, purge all associated accounts, and erase all audit records. This action cannot be undone.`)) return;
+    setLoading(true);
+    try {
+      const res = await apiFetch(`/cases/${tc.id}?permanent=true`, { method: "DELETE" });
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Failed to permanently delete case (${res.status}): ${errorText}`);
+      }
+      await loadCases();
+      alert(`Case "${tc.name}" permanently deleted.`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Error permanently deleting case");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleEmptyTrash() {
+    if (trashCases.length === 0) return;
+    if (!window.confirm(`Empty Trash Bin?\n\nThis will permanently destroy all ${trashCases.length} trashed cases and all their disk files forever.`)) return;
+    setLoading(true);
+    try {
+      const res = await apiFetch(`/cases/trash/empty`, { method: "POST" });
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Failed to empty trash (${res.status}): ${errorText}`);
+      }
+      await loadCases();
+      alert("Trash bin emptied.");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Error emptying trash");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleExportZip(targetCase?: CaseSummary | null) {
+    const target = targetCase || selected;
+    if (!target) return;
+    setLoading(true);
+    try {
+      const res = await apiFetch(`/cases/${target.id}/export-zip`);
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Failed to export ZIP (${res.status}): ${errText}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const safeName = target.name.replace(/[^a-zA-Z0-9_\-]/g, "_");
+      a.download = `Case_${safeName}_dossier.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Error exporting case ZIP dossier");
     } finally {
       setLoading(false);
     }
@@ -197,51 +299,200 @@ export default function CaseManagement() {
   return (
     <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
       <div style={{ flex: "1 1 300px" }}>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
-          <input
-            value={newCaseName}
-            onChange={(e) => setNewCaseName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-            placeholder="Case name"
-            style={{ flex: 1, padding: 8 }}
-          />
-          <button onClick={handleCreate} disabled={loading}>
-            Create case
+        {/* Navigation Tabs */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <button
+            onClick={() => setActiveTab("active")}
+            style={{
+              flex: 1,
+              padding: "8px 10px",
+              background: activeTab === "active" ? "rgba(5, 217, 232, 0.15)" : "transparent",
+              borderColor: activeTab === "active" ? "var(--cyan)" : "var(--panel-border)",
+              color: activeTab === "active" ? "var(--cyan)" : "var(--text-muted)",
+              fontWeight: "bold",
+              fontSize: 12,
+              cursor: "pointer",
+            }}
+          >
+            Active Cases ({cases.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("trash")}
+            style={{
+              flex: 1,
+              padding: "8px 10px",
+              background: activeTab === "trash" ? "rgba(255, 42, 109, 0.15)" : "transparent",
+              borderColor: activeTab === "trash" ? "#FF2A6D" : "var(--panel-border)",
+              color: activeTab === "trash" ? "#FF2A6D" : "var(--text-muted)",
+              fontWeight: "bold",
+              fontSize: 12,
+              cursor: "pointer",
+            }}
+          >
+            Trash Bin ({trashCases.length})
           </button>
         </div>
-        <ul style={{ listStyle: "none", padding: 0 }}>
-          {cases.map((c) => (
-            <li
-              key={c.id}
-              onClick={() => openCase(c)}
-              style={{
-                padding: 12,
-                cursor: "pointer",
-                background: selected?.id === c.id ? "rgba(5, 217, 232, 0.08)" : "transparent",
-                borderBottom: "1px solid var(--panel-border)",
-                transition: "background 0.2s"
-              }}
-            >
-              <strong>{c.name}</strong>{" "}
-              <span style={{ fontSize: 12, color: c.status === "OPEN" ? "var(--success)" : c.status === "CLOSED" ? "var(--danger)" : "var(--text-muted)" }}>[{c.status}]</span>
-              {activeCase?.id === c.id ? (
-                <span style={{ fontSize: 11, color: "var(--cyan)", marginLeft: 6 }}>[active]</span>
-              ) : (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveCase({ id: c.id, name: c.name });
+
+        {activeTab === "active" ? (
+          <>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+              <input
+                value={newCaseName}
+                onChange={(e) => setNewCaseName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                placeholder="Case name"
+                style={{ flex: 1, padding: 8 }}
+              />
+              <button onClick={handleCreate} disabled={loading}>
+                Create case
+              </button>
+            </div>
+            <ul style={{ listStyle: "none", padding: 0 }}>
+              {cases.map((c) => (
+                <li
+                  key={c.id}
+                  onClick={() => openCase(c)}
+                  style={{
+                    padding: 12,
+                    cursor: "pointer",
+                    background: selected?.id === c.id ? "rgba(5, 217, 232, 0.08)" : "transparent",
+                    borderBottom: "1px solid var(--panel-border)",
+                    transition: "background 0.2s"
                   }}
-                  style={{ fontSize: 11, marginLeft: 6, padding: "2px 8px" }}
                 >
-                  activate
-                </button>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div>
+                      <strong>{c.name}</strong>{" "}
+                      <span style={{ fontSize: 12, color: c.status === "OPEN" ? "var(--success)" : c.status === "CLOSED" ? "var(--danger)" : "var(--text-muted)" }}>[{c.status}]</span>
+                      {activeCase?.id === c.id ? (
+                        <span style={{ fontSize: 11, color: "var(--cyan)", marginLeft: 6 }}>[active]</span>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveCase({ id: c.id, name: c.name });
+                          }}
+                          style={{ fontSize: 11, marginLeft: 6, padding: "2px 8px" }}
+                        >
+                          activate
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>{new Date(c.created_at).toLocaleString()}</div>
+                </li>
+              ))}
+              {cases.length === 0 && <li style={{ color: "var(--text-muted)", padding: 12 }}>No active cases.</li>}
+            </ul>
+          </>
+        ) : (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, padding: "0 2px" }}>
+              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                Kept 30 days before auto-purge
+              </span>
+              <button
+                onClick={handleEmptyTrash}
+                disabled={loading || trashCases.length === 0}
+                style={{
+                  padding: "3px 8px",
+                  fontSize: 11,
+                  borderColor: "#FF2A6D",
+                  color: "#FF2A6D",
+                  background: "rgba(255, 42, 109, 0.1)",
+                  cursor: trashCases.length === 0 ? "not-allowed" : "pointer",
+                }}
+              >
+                Empty Trash
+              </button>
+            </div>
+
+            <ul style={{ listStyle: "none", padding: 0 }}>
+              {trashCases.map((tc) => (
+                <li
+                  key={tc.id}
+                  style={{
+                    padding: 12,
+                    background: "rgba(255, 42, 109, 0.03)",
+                    border: "1px solid rgba(255, 42, 109, 0.2)",
+                    borderRadius: 6,
+                    marginBottom: 8,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <strong style={{ color: "var(--text)" }}>{tc.name}</strong>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        padding: "2px 6px",
+                        borderRadius: 4,
+                        background: "rgba(255, 184, 0, 0.15)",
+                        color: "#FFB800",
+                        border: "1px solid rgba(255, 184, 0, 0.4)",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {tc.days_remaining}d left
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
+                    Trashed: {new Date(tc.deleted_at).toLocaleString()}
+                  </div>
+                  <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                    <button
+                      onClick={() => handleRestore(tc)}
+                      disabled={loading}
+                      style={{
+                        padding: "3px 8px",
+                        fontSize: 11,
+                        borderColor: "var(--cyan)",
+                        color: "var(--cyan)",
+                        background: "rgba(5, 217, 232, 0.1)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Restore
+                    </button>
+                    <button
+                      onClick={() => handleExportZip({ id: tc.id, name: tc.name, status: tc.status, created_at: tc.created_at })}
+                      disabled={loading}
+                      style={{
+                        padding: "3px 8px",
+                        fontSize: 11,
+                        borderColor: "#00FF9F",
+                        color: "#00FF9F",
+                        background: "rgba(0, 255, 159, 0.1)",
+                        cursor: "pointer",
+                      }}
+                      title="Export ZIP archive before permanent purge"
+                    >
+                      Export ZIP
+                    </button>
+                    <button
+                      onClick={() => handlePermanentDelete(tc)}
+                      disabled={loading}
+                      style={{
+                        padding: "3px 8px",
+                        fontSize: 11,
+                        borderColor: "var(--danger)",
+                        color: "var(--danger)",
+                        background: "rgba(255, 0, 0, 0.1)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Purge
+                    </button>
+                  </div>
+                </li>
+              ))}
+              {trashCases.length === 0 && (
+                <li style={{ color: "var(--text-muted)", padding: 12, textAlign: "center" }}>
+                  Trash bin is empty.
+                </li>
               )}
-              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>{new Date(c.created_at).toLocaleString()}</div>
-            </li>
-          ))}
-          {cases.length === 0 && <li style={{ color: "var(--text-muted)" }}>No cases yet.</li>}
-        </ul>
+            </ul>
+          </div>
+        )}
       </div>
 
       <div style={{ flex: "2 1 500px" }}>
@@ -272,7 +523,28 @@ export default function CaseManagement() {
                 )}
                 <span style={{ fontSize: 14, color: "var(--text-muted)", fontWeight: "normal" }}>({selected.status})</span>
               </h3>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  onClick={() => handleExportZip(selected)}
+                  disabled={loading}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    background: "rgba(0, 255, 159, 0.12)",
+                    borderColor: "#00FF9F",
+                    color: "#00FF9F",
+                    fontWeight: "bold",
+                    cursor: "pointer",
+                  }}
+                  title="Export complete case dossier and all files to hard drive in ZIP format"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  EXPORT ZIP
+                </button>
                 <button onClick={generateSTIX} disabled={loading} style={{ display: "flex", alignItems: "center", background: "rgba(156,39,176,0.1)", borderColor: "#9C27B0", color: "#9C27B0", fontWeight: "bold" }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg> STIX 2.1
                 </button>

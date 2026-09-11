@@ -1,10 +1,17 @@
+import hashlib
+import io
+import json
+import logging
 import os
 import uuid
+import zipfile
+from datetime import datetime, timedelta, timezone
+
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from pydantic import BaseModel
-from sqlalchemy import delete, or_, select
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.case.incident import archive_case, create_case, log_action
 from app.db import get_db
@@ -13,6 +20,8 @@ from app.models.correlation import Correlation
 from app.models.identifier import Account, Identifier, IdentifierType
 
 from app.report.export import accounts_by_discovery_source, accounts_by_platform
+
+logger = logging.getLogger("net_scraper")
 
 router = APIRouter(prefix="/cases", tags=["cases"])
 
@@ -37,10 +46,124 @@ class MultiCaseGraphRequest(BaseModel):
     case_ids: list[uuid.UUID]
 
 
+async def hard_delete_case_internal(case_id: uuid.UUID, db: AsyncSession):
+    """Permanently delete a case and all associated files, geolocations, accounts, and audit entries."""
+    case = await db.get(Case, case_id)
+    if not case:
+        return
+
+    # 1. Clean up physical files from disk for all case files
+    files_res = await db.execute(select(CaseFile).where(CaseFile.case_id == case_id))
+    case_files = files_res.scalars().all()
+    for cf in case_files:
+        if cf.storage_path and os.path.exists(cf.storage_path):
+            try:
+                os.remove(cf.storage_path)
+            except OSError as e:
+                logger.warning(f"Could not remove file on disk {cf.storage_path}: {e}")
+
+    # 2. Delete CaseGeolocation records (reference case_files via attached_file_id)
+    await db.execute(delete(CaseGeolocation).where(CaseGeolocation.case_id == case_id))
+
+    # 3. Delete CaseFile records
+    await db.execute(delete(CaseFile).where(CaseFile.case_id == case_id))
+
+    # 4. Find all identifiers in this case
+    identifiers_res = await db.execute(select(Identifier.id).where(Identifier.case_id == case_id))
+    identifier_ids = identifiers_res.scalars().all()
+
+    if identifier_ids:
+        # Find all accounts under these identifiers
+        accounts_res = await db.execute(select(Account.id).where(Account.identifier_id.in_(identifier_ids)))
+        account_ids = accounts_res.scalars().all()
+
+        if account_ids:
+            # Delete any correlation graph edges referencing these accounts
+            await db.execute(
+                delete(Correlation).where(
+                    or_(
+                        Correlation.source_account_id.in_(account_ids),
+                        Correlation.target_account_id.in_(account_ids),
+                    )
+                )
+            )
+            # Delete accounts
+            await db.execute(delete(Account).where(Account.id.in_(account_ids)))
+
+        # Delete identifiers
+        await db.execute(delete(Identifier).where(Identifier.id.in_(identifier_ids)))
+
+    # 5. Delete audit log entries
+    await db.execute(delete(AuditLogEntry).where(AuditLogEntry.case_id == case_id))
+
+    # 6. Delete the case itself and commit
+    await db.delete(case)
+    await db.commit()
+
+
+async def auto_purge_expired_trash(db: AsyncSession):
+    """Auto-purge cases that have stayed in the trash bin for more than 30 days."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+    res = await db.execute(
+        select(Case.id).where(
+            Case.deleted_at.is_not(None),
+            Case.deleted_at < cutoff
+        )
+    )
+    expired_ids = res.scalars().all()
+    for cid in expired_ids:
+        try:
+            await hard_delete_case_internal(cid, db)
+            logger.info(f"Auto-purged expired case {cid} past 30-day retention.")
+        except Exception as e:
+            logger.error(f"Error auto-purging expired case {cid}: {e}")
+
+
 @router.get("/")
 async def list_cases_route(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Case).order_by(Case.created_at.desc()))
+    """List active investigations (excluding items in Trash Bin)."""
+    await auto_purge_expired_trash(db)
+    result = await db.execute(
+        select(Case).where(Case.deleted_at.is_(None)).order_by(Case.created_at.desc())
+    )
     return result.scalars().all()
+
+
+@router.get("/trash")
+async def list_trash_cases_route(db: AsyncSession = Depends(get_db)):
+    """List cases currently in the Trash Bin with days remaining until permanent deletion."""
+    await auto_purge_expired_trash(db)
+    result = await db.execute(
+        select(Case).where(Case.deleted_at.is_not(None)).order_by(Case.deleted_at.desc())
+    )
+    cases = result.scalars().all()
+    now = datetime.now(timezone.utc)
+    trash_items = []
+    for c in cases:
+        days_in_trash = (now - c.deleted_at).days if c.deleted_at else 0
+        days_remaining = max(0, 30 - days_in_trash)
+        trash_items.append({
+            "id": str(c.id),
+            "name": c.name,
+            "status": c.status.value if hasattr(c.status, "value") else c.status,
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+            "deleted_at": c.deleted_at.isoformat() if c.deleted_at else None,
+            "days_remaining": days_remaining,
+            "retention_days": 30,
+        })
+    return trash_items
+
+
+@router.post("/trash/empty")
+async def empty_trash_route(db: AsyncSession = Depends(get_db)):
+    """Permanently purge all cases currently in the Trash Bin."""
+    res = await db.execute(select(Case.id).where(Case.deleted_at.is_not(None)))
+    trashed_ids = res.scalars().all()
+    count = 0
+    for cid in trashed_ids:
+        await hard_delete_case_internal(cid, db)
+        count += 1
+    return {"status": "emptied", "purged_count": count}
 
 
 @router.post("/")
@@ -140,59 +263,255 @@ async def merge_cases_route(case_id: uuid.UUID, source_case_id: uuid.UUID, actor
 
 
 @router.delete("/{case_id}")
-async def delete_case_route(case_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def delete_case_route(
+    case_id: uuid.UUID,
+    permanent: bool = False,
+    actor: str = "investigator",
+    db: AsyncSession = Depends(get_db)
+):
     case = await db.get(Case, case_id)
     if case is None:
         raise HTTPException(status_code=404, detail="Case not found")
 
-    # 1. Clean up physical files from disk for all case files
-    files_res = await db.execute(select(CaseFile).where(CaseFile.case_id == case_id))
-    case_files = files_res.scalars().all()
-    for cf in case_files:
-        if cf.storage_path and os.path.exists(cf.storage_path):
-            try:
-                os.remove(cf.storage_path)
-            except OSError:
-                pass
+    if permanent:
+        await hard_delete_case_internal(case_id, db)
+        return {"status": "permanently_deleted", "id": str(case_id)}
+    else:
+        case.deleted_at = datetime.now(timezone.utc)
+        await db.commit()
+        await log_action(
+            db,
+            case_id,
+            actor=actor,
+            action="case_moved_to_trash",
+            payload={"case_name": case.name, "retention_days": 30}
+        )
+        return {"status": "trashed", "id": str(case_id), "retention_days": 30}
 
-    # 2. Delete CaseGeolocation records (reference case_files via attached_file_id)
-    await db.execute(delete(CaseGeolocation).where(CaseGeolocation.case_id == case_id))
 
-    # 3. Delete CaseFile records
-    await db.execute(delete(CaseFile).where(CaseFile.case_id == case_id))
+@router.post("/{case_id}/restore")
+async def restore_case_route(case_id: uuid.UUID, actor: str = "investigator", db: AsyncSession = Depends(get_db)):
+    case = await db.get(Case, case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    if case.deleted_at is None:
+        return {"status": "not_in_trash", "id": str(case_id), "name": case.name}
 
-    # 4. Find all identifiers in this case
-    identifiers_res = await db.execute(select(Identifier.id).where(Identifier.case_id == case_id))
-    identifier_ids = identifiers_res.scalars().all()
-
-    if identifier_ids:
-        # Find all accounts under these identifiers
-        accounts_res = await db.execute(select(Account.id).where(Account.identifier_id.in_(identifier_ids)))
-        account_ids = accounts_res.scalars().all()
-
-        if account_ids:
-            # Delete any correlation graph edges referencing these accounts
-            await db.execute(
-                delete(Correlation).where(
-                    or_(
-                        Correlation.source_account_id.in_(account_ids),
-                        Correlation.target_account_id.in_(account_ids),
-                    )
-                )
-            )
-            # Delete accounts
-            await db.execute(delete(Account).where(Account.id.in_(account_ids)))
-
-        # Delete identifiers
-        await db.execute(delete(Identifier).where(Identifier.id.in_(identifier_ids)))
-
-    # 5. Delete audit log entries
-    await db.execute(delete(AuditLogEntry).where(AuditLogEntry.case_id == case_id))
-
-    # 6. Delete the case itself and commit
-    await db.delete(case)
+    case.deleted_at = None
     await db.commit()
-    return {"status": "deleted", "id": str(case_id)}
+    await log_action(db, case.id, actor=actor, action="case_restored_from_trash", payload={"case_name": case.name})
+    return {"status": "restored", "id": str(case_id), "name": case.name}
+
+
+@router.get("/{case_id}/export-zip")
+async def export_case_zip_route(case_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Export complete case dossier, evidence, reports, STIX 2.1 bundle and raw files into a ZIP archive."""
+    from app.report.stix_export import generate_stix_bundle
+
+    case = await db.get(Case, case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    # Gather all case data
+    idents_res = await db.execute(select(Identifier).where(Identifier.case_id == case_id))
+    identifiers = idents_res.scalars().all()
+
+    accs_res = await db.execute(select(Account).join(Identifier).where(Identifier.case_id == case_id))
+    accounts = accs_res.scalars().all()
+
+    logs_res = await db.execute(select(AuditLogEntry).where(AuditLogEntry.case_id == case_id).order_by(AuditLogEntry.created_at.asc()))
+    audit_log = logs_res.scalars().all()
+
+    geos_res = await db.execute(select(CaseGeolocation).where(CaseGeolocation.case_id == case_id).order_by(CaseGeolocation.created_at.asc()))
+    geolocations = geos_res.scalars().all()
+
+    files_res = await db.execute(select(CaseFile).where(CaseFile.case_id == case_id).order_by(CaseFile.created_at.asc()))
+    case_files = files_res.scalars().all()
+
+    # Generate STIX bundle
+    stix_bundle = generate_stix_bundle(case, identifiers, accounts, audit_log)
+
+    safe_name = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in case.name)
+    timestamp_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    # Build Markdown dossier report
+    report_md = f"""# OSINT Investigation Dossier: {case.name}
+**Export Date**: {timestamp_str}
+**Case ID**: `{case.id}`
+**Status**: {case.status.value if hasattr(case.status, 'value') else case.status}
+**Created At**: {case.created_at.strftime("%Y-%m-%d %H:%M:%S UTC") if case.created_at else "N/A"}
+
+---
+
+## 1. Executive Summary
+This archive contains the forensic intelligence dossier, target profiles, audit trail, and raw evidentiary artifacts collected for **{case.name}**.
+
+- **Total Identifiers Investigated**: {len(identifiers)}
+- **Discovered Accounts/Platforms**: {len(accounts)}
+- **Geointelligence Pinpoints**: {len(geolocations)}
+- **Forensic Assets / Databank Files**: {len(case_files)}
+- **Audit Log Operations**: {len(audit_log)}
+
+---
+
+## 2. Target Identifiers & Discovered Profiles
+"""
+    for ident in identifiers:
+        report_md += f"\n### Target: `{ident.value}` ({ident.type.value if hasattr(ident.type, 'value') else ident.type})\n"
+        linked_accounts = [a for a in accounts if a.identifier_id == ident.id]
+        if not linked_accounts:
+            report_md += "_No active accounts discovered for this identifier._\n"
+        else:
+            report_md += "| Platform | URL | Discovered By | Verified Active |\n"
+            report_md += "|---|---|---|---|\n"
+            for acc in linked_accounts:
+                report_md += f"| {acc.platform} | {acc.url or 'N/A'} | {acc.discovered_by} | {'Yes' if acc.exists else 'No'} |\n"
+
+    report_md += "\n---\n\n## 3. Geointelligence & Location Tracing\n"
+    if not geolocations:
+        report_md += "_No geolocations recorded._\n"
+    else:
+        report_md += "| Label | Latitude | Longitude | Source | Description |\n"
+        report_md += "|---|---|---|---|---|\n"
+        for geo in geolocations:
+            report_md += f"| {geo.label} | {geo.latitude:.6f} | {geo.longitude:.6f} | {geo.source} | {geo.description or 'N/A'} |\n"
+
+    report_md += "\n---\n\n## 4. Forensic Databank Assets\n"
+    if not case_files:
+        report_md += "_No files attached to case._\n"
+    else:
+        report_md += "| Filename | Typology | Size | Source URL |\n"
+        report_md += "|---|---|---|---|\n"
+        for cf in case_files:
+            report_md += f"| {cf.original_filename} | {cf.typology} | {cf.file_size} bytes | {cf.source_url or 'Local Upload'} |\n"
+
+    report_md += "\n---\n\n## 5. Forensic Audit Trail (Immutable)\n"
+    for log in audit_log:
+        ts = log.created_at.strftime("%Y-%m-%d %H:%M:%S UTC") if log.created_at else "N/A"
+        report_md += f"- **[{ts}]** `{log.actor}` executed `{log.action}`\n"
+
+    # Build ZIP archive in memory
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        # 1. Report
+        zf.writestr("dossier_report.md", report_md)
+
+        # 2. Case Summary JSON
+        case_summary = {
+            "id": str(case.id),
+            "name": case.name,
+            "status": case.status.value if hasattr(case.status, 'value') else case.status,
+            "created_at": case.created_at.isoformat() if case.created_at else None,
+            "deleted_at": case.deleted_at.isoformat() if case.deleted_at else None,
+            "export_timestamp": timestamp_str,
+        }
+        zf.writestr("case_summary.json", json.dumps(case_summary, indent=2))
+
+        # 3. Identifiers and Accounts JSON
+        idents_data = []
+        for ident in identifiers:
+            linked_accs = [
+                {
+                    "id": str(a.id),
+                    "platform": a.platform,
+                    "url": a.url,
+                    "exists": a.exists,
+                    "discovered_by": a.discovered_by,
+                    "metadata": a.metadata_json,
+                    "discovered_at": a.discovered_at.isoformat() if a.discovered_at else None,
+                }
+                for a in accounts if a.identifier_id == ident.id
+            ]
+            idents_data.append({
+                "id": str(ident.id),
+                "type": ident.type.value if hasattr(ident.type, 'value') else ident.type,
+                "value": ident.value,
+                "created_at": ident.created_at.isoformat() if ident.created_at else None,
+                "accounts": linked_accs,
+            })
+        zf.writestr("identifiers_and_accounts.json", json.dumps(idents_data, indent=2))
+
+        # 4. STIX 2.1 Bundle
+        zf.writestr("stix2_bundle.json", json.dumps(stix_bundle, indent=2))
+
+        # 5. Audit Trail JSON
+        audit_data = [
+            {
+                "id": str(l.id),
+                "actor": l.actor,
+                "action": l.action,
+                "payload": l.payload,
+                "created_at": l.created_at.isoformat() if l.created_at else None,
+            }
+            for l in audit_log
+        ]
+        zf.writestr("audit_trail.json", json.dumps(audit_data, indent=2))
+
+        # 6. Geolocations JSON
+        geos_data = [
+            {
+                "id": str(g.id),
+                "latitude": g.latitude,
+                "longitude": g.longitude,
+                "label": g.label,
+                "description": g.description,
+                "source": g.source,
+                "source_url": g.source_url,
+                "attached_file_id": str(g.attached_file_id) if g.attached_file_id else None,
+                "created_at": g.created_at.isoformat() if g.created_at else None,
+            }
+            for g in geolocations
+        ]
+        zf.writestr("geolocations.json", json.dumps(geos_data, indent=2))
+
+        # 7. Files and Manifest
+        manifest = []
+        used_names = set()
+        for idx, cf in enumerate(case_files):
+            file_hash = None
+            raw_content = None
+            if cf.storage_path and os.path.exists(cf.storage_path):
+                try:
+                    with open(cf.storage_path, "rb") as f_in:
+                        raw_content = f_in.read()
+                        file_hash = hashlib.sha256(raw_content).hexdigest()
+                except Exception as e:
+                    logger.warning(f"Could not read file {cf.storage_path} for zip export: {e}")
+
+            clean_filename = os.path.basename(cf.original_filename or f"file_{idx}")
+            clean_filename = "".join(c if c.isalnum() or c in (".", "-", "_") else "_" for c in clean_filename)
+            if clean_filename in used_names:
+                clean_filename = f"{idx:02d}_{clean_filename}"
+            used_names.add(clean_filename)
+
+            zip_file_path = f"files/{clean_filename}"
+            if raw_content is not None:
+                zf.writestr(zip_file_path, raw_content)
+
+            manifest.append({
+                "id": str(cf.id),
+                "original_filename": cf.original_filename,
+                "zip_path": zip_file_path,
+                "typology": cf.typology,
+                "file_size": cf.file_size,
+                "mime_type": cf.mime_type,
+                "sha256": file_hash,
+                "source_url": cf.source_url,
+                "created_at": cf.created_at.isoformat() if cf.created_at else None,
+            })
+
+        zf.writestr("files_manifest.json", json.dumps(manifest, indent=2))
+
+    zip_bytes = zip_buffer.getvalue()
+    filename_header = f'attachment; filename="Case_{safe_name}_dossier.zip"'
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": filename_header,
+            "Content-Length": str(len(zip_bytes)),
+        },
+    )
 
 
 @router.get("/{case_id}/report")
@@ -490,17 +809,25 @@ async def download_case_file(case_id: uuid.UUID, file_id: uuid.UUID, db: AsyncSe
 
 @router.delete("/{case_id}/files/{file_id}")
 async def delete_case_file(case_id: uuid.UUID, file_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """Delete file from databank and disk."""
+    """Completely delete file from databank and disk."""
     res = await db.execute(select(CaseFile).where(CaseFile.id == file_id, CaseFile.case_id == case_id))
     case_file = res.scalar_one_or_none()
     if case_file is None:
         raise HTTPException(status_code=404, detail="File not found")
 
-    if os.path.exists(case_file.storage_path):
+    # Detach any geolocations pointing to this file
+    await db.execute(
+        update(CaseGeolocation)
+        .where(CaseGeolocation.attached_file_id == file_id)
+        .values(attached_file_id=None)
+    )
+
+    # Completely remove physical file from disk
+    if case_file.storage_path and os.path.exists(case_file.storage_path):
         try:
             os.remove(case_file.storage_path)
-        except Exception:
-            pass
+        except OSError as e:
+            logger.warning(f"Could not remove physical file {case_file.storage_path}: {e}")
 
     await db.delete(case_file)
     await db.commit()

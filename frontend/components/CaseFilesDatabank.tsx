@@ -152,12 +152,37 @@ export default function CaseFilesDatabank({
   }
 
   async function handleDeleteFile(fileId: string, filename: string) {
-    if (!confirm(`Permanently remove "${filename}" from case databank?`)) return;
+    if (!confirm(`Permanently delete "${filename}" entirely from disk and case database? This cannot be undone.`)) return;
     try {
-      await apiFetch(`/cases/${caseId}/files/${fileId}`, { method: "DELETE" });
+      const res = await apiFetch(`/cases/${caseId}/files/${fileId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Failed to delete file (${res.status}): ${errText}`);
+      }
       setFiles((prev) => prev.filter((f) => f.id !== fileId));
     } catch (err) {
-      alert("Error deleting file: " + err);
+      alert("Error deleting file: " + (err instanceof Error ? err.message : String(err)));
+    }
+  }
+
+  async function handleExportAllZip() {
+    try {
+      const res = await apiFetch(`/cases/${caseId}/export-zip`);
+      if (!res.ok) {
+        throw new Error(`Failed to export ZIP (${res.status})`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const safeName = caseName.replace(/[^a-zA-Z0-9_\-]/g, "_");
+      a.download = `Case_${safeName}_files.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Error downloading files ZIP: " + (err instanceof Error ? err.message : String(err)));
     }
   }
 
@@ -216,9 +241,31 @@ export default function CaseFilesDatabank({
             Secure local drive. Preserves web dumps, dork captures, and evidence documents permanently even if deleted from source web servers.
           </p>
         </div>
-        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          Total Stored: <strong>{files.length}</strong> file(s) (
-          {formatBytes(files.reduce((acc, f) => acc + (f.file_size || 0), 0))})
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+            Total Stored: <strong>{files.length}</strong> file(s) (
+            {formatBytes(files.reduce((acc, f) => acc + (f.file_size || 0), 0))})
+          </div>
+          <button
+            onClick={handleExportAllZip}
+            disabled={files.length === 0}
+            style={{
+              padding: "4px 10px",
+              fontSize: 12,
+              fontWeight: "bold",
+              background: "rgba(0, 255, 159, 0.12)",
+              borderColor: "#00FF9F",
+              color: "#00FF9F",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              cursor: files.length === 0 ? "not-allowed" : "pointer",
+            }}
+            title="Download complete case dossier & all raw files in a ZIP archive"
+          >
+            <DownloadIcon size={13} />
+            EXPORT ZIP
+          </button>
         </div>
       </div>
 
