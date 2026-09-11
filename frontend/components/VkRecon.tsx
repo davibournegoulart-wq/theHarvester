@@ -16,6 +16,8 @@ import {
   CheckIcon,
   PaperclipIcon,
   LockIcon,
+  TerminalIcon,
+  UserIcon,
 } from "./FlatIcons";
 
 type VkAttachment = {
@@ -96,6 +98,13 @@ type VkProfile = {
   };
 };
 
+type VkPivotItem = {
+  name: string;
+  category: string;
+  url: string;
+  description: string;
+};
+
 type VkHarvestResponse = {
   target: string;
   profile: VkProfile;
@@ -117,8 +126,84 @@ type VkHarvestResponse = {
     newest_post_date?: string | null;
     oldest_post_date?: string | null;
   };
+  osint_pivots?: VkPivotItem[];
   warning?: string;
 };
+
+const DEFAULT_VK_TOOLS: VkPivotItem[] = [
+  {
+    name: "VK Watch",
+    category: "Search & Archive",
+    url: "https://vk.watch/ru",
+    description: "Search engine and deep cache for VK profiles, wall posts, videos, and groups.",
+  },
+  {
+    name: "Bellingcat VK Scraper",
+    category: "Profile & Post Scrapers",
+    url: "https://github.com/bellingcat/vk-url-scraper",
+    description: "Python methodology to scrape VK URLs, extracting post text, dates, and media attachments.",
+  },
+  {
+    name: "VK ID Lookup (RegVK)",
+    category: "Registration Date",
+    url: "https://regvk.com/id/",
+    description: "Inspect exact account registration dates, verification data, and numeric ID resolution.",
+  },
+  {
+    name: "vk_api (Python)",
+    category: "Developer Library",
+    url: "https://github.com/python273/vk_api",
+    description: "Python library for accessing VK API and automating large dataset extraction.",
+  },
+  {
+    name: "Wayback Machine VK Archive",
+    category: "Web Archive",
+    url: "https://web.archive.org/web/*/https://vk.com/*",
+    description: "Inspect historical snapshots of deleted or censored VK posts, walls, and communities.",
+  },
+  {
+    name: "Search4Faces",
+    category: "Reverse Face Recognition",
+    url: "https://search4faces.com/",
+    description: "High-precision neural face recognition search targeting VKontakte and OK.ru profile photos.",
+  },
+  {
+    name: "VK History Robot",
+    category: "Telegram Tracker",
+    url: "https://t.me/VKHistoryRobot",
+    description: "Telegram bot tracking timeline of historical name changes, avatars, and status shifts.",
+  },
+  {
+    name: "FindNameVk Bot",
+    category: "Telegram Bot",
+    url: "https://t.me/FindNameVk_bot",
+    description: "Telegram bot for finding VK accounts by real first and last names with phonetic matching.",
+  },
+  {
+    name: "Дезертир (Deserteer)",
+    category: "Telegram Bot",
+    url: "https://t.me/deserteer",
+    description: "Russian OSINT Telegram bot to monitor group leavers and member community activity.",
+  },
+  {
+    name: "Barkov.net",
+    category: "Audience Parser",
+    url: "https://barkov.net/",
+    description: "Deep audience, subscriber, wall author, and community relationship extraction service.",
+  },
+  {
+    name: "VK People Search",
+    category: "Native Filter",
+    url: "https://vk.com/search/people",
+    description: "Search VK users by exact age, city, university, military service, and relationships.",
+  },
+  {
+    name: "VK Community Search",
+    category: "Native Filter",
+    url: "https://vk.com/communities",
+    description: "Discover public and closed VK groups, public pages, and geographical communities.",
+  },
+];
 
 export default function VkRecon() {
   const { activeCase } = useActiveCase();
@@ -135,11 +220,12 @@ export default function VkRecon() {
   // Client-side Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [mediaOnly, setMediaOnly] = useState(false);
-  const [activeTab, setActiveTab] = useState<"wall" | "crypto" | "comms" | "reposts" | "links" | "tags">("wall");
+  const [activeTab, setActiveTab] = useState<"wall" | "crypto" | "comms" | "reposts" | "links" | "tags" | "pivots">("wall");
 
   // Evidence Attachment State
   const [attachingMediaUrl, setAttachingMediaUrl] = useState<string | null>(null);
   const [attachFeedback, setAttachFeedback] = useState<string | null>(null);
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
   async function handleHarvest() {
     if (!target.trim()) return;
@@ -196,6 +282,12 @@ export default function VkRecon() {
     URL.revokeObjectURL(u);
   }
 
+  function handleCopy(urlToCopy: string) {
+    navigator.clipboard.writeText(urlToCopy);
+    setCopiedUrl(urlToCopy);
+    setTimeout(() => setCopiedUrl(null), 2000);
+  }
+
   // Filtered wall posts
   const filteredPosts = (result?.messages || []).filter((p) => {
     if (mediaOnly && p.attachments.length === 0) return false;
@@ -210,6 +302,8 @@ export default function VkRecon() {
     return true;
   });
 
+  const activePivots = result?.osint_pivots || DEFAULT_VK_TOOLS;
+
   return (
     <div>
       {/* Header */}
@@ -217,7 +311,7 @@ export default function VkRecon() {
         <div>
           <h2 style={{ color: "var(--cyan)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <VkIcon size={18} color="#0077FF" />
-            VKontakte (VK) Ultimate OSINT Harvester
+            VKontakte (VK) Ultimate OSINT Harvester & Arsenal
           </h2>
           <p style={{ color: "var(--text-muted)", fontSize: 13, margin: "4px 0 0 0" }}>
             Extract public profiles, communities, multi-depth wall posts, photos/videos, repost networks, and cryptocurrency/contact entities.
@@ -257,7 +351,7 @@ export default function VkRecon() {
             value={target}
             onChange={(e) => setTarget(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleHarvest()}
-            placeholder="Username, Vanity URL, or ID (e.g. durov, id1, mash, club112510789, https://vk.com/durov)"
+            placeholder="Username, Vanity URL, ID, or Wall URL (e.g. durov, id1, mash, club112510789, vk.com/wall1_2442097)"
             style={{ flex: 1, minWidth: 280, padding: "8px 12px" }}
           />
 
@@ -308,9 +402,9 @@ export default function VkRecon() {
         )}
       </div>
 
+      {/* Target Profile Dossier Card if Loaded */}
       {result && (
         <div>
-          {/* Target Profile Dossier Card */}
           <div
             style={{
               background: "var(--panel)",
@@ -524,7 +618,7 @@ export default function VkRecon() {
             </div>
           </div>
 
-          {/* Forensic Tabs */}
+          {/* Forensic Tabs Switcher */}
           <div
             style={{
               display: "flex",
@@ -536,6 +630,7 @@ export default function VkRecon() {
           >
             {[
               { id: "wall", label: `Wall Posts (${result.messages.length})` },
+              { id: "pivots", label: `OSINT Pivots & Arsenal (${activePivots.length})` },
               { id: "crypto", label: `Crypto Wallets (${result.aggregated_intel.crypto_wallets.length})` },
               { id: "comms", label: `Communications (${result.aggregated_intel.emails.length + result.aggregated_intel.phones.length + result.aggregated_intel.mentions.length})` },
               { id: "reposts", label: `Repost Network (${result.stats.reposts_count})` },
@@ -565,7 +660,6 @@ export default function VkRecon() {
           {/* TAB 1: WALL STREAM */}
           {activeTab === "wall" && (
             <div>
-              {/* Filter controls */}
               <div style={{ display: "flex", gap: 12, marginBottom: 16, alignItems: "center" }}>
                 <input
                   value={searchTerm}
@@ -593,7 +687,6 @@ export default function VkRecon() {
                         padding: 14,
                       }}
                     >
-                      {/* Post Header */}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <a
@@ -625,7 +718,6 @@ export default function VkRecon() {
                           )}
                         </div>
 
-                        {/* Post Metrics */}
                         <div style={{ display: "flex", gap: 12, fontSize: 11, color: "var(--text-muted)" }}>
                           <span>Likes: <strong style={{ color: "var(--text)" }}>{post.likes.toLocaleString()}</strong></span>
                           <span>Views: <strong style={{ color: "var(--text)" }}>{post.views.toLocaleString()}</strong></span>
@@ -633,7 +725,6 @@ export default function VkRecon() {
                         </div>
                       </div>
 
-                      {/* Repost Origin Banner */}
                       {post.repost_origin && (
                         <div
                           style={{
@@ -656,14 +747,12 @@ export default function VkRecon() {
                         </div>
                       )}
 
-                      {/* Post Text */}
                       {post.text && (
                         <p style={{ margin: "6px 0", fontSize: 13, color: "var(--text)", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
                           {post.text}
                         </p>
                       )}
 
-                      {/* Attachments Section */}
                       {post.attachments.length > 0 && (
                         <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 10 }}>
                           {post.attachments.map((att, attIdx) => (
@@ -757,7 +846,6 @@ export default function VkRecon() {
                         </div>
                       )}
 
-                      {/* Post Footer & SaveToCase */}
                       <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--panel-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           {post.entities.btc.length > 0 && <span style={{ fontSize: 10, background: "#f7931a22", color: "#f7931a", padding: "1px 5px", borderRadius: 3 }}>BTC</span>}
@@ -786,6 +874,103 @@ export default function VkRecon() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* TAB: OSINT ARSENAL & PIVOTS */}
+          {activeTab === "pivots" && (
+            <div>
+              <div style={{ marginBottom: 14 }}>
+                <h4 style={{ margin: "0 0 4px 0", color: "var(--text)" }}>VKontakte Specialized OSINT Arsenal</h4>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
+                  Curated external databases, historical registries, telegram bots, and search engines pre-configured for{" "}
+                  <strong style={{ color: "var(--cyan)" }}>{result.profile.screen_name || result.target}</strong>.
+                </p>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12 }}>
+                {activePivots.map((p, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      background: "var(--panel)",
+                      border: "1px solid var(--panel-border)",
+                      borderRadius: 6,
+                      padding: 12,
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                        <h4 style={{ margin: 0, color: "var(--text)", fontSize: 14 }}>{p.name}</h4>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            padding: "2px 6px",
+                            borderRadius: 3,
+                            background: "rgba(0, 119, 255, 0.15)",
+                            color: "#0077FF",
+                            fontWeight: "bold",
+                          }}
+                        >
+                          {p.category}
+                        </span>
+                      </div>
+                      <p style={{ margin: "0 0 10px 0", fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                        {p.description}
+                      </p>
+                    </div>
+
+                    <div style={{ paddingTop: 8, borderTop: "1px solid var(--panel-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <a
+                          href={p.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            fontSize: 11,
+                            padding: "4px 8px",
+                            background: "rgba(0, 119, 255, 0.2)",
+                            color: "#0077FF",
+                            borderRadius: 4,
+                            textDecoration: "none",
+                            fontWeight: "bold",
+                          }}
+                        >
+                          <ExternalLinkIcon size={11} /> Launch Pivot ↗
+                        </a>
+                        <button
+                          onClick={() => handleCopy(p.url)}
+                          style={{
+                            fontSize: 10,
+                            padding: "4px 8px",
+                            background: "transparent",
+                            color: copiedUrl === p.url ? "var(--success)" : "var(--text-muted)",
+                            border: "1px solid var(--panel-border)",
+                            borderRadius: 4,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {copiedUrl === p.url ? "Copied!" : "Copy URL"}
+                        </button>
+                      </div>
+
+                      <SaveToCaseButton
+                        identifierType="url"
+                        identifierValue={p.url}
+                        platform="vk_osint_tool"
+                        discoveredBy="VkOsintArsenal"
+                        metadata={{ tool_name: p.name, category: p.category }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -831,7 +1016,6 @@ export default function VkRecon() {
           {/* TAB 3: COMMUNICATIONS */}
           {activeTab === "comms" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {/* Emails */}
               <div>
                 <h4 style={{ color: "var(--text)", margin: "0 0 8px 0" }}>Emails Identified</h4>
                 {result.aggregated_intel.emails.length === 0 ? (
@@ -864,7 +1048,6 @@ export default function VkRecon() {
                 )}
               </div>
 
-              {/* Phones */}
               <div>
                 <h4 style={{ color: "var(--text)", margin: "0 0 8px 0" }}>Phone Numbers</h4>
                 {result.aggregated_intel.phones.length === 0 ? (
@@ -897,7 +1080,6 @@ export default function VkRecon() {
                 )}
               </div>
 
-              {/* Mentions & Handles */}
               <div>
                 <h4 style={{ color: "var(--text)", margin: "0 0 8px 0" }}>Mentions & Cross-Platform Handles</h4>
                 {result.aggregated_intel.mentions.length === 0 ? (
@@ -988,7 +1170,6 @@ export default function VkRecon() {
           {/* TAB 5: LINKS & ONIONS */}
           {activeTab === "links" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {/* Onions */}
               <div>
                 <h4 style={{ color: "#B400FF", margin: "0 0 8px 0" }}>Dark Web (.onion) Links</h4>
                 {result.aggregated_intel.onion_links.length === 0 ? (
@@ -1021,7 +1202,6 @@ export default function VkRecon() {
                 )}
               </div>
 
-              {/* External URLs */}
               <div>
                 <h4 style={{ color: "var(--text)", margin: "0 0 8px 0" }}>External Clearnet URLs</h4>
                 {result.aggregated_intel.urls.length === 0 ? (
@@ -1089,6 +1269,105 @@ export default function VkRecon() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Standalone Toolkit Preview if no target is loaded */}
+      {!result && (
+        <div style={{ marginTop: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <h3 style={{ margin: 0, color: "var(--text)", fontSize: 15, display: "flex", alignItems: "center", gap: 8 }}>
+              <ShieldIcon size={15} color="#0077FF" />
+              Specialized VKontakte OSINT Tool Directory (12 Tools)
+            </h3>
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+              Search engines, archives, biometrics, and Telegram investigation bots
+            </span>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12 }}>
+            {DEFAULT_VK_TOOLS.map((tool, idx) => (
+              <div
+                key={idx}
+                style={{
+                  background: "var(--panel)",
+                  border: "1px solid var(--panel-border)",
+                  borderRadius: 6,
+                  padding: 14,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                    <h4 style={{ margin: 0, color: "var(--text)", fontSize: 14 }}>{tool.name}</h4>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        padding: "2px 6px",
+                        borderRadius: 3,
+                        background: "rgba(0, 119, 255, 0.15)",
+                        color: "#0077FF",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {tool.category}
+                    </span>
+                  </div>
+                  <p style={{ margin: "0 0 12px 0", fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                    {tool.description}
+                  </p>
+                </div>
+
+                <div style={{ paddingTop: 8, borderTop: "1px solid var(--panel-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <a
+                      href={tool.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        fontSize: 11,
+                        padding: "4px 8px",
+                        background: "rgba(0, 119, 255, 0.2)",
+                        color: "#0077FF",
+                        borderRadius: 4,
+                        textDecoration: "none",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      <ExternalLinkIcon size={11} /> Launch Tool ↗
+                    </a>
+                    <button
+                      onClick={() => handleCopy(tool.url)}
+                      style={{
+                        fontSize: 10,
+                        padding: "4px 8px",
+                        background: "transparent",
+                        color: copiedUrl === tool.url ? "var(--success)" : "var(--text-muted)",
+                        border: "1px solid var(--panel-border)",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {copiedUrl === tool.url ? "Copied!" : "Copy"}
+                    </button>
+                  </div>
+
+                  <SaveToCaseButton
+                    identifierType="url"
+                    identifierValue={tool.url}
+                    platform="vk_osint_tool"
+                    discoveredBy="VkOsintArsenal"
+                    metadata={{ tool_name: tool.name, category: tool.category }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

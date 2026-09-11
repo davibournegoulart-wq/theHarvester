@@ -102,6 +102,89 @@ def normalize_vk_target(target: str) -> str:
     return clean
 
 
+def generate_vk_osint_pivots(target: str, owner_id: Optional[int] = None) -> List[Dict[str, str]]:
+    """Generates structured OSINT pivot URLs based on target screen name and numeric ID."""
+    clean = normalize_vk_target(target)
+    slug = clean
+    if clean.startswith("wall") and "_" in clean:
+        slug = clean.split("_")[0].replace("wall", "")
+
+    return [
+        {
+            "name": "VK Watch",
+            "category": "Search & Archive",
+            "url": f"https://vk.watch/ru/{slug}",
+            "description": "Historical search and profile archive for posts, videos, and groups",
+        },
+        {
+            "name": "VK ID Lookup (RegVK)",
+            "category": "Registration Date",
+            "url": f"https://regvk.com/id/{slug}",
+            "description": "Find exact registration date and account verification metadata",
+        },
+        {
+            "name": "Wayback Machine",
+            "category": "Web Archive",
+            "url": f"https://web.archive.org/web/*/https://vk.com/{slug}",
+            "description": "Inspect archived and deleted posts or earlier versions of this profile",
+        },
+        {
+            "name": "Search4Faces",
+            "category": "Biometrics & Face Search",
+            "url": "https://search4faces.com/",
+            "description": "Reverse facial recognition search across VKontakte and Odnoklassniki databases",
+        },
+        {
+            "name": "VK History Robot",
+            "category": "Telegram Bot",
+            "url": "https://t.me/VKHistoryRobot",
+            "description": "Telegram bot tracking historical name, avatar, and status alterations",
+        },
+        {
+            "name": "FindNameVk Bot",
+            "category": "Telegram Bot",
+            "url": "https://t.me/FindNameVk_bot",
+            "description": "Telegram bot for finding VK accounts by real name and surname",
+        },
+        {
+            "name": "Дезертир (Deserteer)",
+            "category": "Telegram Bot",
+            "url": "https://t.me/deserteer",
+            "description": "Telegram tool for tracking group leavers and member connections",
+        },
+        {
+            "name": "Barkov.net",
+            "category": "Audience Parser",
+            "url": "https://barkov.net/",
+            "description": "Advanced VK subscriber, wall author, and community audience extractor",
+        },
+        {
+            "name": "VK People Search",
+            "category": "Native Filter",
+            "url": f"https://vk.com/search/people?c%5Bq%5D={slug}",
+            "description": "Search users filtered by city, university, school, and relationship",
+        },
+        {
+            "name": "VK Community Search",
+            "category": "Native Filter",
+            "url": f"https://vk.com/communities?act=search&q={slug}",
+            "description": "Discover related VK communities and public pages",
+        },
+        {
+            "name": "Bellingcat VK Scraper",
+            "category": "Python Toolkit",
+            "url": "https://github.com/bellingcat/vk-url-scraper",
+            "description": "Bellingcat's open-source URL scraper methodology for investigative workflows",
+        },
+        {
+            "name": "vk_api (Python)",
+            "category": "Developer Library",
+            "url": "https://github.com/python273/vk_api",
+            "description": "Python library for automating VK API queries and wall dumping",
+        },
+    ]
+
+
 async def harvest_vk_ultimate(
     target: str,
     limit: int = 50,
@@ -130,7 +213,13 @@ async def harvest_vk_ultimate(
     target_type = "user"
     profile_data: Dict[str, Any] = {}
 
-    if clean_target.startswith("id") and clean_target[2:].isdigit():
+    # Check for direct wall post URL (e.g. wall1_2442097 or wall-112510789_14548121)
+    m_wall = re.match(r"^wall(-?\d+)_(\d+)$", clean_target)
+    if m_wall:
+        owner_id = int(m_wall.group(1))
+        target_type = "group" if owner_id < 0 else "user"
+        url = f"https://vk.com/{'club' + str(abs(owner_id)) if owner_id < 0 else 'id' + str(owner_id)}"
+    elif clean_target.startswith("id") and clean_target[2:].isdigit():
         owner_id = int(clean_target[2:])
         target_type = "user"
     elif clean_target.startswith(("club", "public")) and re.match(r"^(club|public)\d+$", clean_target):
@@ -289,6 +378,7 @@ async def harvest_vk_ultimate(
                 "posts_with_media": 0,
                 "reposts_count": 0,
             },
+            "osint_pivots": generate_vk_osint_pivots(clean_target, owner_id),
             "warning": "Could not determine numeric owner_id for wall pagination."
         }
 
@@ -528,5 +618,6 @@ async def harvest_vk_ultimate(
             "reposts_count": reposts_total,
             "newest_post_date": posts_list[0]["date_utc"] if posts_list else None,
             "oldest_post_date": posts_list[-1]["date_utc"] if posts_list else None,
-        }
+        },
+        "osint_pivots": generate_vk_osint_pivots(clean_target, owner_id),
     }

@@ -1161,6 +1161,90 @@ ALL_TOOLS: List[Dict[str, Any]] = [
         "url": "https://oftoolbox.net",
         "category": "General Intel",
         "description": "OFToolbox.net is a list of the best tools for you to create, share and monetize adult content on platforms such as OnlyFans."
+    },
+    {
+        "platform": "VKontakte (VK)",
+        "name": "VK Watch",
+        "url": "https://vk.watch/ru",
+        "category": "Search & People",
+        "description": "Search engine and archive for VK profiles, posts, videos, and groups."
+    },
+    {
+        "platform": "VKontakte (VK)",
+        "name": "Bellingcat VK Scraper",
+        "url": "https://github.com/bellingcat/vk-url-scraper",
+        "category": "Profile & Post Scrapers",
+        "description": "Python tool designed by Bellingcat to scrape VK URLs, extracting post text, dates, and media attachments."
+    },
+    {
+        "platform": "VKontakte (VK)",
+        "name": "VK ID Lookup (RegVK)",
+        "url": "https://regvk.com/id/",
+        "category": "Profile & Account Lookup",
+        "description": "Find a VK profile by numeric ID or slug and inspect registration dates."
+    },
+    {
+        "platform": "VKontakte (VK)",
+        "name": "vk_api (Python)",
+        "url": "https://github.com/python273/vk_api",
+        "category": "Developer & API Libraries",
+        "description": "Python library for accessing VK API and automating data retrieval without official limitations."
+    },
+    {
+        "platform": "VKontakte (VK)",
+        "name": "Wayback Machine VK Archive",
+        "url": "https://web.archive.org/web/*/https://vk.com/*",
+        "category": "Archival & Historical Data",
+        "description": "Historical snapshots to view deleted or edited VK profiles, walls, and community records."
+    },
+    {
+        "platform": "VKontakte (VK)",
+        "name": "Search4Faces",
+        "url": "https://search4faces.com/",
+        "category": "Facial Recognition & Avatars",
+        "description": "Reverse facial recognition search engine specifically designed for finding VKontakte and Odnoklassniki profiles."
+    },
+    {
+        "platform": "VKontakte (VK)",
+        "name": "VK History Robot",
+        "url": "https://t.me/VKHistoryRobot",
+        "category": "Telegram Bots & Trackers",
+        "description": "Telegram bot to view historical name changes, avatar changes, and status updates for VK accounts."
+    },
+    {
+        "platform": "VKontakte (VK)",
+        "name": "FindNameVk Bot",
+        "url": "https://t.me/FindNameVk_bot",
+        "category": "Telegram Bots & Trackers",
+        "description": "Telegram bot to search for VK profiles by real name and surname with fuzzy matching."
+    },
+    {
+        "platform": "VKontakte (VK)",
+        "name": "Дезертир (Deserteer)",
+        "url": "https://t.me/deserteer",
+        "category": "Telegram Bots & Trackers",
+        "description": "Russian OSINT Telegram bot to track members entering or leaving VK groups, plus target profile analysis."
+    },
+    {
+        "platform": "VKontakte (VK)",
+        "name": "Barkov.net",
+        "url": "https://barkov.net/",
+        "category": "Search & People",
+        "description": "Comprehensive search and parsing engine for VKontakte audiences, users, and community subscribers."
+    },
+    {
+        "platform": "VKontakte (VK)",
+        "name": "VK Community Search",
+        "url": "https://vk.com/communities",
+        "category": "Search & People",
+        "description": "Discover and filter public and closed VK groups, public pages, and communities."
+    },
+    {
+        "platform": "VKontakte (VK)",
+        "name": "VK People Search",
+        "url": "https://vk.com/search/people",
+        "category": "Search & People",
+        "description": "Native VK user search with filters for age, location, university, military service, and relationships."
     }
 ]
 
