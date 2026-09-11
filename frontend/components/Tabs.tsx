@@ -27,7 +27,7 @@ export default function Tabs({ tabs }: { tabs: Tab[] }) {
             style={{
               padding: "10px 16px",
               fontSize: 12,
-              letterSpacing: "0.05em",
+              letterSpacing: "0.1em",
               border: "none",
               borderBottom: i === active ? "2px solid var(--cyan)" : "2px solid transparent",
               background: i === active ? "rgba(5, 217, 232, 0.08)" : "transparent",
