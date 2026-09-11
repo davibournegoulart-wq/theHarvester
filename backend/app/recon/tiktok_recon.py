@@ -122,8 +122,9 @@ async def scrape_tiktok_profile(username_or_url: str) -> dict:
     # SecUid extraction if present
     sec_uid = None
     sec_match = re.search(r'"secUid":"([A-Za-z0-9_-]+)"', resp.text)
-    if sec_match:
-        sec_uid = sec_match.group(1)
+    # Entity extraction from description
+    from app.recon.telegram_ultimate_scraper import extract_entities_from_text
+    entities = extract_entities_from_text(desc_text)
 
     return {
         "found": bool(user_id or followers),
@@ -139,6 +140,7 @@ async def scrape_tiktok_profile(username_or_url: str) -> dict:
         "avatar_url": avatar_url,
         "url": url,
         "raw_description": desc_text,
+        "entities": entities,
     }
 
 async def scrape_tiktok_video(video_url_or_id: str) -> dict:
@@ -163,8 +165,6 @@ async def scrape_tiktok_video(video_url_or_id: str) -> dict:
     url = f"https://www.tiktok.com/embed/v2/{video_id}"
     
     title = None
-    author = None
-    cover_url = None
 
     try:
         async with httpx.AsyncClient(headers=headers, follow_redirects=True, timeout=8.0) as client:
@@ -182,3 +182,25 @@ async def scrape_tiktok_video(video_url_or_id: str) -> dict:
         "title": title,
         "url": f"https://www.tiktok.com/video/{video_id}",
     }
+
+
+async def scrape_tiktok_ultimate(username_or_url: str, use_tor: bool = False) -> dict:
+    """Performs deep OSINT reconnaissance on a TikTok target."""
+    profile = await scrape_tiktok_profile(username_or_url)
+    if not profile.get("found"):
+        return profile
+
+    entities = profile.get("entities", {})
+    return {
+        "profile": profile,
+        "aggregated_intel": {
+            "crypto_wallets": sorted(list(set(entities.get("btc", []) + entities.get("eth", []) + entities.get("tron", []) + entities.get("sol", [])))),
+            "emails": sorted(list(set(entities.get("emails", [])))),
+            "phones": sorted(list(set(entities.get("phones", [])))),
+            "mentions": sorted(list(set(entities.get("mentions", [])))),
+            "hashtags": sorted(list(set(entities.get("hashtags", [])))),
+            "onion_links": sorted(list(set(entities.get("onion_links", [])))),
+            "urls": sorted(list(set(entities.get("urls", [])))),
+        }
+    }
+

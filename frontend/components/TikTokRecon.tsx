@@ -1,9 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPostJson } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "./SaveToCaseButton";
+import {
+  TikTokIcon,
+  VideoIcon,
+  SearchIcon,
+  CheckIcon,
+  ClockIcon,
+  ExternalLinkIcon,
+  ShieldIcon,
+  LockIcon,
+} from "./FlatIcons";
+
+type TikTokEntities = {
+  btc: string[];
+  eth: string[];
+  tron: string[];
+  sol: string[];
+  emails: string[];
+  phones: string[];
+  mentions: string[];
+  hashtags: string[];
+  onion_links: string[];
+  urls: string[];
+};
 
 type TikTokProfileResult = {
   found: boolean;
@@ -19,6 +42,7 @@ type TikTokProfileResult = {
   avatar_url?: string;
   url?: string;
   raw_description?: string;
+  entities?: TikTokEntities;
   error?: string;
 };
 
@@ -46,11 +70,16 @@ export default function TikTokRecon() {
   const [videoError, setVideoError] = useState<string | null>(null);
   const [videoResult, setVideoResult] = useState<TikTokVideoResult | null>(null);
 
+  // Evidence Attachment State
+  const [attaching, setAttaching] = useState(false);
+  const [attachFeedback, setAttachFeedback] = useState<string | null>(null);
+
   async function handleProfileSearch() {
     if (!username.trim()) return;
     setProfileLoading(true);
     setProfileError(null);
     setProfile(null);
+    setAttachFeedback(null);
 
     let clean = username.trim();
     if (clean.includes("tiktok.com/@")) {
@@ -93,13 +122,36 @@ export default function TikTokRecon() {
     }
   }
 
+  async function handleAttachAvatar() {
+    if (!profile?.avatar_url) return;
+    if (!activeCase) {
+      setAttachFeedback("Select an active case first to attach evidence.");
+      return;
+    }
+    setAttaching(true);
+    setAttachFeedback(null);
+
+    try {
+      await apiPostJson(
+        `/recon/tiktok/attach-evidence?case_id=${activeCase.id}&media_url=${encodeURIComponent(profile.avatar_url)}&filename=${encodeURIComponent(`tiktok_avatar_${profile.username}.jpg`)}`,
+        {}
+      );
+      setAttachFeedback(`Avatar attached to Case "${activeCase.name}" vault.`);
+    } catch (e) {
+      setAttachFeedback(e instanceof Error ? e.message : "Failed attaching avatar");
+    } finally {
+      setAttaching(false);
+    }
+  }
+
   return (
     <div>
+      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <div>
           <h2 style={{ color: "var(--cyan)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#FE2C55", display: "inline-block", boxShadow: "0 0 8px #FE2C55" }} />
-            TikTok Intelligence & Scraping
+            <TikTokIcon size={18} color="#FE2C55" />
+            TikTok Intelligence & Forensic Scraper
           </h2>
           <p style={{ color: "var(--text-muted)", fontSize: 13, margin: "4px 0 0 0" }}>
             Extract persistent internal numeric IDs, snowflake creation timestamps, follow metrics, and video upload dates without API keys or login.
@@ -151,12 +203,13 @@ export default function TikTokRecon() {
               placeholder="Username or profile URL (e.g. khaby.lame or https://www.tiktok.com/@tiktok)"
               style={{ flex: 1, padding: "8px 12px" }}
             />
-            <button onClick={handleProfileSearch} disabled={profileLoading}>
+            <button onClick={handleProfileSearch} disabled={profileLoading} style={{ padding: "8px 20px" }}>
               {profileLoading ? "Scraping..." : "Scrape Profile"}
             </button>
           </div>
 
           {profileError && <p style={{ color: "var(--danger)", fontSize: 13 }}>{profileError}</p>}
+          {attachFeedback && <p style={{ color: "var(--success)", fontSize: 13 }}>{attachFeedback}</p>}
 
           {profile && (
             <div
@@ -170,18 +223,40 @@ export default function TikTokRecon() {
             >
               <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
                 {profile.avatar_url && (
-                  <img
-                    src={profile.avatar_url}
-                    alt={profile.display_name || profile.username}
-                    style={{
-                      width: 96,
-                      height: 96,
-                      borderRadius: "50%",
-                      border: "2px solid #FE2C55",
-                      objectFit: "cover",
-                      boxShadow: "0 0 16px rgba(254, 44, 85, 0.4)",
-                    }}
-                  />
+                  <div style={{ position: "relative" }}>
+                    <img
+                      src={profile.avatar_url}
+                      alt={profile.display_name || profile.username}
+                      style={{
+                        width: 96,
+                        height: 96,
+                        borderRadius: "50%",
+                        border: "2px solid #FE2C55",
+                        objectFit: "cover",
+                        boxShadow: "0 0 16px rgba(254, 44, 85, 0.4)",
+                      }}
+                    />
+                    <button
+                      onClick={handleAttachAvatar}
+                      disabled={attaching}
+                      style={{
+                        position: "absolute",
+                        bottom: -8,
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        fontSize: 10,
+                        padding: "2px 8px",
+                        whiteSpace: "nowrap",
+                        background: "#FE2C55",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Attach Avatar
+                    </button>
+                  </div>
                 )}
                 <div style={{ flex: 1, minWidth: 260 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -228,67 +303,95 @@ export default function TikTokRecon() {
 
                     {profile.created_at_utc && (
                       <div>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>ACCOUNT CREATION DATE (ESTIMATED)</div>
-                        <div style={{ fontSize: 13, fontWeight: "bold", color: "var(--success)" }}>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>ACCOUNT CREATION DATE (DECODED)</div>
+                        <div style={{ fontSize: 14, fontWeight: "bold", color: "var(--cyan)" }}>
                           {new Date(profile.created_at_utc).toUTCString()}
                         </div>
-                        <div style={{ fontSize: 10, color: "var(--text-muted)" }}>Decoded from 64-bit Snowflake ID</div>
+                        <div style={{ fontSize: 10, color: "var(--text-muted)" }}>Extracted via 64-bit Snowflake timestamp</div>
                       </div>
                     )}
 
+                    <div>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)" }}>METRICS</div>
+                      <div style={{ fontSize: 13, color: "var(--text)" }}>
+                        <strong>{profile.followers || "0"}</strong> Followers · <strong>{profile.following || "0"}</strong> Following · <strong>{profile.likes || "0"}</strong> Likes
+                      </div>
+                    </div>
+
                     {profile.sec_uid && (
                       <div>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>SEC-UID (API IDENTIFIER)</div>
-                        <div style={{ fontSize: 11, wordBreak: "break-all", color: "var(--text)" }}>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>SEC_UID</div>
+                        <div style={{ fontSize: 11, fontFamily: "monospace", color: "var(--text)", wordBreak: "break-all" }}>
                           {profile.sec_uid}
                         </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Follow Stats */}
-                  <div style={{ display: "flex", gap: 24, marginTop: 16 }}>
-                    <div>
-                      <div style={{ fontSize: 18, fontWeight: "bold", color: "var(--cyan)" }}>{profile.followers || "0"}</div>
-                      <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Followers</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 18, fontWeight: "bold", color: "var(--cyan)" }}>{profile.following || "0"}</div>
-                      <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Following</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 18, fontWeight: "bold", color: "var(--cyan)" }}>{profile.likes || "0"}</div>
-                      <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Likes</div>
-                    </div>
-                  </div>
-
                   {profile.raw_description && (
-                    <div style={{ marginTop: 16, fontSize: 12, color: "var(--text-muted)", fontStyle: "italic", borderLeft: "2px solid var(--panel-border)", paddingLeft: 8 }}>
-                      "{profile.raw_description}"
+                    <div style={{ marginTop: 12, fontSize: 13, color: "var(--text-muted)" }}>
+                      <strong>Bio: </strong>
+                      <span>{profile.raw_description}</span>
                     </div>
                   )}
 
-                  {/* Save to Case */}
-                  {activeCase && (
-                    <div style={{ marginTop: 20 }}>
-                      <SaveToCaseButton
-                        identifierType="username"
-                        identifierValue={profile.username}
-                        platform="tiktok"
-                        url={profile.url}
-                        discoveredBy="tiktok_recon"
-                        metadata={{
-                          user_id: profile.user_id,
-                          sec_uid: profile.sec_uid,
-                          followers: profile.followers,
-                          following: profile.following,
-                          likes: profile.likes,
-                          created_at_utc: profile.created_at_utc,
-                          avatar_url: profile.avatar_url,
-                        }}
-                      />
+                  {/* Extracted Entities */}
+                  {profile.entities && (
+                    <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+                      {profile.entities.emails.length > 0 && (
+                        <div style={{ fontSize: 12 }}>
+                          <span style={{ color: "var(--text-muted)" }}>Emails: </span>
+                          {profile.entities.emails.map((e, idx) => (
+                            <span key={idx} style={{ marginRight: 8, background: "rgba(0, 200, 83, 0.15)", color: "var(--success)", padding: "2px 6px", borderRadius: 3 }}>
+                              {e}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {profile.entities.phones.length > 0 && (
+                        <div style={{ fontSize: 12 }}>
+                          <span style={{ color: "var(--text-muted)" }}>Phones: </span>
+                          {profile.entities.phones.map((p, idx) => (
+                            <span key={idx} style={{ marginRight: 8, background: "rgba(0, 119, 255, 0.15)", color: "#0077FF", padding: "2px 6px", borderRadius: 3 }}>
+                              {p}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {profile.entities.mentions.length > 0 && (
+                        <div style={{ fontSize: 12 }}>
+                          <span style={{ color: "var(--text-muted)" }}>Mentions: </span>
+                          {profile.entities.mentions.map((m, idx) => (
+                            <span key={idx} style={{ marginRight: 8, color: "var(--cyan)" }}>
+                              @{m}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
+
+                  {/* Save to Active Case Button */}
+                  <div style={{ marginTop: 16 }}>
+                    <SaveToCaseButton
+                      identifierType="username"
+                      identifierValue={profile.username}
+                      platform="tiktok"
+                      url={profile.url}
+                      discoveredBy="TikTokUltimateScraper"
+                      metadata={{
+                        display_name: profile.display_name,
+                        user_id: profile.user_id,
+                        sec_uid: profile.sec_uid,
+                        followers: profile.followers,
+                        following: profile.following,
+                        likes: profile.likes,
+                        created_at_utc: profile.created_at_utc,
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -303,11 +406,11 @@ export default function TikTokRecon() {
               value={videoUrl}
               onChange={(e) => setVideoUrl(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleVideoSearch()}
-              placeholder="TikTok video URL or numeric ID (e.g. https://www.tiktok.com/@user/video/7187123908852337966)"
+              placeholder="Video URL or ID (e.g. 7106594312292453678 or https://www.tiktok.com/@user/video/7106594312292453678)"
               style={{ flex: 1, padding: "8px 12px" }}
             />
-            <button onClick={handleVideoSearch} disabled={videoLoading}>
-              {videoLoading ? "Analyzing..." : "Extract Timestamp"}
+            <button onClick={handleVideoSearch} disabled={videoLoading} style={{ padding: "8px 20px" }}>
+              {videoLoading ? "Analyzing..." : "Decode Timestamp"}
             </button>
           </div>
 
@@ -323,56 +426,65 @@ export default function TikTokRecon() {
                 borderRadius: 8,
               }}
             >
-              <h3 style={{ margin: "0 0 12px 0", color: "#FE2C55" }}>Video Snowflake Forensic Analysis</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)" }}>VIDEO ID</div>
-                  <div style={{ fontSize: 16, fontWeight: "bold", color: "var(--cyan)" }}>{videoResult.video_id}</div>
+                  <h4 style={{ margin: "0 0 4px 0", color: "var(--text)" }}>Video ID: {videoResult.video_id}</h4>
+                  {videoResult.title && <p style={{ margin: "0 0 8px 0", fontSize: 13, color: "var(--text-muted)" }}>{videoResult.title}</p>}
                 </div>
-
-                <div>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)" }}>EXACT CREATION DATE (UTC)</div>
-                  <div style={{ fontSize: 16, fontWeight: "bold", color: "var(--success)" }}>
-                    {videoResult.created_at_utc ? new Date(videoResult.created_at_utc).toUTCString() : "Unable to decode"}
-                  </div>
-                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>
-                    ISO: {videoResult.created_at_utc || "N/A"}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ marginTop: 16, display: "flex", gap: 12, alignItems: "center" }}>
                 <a
                   href={videoResult.url}
                   target="_blank"
                   rel="noreferrer"
                   style={{
-                    fontSize: 12,
-                    padding: "6px 12px",
+                    fontSize: 11,
+                    padding: "4px 8px",
                     borderRadius: 4,
                     background: "rgba(254, 44, 85, 0.15)",
                     color: "#FE2C55",
-                    border: "1px solid rgba(254, 44, 85, 0.4)",
                     textDecoration: "none",
-                    fontWeight: "bold",
                   }}
                 >
-                  Open Video on TikTok ↗
+                  Watch Video ↗
                 </a>
+              </div>
 
-                {activeCase && (
-                  <SaveToCaseButton
-                    identifierType="username"
-                    identifierValue={`video_${videoResult.video_id}`}
-                    platform="tiktok_video"
-                    url={videoResult.url}
-                    discoveredBy="tiktok_recon"
-                    metadata={{
-                      video_id: videoResult.video_id,
-                      created_at_utc: videoResult.created_at_utc,
-                    }}
-                  />
-                )}
+              {videoResult.created_at_utc ? (
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: 12,
+                    background: "rgba(254, 44, 85, 0.05)",
+                    borderRadius: 6,
+                    border: "1px solid rgba(254, 44, 85, 0.2)",
+                  }}
+                >
+                  <div style={{ fontSize: 11, color: "var(--text-muted)" }}>DECODED EXACT UPLOAD TIMESTAMP (UTC)</div>
+                  <div style={{ fontSize: 16, fontWeight: "bold", color: "var(--cyan)", marginTop: 4 }}>
+                    {new Date(videoResult.created_at_utc).toUTCString()}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
+                    Decoded from TikTok 64-bit Snowflake ID.
+                  </div>
+                </div>
+              ) : (
+                <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8 }}>
+                  Could not decode timestamp from this video ID.
+                </p>
+              )}
+
+              <div style={{ marginTop: 12 }}>
+                <SaveToCaseButton
+                  identifierType="url"
+                  identifierValue={videoResult.url}
+                  platform="tiktok_video"
+                  url={videoResult.url}
+                  discoveredBy="TikTokSnowflakeDecoder"
+                  metadata={{
+                    video_id: videoResult.video_id,
+                    created_at_utc: videoResult.created_at_utc,
+                    title: videoResult.title,
+                  }}
+                />
               </div>
             </div>
           )}

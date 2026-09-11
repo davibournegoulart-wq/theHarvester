@@ -378,6 +378,42 @@ export function TelegramIcon({ size = 14, color = "currentColor", style }: IconP
   );
 }
 
+export function VkIcon({ size = 14, color = "currentColor", style }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ display: "inline-block", verticalAlign: "middle", ...style }}>
+      <path d="M15.07 2H8.93C4.99 2 2 4.99 2 8.93v6.14C2 19.01 4.99 22 8.93 22h6.14c3.94 0 6.93-2.99 6.93-6.93V8.93C22 4.99 19.01 2 15.07 2zm3.38 13.91h-1.61c-.61 0-.8-.49-1.9-1.58-.96-.93-1.38-1.05-1.62-1.05-.33 0-.43.1-.43.57v1.46c0 .38-.12.6-1.14.6-1.69 0-3.56-1.03-4.88-2.94-2-2.84-2.56-4.98-2.56-5.42 0-.25.1-.48.58-.48h1.61c.43 0 .59.2.76.67.83 2.41 2.22 4.53 2.79 4.53.22 0 .32-.1.32-.65V9.41c-.07-1.17-.68-1.27-.68-1.69 0-.2.17-.4.43-.4h2.69c.36 0 .49.19.49.62v3.34c0 .36.16.49.27.49.22 0 .4-.13.82-.54 1.27-1.42 2.18-3.64 2.18-3.64.12-.25.33-.48.76-.48h1.61c.49 0 .6.25.49.6-.2.94-2.2 3.73-2.3 3.88-.19.3-.26.43 0 .78.19.25.82.8 1.24 1.28.77.89 1.36 1.63 1.52 2.15.16.51-.09.77-.58.77z" />
+    </svg>
+  );
+}
+
+export function TikTokIcon({ size = 14, color = "currentColor", style }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ display: "inline-block", verticalAlign: "middle", ...style }}>
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.88 2.89 2.89 0 0 1-2.88-2.88 2.89 2.89 0 0 1 2.88-2.88c.28 0 .55.04.81.11V9.37a6.34 6.34 0 0 0-.81-.05A6.33 6.33 0 0 0 3 15.65a6.34 6.34 0 0 0 6.34 6.35 6.34 6.34 0 0 0 6.34-6.35V8.82a8.28 8.28 0 0 0 3.91.98V6.69z" />
+    </svg>
+  );
+}
+
+export function VideoIcon({ size = 14, color = "currentColor", style }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", ...style }}>
+      <polygon points="23 7 16 12 23 17 23 7" />
+      <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+    </svg>
+  );
+}
+
+export function MusicIcon({ size = 14, color = "currentColor", style }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", ...style }}>
+      <path d="M9 18V5l12-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="18" cy="16" r="3" />
+    </svg>
+  );
+}
+
+
 
 
 

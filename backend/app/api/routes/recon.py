@@ -529,7 +529,7 @@ async def instalooter_attach_case(
 ):
     """Downloads an external Instagram media URL directly into the active case databank."""
     from app.models.case import Case, CaseFile
-    from app.models.audit import log_action
+    from app.case.incident import log_action
 
     case = await db.get(Case, case_id)
     if case is None:
@@ -735,7 +735,7 @@ async def telegram_attach_evidence(
 ):
     """Downloads Telegram media directly into the active case evidence vault."""
     from app.models.case import Case, CaseFile
-    from app.models.audit import log_action
+    from app.case.incident import log_action
 
     case = await db.get(Case, case_id)
     if case is None:
@@ -792,6 +792,189 @@ async def telegram_attach_evidence(
         "original_filename": filename,
         "file_size": len(content),
     }
+
+
+# ---------------------------------------------------------------------------
+# VKontakte (VK) Ultimate Harvester
+# ---------------------------------------------------------------------------
+
+@router.get("/vk/ultimate-harvest")
+async def vk_ultimate_harvest(
+    target: str,
+    limit: int = 50,
+    filter_type: str = "all",
+    use_tor: bool = False,
+):
+    """Harvests VKontakte profiles, groups, wall posts, attachments, and forensic entities."""
+    from app.recon.vk_ultimate_harvester import harvest_vk_ultimate
+    return await harvest_vk_ultimate(
+        target=target,
+        limit=limit,
+        filter_type=filter_type,
+        use_tor=use_tor,
+    )
+
+
+@router.post("/vk/attach-evidence")
+async def vk_attach_evidence(
+    case_id: uuid.UUID,
+    media_url: str,
+    filename: str = "vk_evidence.jpg",
+    typology: str = "image",
+    db: AsyncSession = Depends(get_db),
+):
+    """Downloads VKontakte media directly into the active case evidence vault."""
+    from app.models.case import Case, CaseFile
+    from app.case.incident import log_action
+
+    case = await db.get(Case, case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    storage_dir = "/data/case_files"
+    os.makedirs(storage_dir, exist_ok=True)
+
+    file_id = uuid.uuid4()
+    ext = os.path.splitext(filename)[1] or ".jpg"
+    safe_stored_name = f"{case_id}_{file_id}{ext}"
+    dest_path = os.path.join(storage_dir, safe_stored_name)
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Referer": "https://vk.com/",
+    }
+
+    async with httpx.AsyncClient(headers=headers, timeout=30.0, follow_redirects=True) as client:
+        r = await client.get(media_url)
+        if r.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed downloading media from VK CDN")
+        content = r.content
+
+    with open(dest_path, "wb") as out_f:
+        out_f.write(content)
+
+    case_file = CaseFile(
+        id=file_id,
+        case_id=case_id,
+        filename=safe_stored_name,
+        original_filename=filename,
+        typology=typology,
+        source_url=media_url,
+        file_size=len(content),
+        mime_type="image/jpeg" if ext.lower() in [".jpg", ".jpeg"] else "video/mp4",
+        storage_path=dest_path,
+    )
+    db.add(case_file)
+    await db.commit()
+    await db.refresh(case_file)
+
+    await log_action(
+        db,
+        case_id,
+        actor="VkUltimateHarvester",
+        action="file_looted_from_vk",
+        payload={
+            "filename": filename,
+            "source_url": media_url,
+            "size": len(content),
+        },
+    )
+
+    return {
+        "status": "success",
+        "file_id": str(file_id),
+        "filename": safe_stored_name,
+        "original_filename": filename,
+        "file_size": len(content),
+    }
+
+
+# ---------------------------------------------------------------------------
+# TikTok Ultimate Scraper
+# ---------------------------------------------------------------------------
+
+@router.get("/tiktok/ultimate-scrape")
+async def tiktok_ultimate_scrape_route(
+    target: str,
+    use_tor: bool = False,
+):
+    """Scrapes TikTok profile and extracts forensic entities."""
+    from app.recon.tiktok_recon import scrape_tiktok_ultimate
+    return await scrape_tiktok_ultimate(username_or_url=target, use_tor=use_tor)
+
+
+@router.post("/tiktok/attach-evidence")
+async def tiktok_attach_evidence(
+    case_id: uuid.UUID,
+    media_url: str,
+    filename: str = "tiktok_evidence.jpg",
+    typology: str = "image",
+    db: AsyncSession = Depends(get_db),
+):
+    """Downloads TikTok media/avatar directly into the active case evidence vault."""
+    from app.models.case import Case, CaseFile
+    from app.case.incident import log_action
+
+    case = await db.get(Case, case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    storage_dir = "/data/case_files"
+    os.makedirs(storage_dir, exist_ok=True)
+
+    file_id = uuid.uuid4()
+    ext = os.path.splitext(filename)[1] or ".jpg"
+    safe_stored_name = f"{case_id}_{file_id}{ext}"
+    dest_path = os.path.join(storage_dir, safe_stored_name)
+
+    headers = {
+        "User-Agent": "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+    }
+
+    async with httpx.AsyncClient(headers=headers, timeout=30.0, follow_redirects=True) as client:
+        r = await client.get(media_url)
+        if r.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed downloading media from TikTok CDN")
+        content = r.content
+
+    with open(dest_path, "wb") as out_f:
+        out_f.write(content)
+
+    case_file = CaseFile(
+        id=file_id,
+        case_id=case_id,
+        filename=safe_stored_name,
+        original_filename=filename,
+        typology=typology,
+        source_url=media_url,
+        file_size=len(content),
+        mime_type="image/jpeg" if ext.lower() in [".jpg", ".jpeg"] else "video/mp4",
+        storage_path=dest_path,
+    )
+    db.add(case_file)
+    await db.commit()
+    await db.refresh(case_file)
+
+    await log_action(
+        db,
+        case_id,
+        actor="TikTokUltimateScraper",
+        action="file_looted_from_tiktok",
+        payload={
+            "filename": filename,
+            "source_url": media_url,
+            "size": len(content),
+        },
+    )
+
+    return {
+        "status": "success",
+        "file_id": str(file_id),
+        "filename": safe_stored_name,
+        "original_filename": filename,
+        "file_size": len(content),
+    }
+
 
 
 

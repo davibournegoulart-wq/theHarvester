@@ -23,6 +23,7 @@ import GlobalOSINT from "@/components/GlobalOSINT";
 import MetaRecon from "@/components/MetaRecon";
 import TelegramRecon from "@/components/TelegramRecon";
 import TikTokRecon from "@/components/TikTokRecon";
+import VkRecon from "@/components/VkRecon";
 import FaceBiometricsRecon from "@/components/FaceBiometricsRecon";
 import { ActiveCaseProvider } from "@/lib/activeCase";
 import {
@@ -41,6 +42,7 @@ import {
   CameraIcon,
   BoltIcon,
   DatabaseIcon,
+  VkIcon,
 } from "@/components/FlatIcons";
 
 export default function Home() {
@@ -91,6 +93,7 @@ export default function Home() {
                 { label: "META (FB/IG/WA)", icon: <UserIcon size={13} />, content: <MetaRecon /> },
                 { label: "TELEGRAM", icon: <TerminalIcon size={13} />, content: <TelegramRecon /> },
                 { label: "TIKTOK", icon: <CameraIcon size={13} />, content: <TikTokRecon /> },
+                { label: "VKONTAKTE", icon: <VkIcon size={13} />, content: <VkRecon /> },
                 { label: "DARK WEB", icon: <ShieldIcon size={13} />, content: <DarkWebSearch /> },
                 { label: "CRYPTO", icon: <BoltIcon size={13} />, content: <CryptoTrace /> },
                 { label: "GRAPH", icon: <RadarIcon size={13} />, content: <GraphView /> },
