@@ -50,6 +50,194 @@ async def sherlock_sites_list():
     }
 
 
+@router.get("/username/{username}/whatsmyname")
+async def username_whatsmyname_lookup(
+    username: str,
+    category: str | None = None,
+    limit: int | None = 150,
+    use_tor: bool = False,
+    timeout: float = 6.0,
+):
+    """Executa a engine do WhatsMyName (700+ sites) para o username especificado."""
+    from app.checkers.whatsmyname_runner import run_whatsmyname_scan
+    categories = [category] if category else None
+    return await run_whatsmyname_scan(
+        username=username,
+        categories=categories,
+        limit=limit,
+        use_tor=use_tor,
+        timeout=timeout,
+    )
+
+
+@router.get("/whatsmyname/sites")
+async def whatsmyname_sites_list():
+    """Retorna o catalogo de sites suportados pelo WhatsMyName."""
+    from app.checkers.whatsmyname_runner import get_whatsmyname_data
+    data = await get_whatsmyname_data()
+    return {
+        "total": len(data.get("sites", [])),
+        "categories": data.get("categories", []),
+        "sites": [
+            {
+                "name": s.get("name"),
+                "category": s.get("cat"),
+                "uri_check": s.get("uri_check"),
+                "uri_pretty": s.get("uri_pretty"),
+            }
+            for s in data.get("sites", [])
+        ],
+    }
+
+
+@router.get("/username/{username}/maigret")
+async def username_maigret_lookup(
+    username: str,
+    top_sites: int = 50,
+    use_tor: bool = False,
+    timeout: int = 60,
+):
+    """Executa a engine do Maigret com extracao de dossies completos."""
+    from app.checkers.maigret_runner import run_maigret_scan
+    return await run_maigret_scan(
+        username=username,
+        top_sites=top_sites,
+        use_tor=use_tor,
+        timeout=timeout,
+    )
+
+
+@router.get("/username/{username}/socialscan")
+async def username_socialscan_lookup(username: str):
+    """Verifica existencia de username via Socialscan com 0% falsos positivos."""
+    from app.checkers.socialscan_runner import run_socialscan
+    return await run_socialscan(query=username)
+
+
+@router.get("/email/{email}/socialscan")
+async def email_socialscan_lookup(email: str):
+    """Verifica existencia de email via Socialscan com 0% falsos positivos."""
+    from app.checkers.socialscan_runner import run_socialscan
+    return await run_socialscan(query=email)
+
+
+@router.get("/cross-platform/pivots")
+async def cross_platform_pivots(query: str, query_type: str = "username"):
+    """Retorna a matriz de ferramentas e pivots cross-platform OSINT."""
+    pivots = [
+        {
+            "name": "WhatsMyName",
+            "url": f"https://whatsmyname.app/?q={query}",
+            "description": "Fast username enumeration across 700+ websites and services with zero false positives.",
+            "category": "Username Recon",
+            "native_engine": True,
+            "query_type": "username",
+        },
+        {
+            "name": "Sherlock",
+            "url": "https://github.com/sherlock-project/sherlock",
+            "description": "Hunting social media accounts by username across 430+ global sites.",
+            "category": "Username Recon",
+            "native_engine": True,
+            "query_type": "username",
+        },
+        {
+            "name": "Maigret",
+            "url": "https://github.com/soxoj/maigret",
+            "description": "Collect profiles by username across 5,000+ sites with deep dossier scraping.",
+            "category": "Dossier Recon",
+            "native_engine": True,
+            "query_type": "username",
+        },
+        {
+            "name": "Socialscan",
+            "url": "https://github.com/iojw/socialscan",
+            "description": "Zero false positive username and email existence checker across primary social platforms.",
+            "category": "Email & Username",
+            "native_engine": True,
+            "query_type": "both",
+        },
+        {
+            "name": "Epieos",
+            "url": f"https://epieos.com/?q={query}",
+            "description": "Powerful reverse search engine for email addresses and phone numbers across Google, Skype, and accounts.",
+            "category": "Email & Phone OSINT",
+            "native_engine": False,
+            "query_type": "both",
+        },
+        {
+            "name": "Lolarchiver",
+            "url": f"https://lolarchiver.com/",
+            "description": "Specialized OSINT pivot connecting email addresses, phone numbers, and gamer usernames.",
+            "category": "Gamer & Email OSINT",
+            "native_engine": False,
+            "query_type": "both",
+        },
+        {
+            "name": "Blackbird",
+            "url": "https://github.com/p1ngul1n0/blackbird",
+            "description": "Fast async OSINT search engine querying usernames and emails across 500+ websites.",
+            "category": "Username & Email",
+            "native_engine": False,
+            "query_type": "both",
+        },
+        {
+            "name": "Namechk",
+            "url": "https://namechk.com/",
+            "description": "Instant username availability and brand domain registration search across hundreds of networks.",
+            "category": "Brand & Username",
+            "native_engine": False,
+            "query_type": "username",
+        },
+        {
+            "name": "UserSearch",
+            "url": "https://usersearch.org/",
+            "description": "Find usernames and pseudonyms across forums, discussion boards, dating sites, and crypto communities.",
+            "category": "Forums & Dating",
+            "native_engine": False,
+            "query_type": "username",
+        },
+        {
+            "name": "IDcrawl",
+            "url": f"https://www.idcrawl.com/u/{query}",
+            "description": "Global people meta-search crawler aggregating profiles across major social networks.",
+            "category": "Meta People Search",
+            "native_engine": False,
+            "query_type": "username",
+        },
+        {
+            "name": "PeekYou",
+            "url": f"https://www.peekyou.com/{query}",
+            "description": "Publicly available people search engine discovering public records and social presence.",
+            "category": "Public Records",
+            "native_engine": False,
+            "query_type": "username",
+        },
+        {
+            "name": "Pipl",
+            "url": f"https://pipl.com/search/?q={query}",
+            "description": "Industry-grade commercial identity resolution and deep fraud prevention data enrichment.",
+            "category": "Identity Resolution",
+            "native_engine": False,
+            "query_type": "both",
+        },
+        {
+            "name": "Holehe",
+            "url": "https://github.com/megadose/holehe",
+            "description": "Check if an email address is registered on 120+ platforms without sending verification alerts.",
+            "category": "Email Registration",
+            "native_engine": True,
+            "query_type": "email",
+        },
+    ]
+
+    filtered = [
+        p for p in pivots
+        if p["query_type"] == "both" or p["query_type"] == query_type or query_type == "all"
+    ]
+    return {"query": query, "query_type": query_type, "pivots": filtered}
+
+
 @router.get("/email/{email}")
 async def email_lookup(email: str):
     results = await check_email(email)
