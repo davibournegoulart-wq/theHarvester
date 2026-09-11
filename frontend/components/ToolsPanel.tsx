@@ -8,6 +8,7 @@ import DeepScraperTool from "./DeepScraperTool";
 import ImageMagnifier from "./ImageMagnifier";
 import GhostTrackIpTool from "./GhostTrackIpTool";
 import BellingcatToolkitTool from "./BellingcatToolkitTool";
+import InstaLooterTool from "./InstaLooterTool";
 import { CheckIcon, KeyIcon, ShieldIcon, AlertIcon, FolderIcon, CameraIcon, PinIcon, GlobeIcon, LockIcon, LinkIcon } from "@/components/FlatIcons";
 
 type ReverseImageLink = {
@@ -751,6 +752,7 @@ export default function ToolsPanel() {
       <DeepScraperTool />
       <GitleaksTruffleHogTool />
       <ReverseImageTool />
+      <InstaLooterTool />
       <GhostTrackIpTool />
       <BellingcatToolkitTool />
       <ImageExifTool />

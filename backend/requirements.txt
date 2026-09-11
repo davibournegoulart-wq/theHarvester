@@ -27,3 +27,5 @@ Scrapy==2.11.2
 sherlock-project>=0.16.0
 pic2map>=0.1.0
 exifread>=3.5.0
+setuptools<70
+instalooter>=2.4.4

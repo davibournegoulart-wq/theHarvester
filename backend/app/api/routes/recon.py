@@ -5,10 +5,13 @@ cloud enum, corporate registry, document metadata, breach analytics,
 Facebook breach, BSC e Polygon crypto trace.
 """
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, UploadFile, Depends
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 import httpx
+import uuid
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db import get_db
 
 from app.darkweb.monitor import search_dark_web
 from app.recon.breach_check import (
@@ -472,4 +475,115 @@ def bellingcat_toolkit(category: str | None = None, query: str | None = None):
         ]
 
     return tools
+ 
+ 
+# ---------------------------------------------------------------------------
+# InstaLooter (althonos/InstaLooter, stask/insta-looter, bakercp/ofxInstaLooter)
+# ---------------------------------------------------------------------------
+
+@router.get("/instagram/instalooter/profile")
+async def instalooter_profile(username: str, use_tor: bool = False):
+    """InstaLooter profile intelligence and metadata extraction."""
+    from app.recon.insta_looter import loot_profile
+    return await loot_profile(username, use_tor=use_tor)
+
+
+@router.get("/instagram/instalooter/post")
+async def instalooter_post(post_ref: str, use_tor: bool = False):
+    """InstaLooter post/reel media and caption extraction."""
+    from app.recon.insta_looter import loot_post
+    return await loot_post(post_ref, use_tor=use_tor)
+
+
+@router.post("/instagram/instalooter/cli")
+async def instalooter_cli(
+    target: str,
+    target_type: str = "user",
+    count: int = 5,
+    get_videos: bool = False,
+    dump_only: bool = True,
+    username_auth: str | None = None,
+    password_auth: str | None = None,
+):
+    """Executes InstaLooter CLI inside container."""
+    from app.recon.insta_looter import run_instalooter_cli
+    return await run_instalooter_cli(
+        target=target,
+        target_type=target_type,
+        count=count,
+        get_videos=get_videos,
+        dump_only=dump_only,
+        username_auth=username_auth,
+        password_auth=password_auth,
+    )
+
+
+@router.post("/instagram/instalooter/attach-case")
+async def instalooter_attach_case(
+    case_id: uuid.UUID,
+    media_url: str,
+    filename: str = "instagram_media.jpg",
+    typology: str = "image",
+    db: AsyncSession = Depends(get_db),
+):
+    """Downloads an external Instagram media URL directly into the active case databank."""
+    from app.models.case import Case, CaseFile
+    from app.models.audit import log_action
+
+    case = await db.get(Case, case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    storage_dir = "/data/case_files"
+    os.makedirs(storage_dir, exist_ok=True)
+
+    file_id = uuid.uuid4()
+    ext = os.path.splitext(filename)[1] or ".jpg"
+    safe_stored_name = f"{case_id}_{file_id}{ext}"
+    dest_path = os.path.join(storage_dir, safe_stored_name)
+
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        r = await client.get(media_url)
+        if r.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed downloading media from CDN")
+        content = r.content
+
+    with open(dest_path, "wb") as out_f:
+        out_f.write(content)
+
+    case_file = CaseFile(
+        id=file_id,
+        case_id=case_id,
+        filename=safe_stored_name,
+        original_filename=filename,
+        typology=typology,
+        source_url=media_url,
+        file_size=len(content),
+        mime_type="image/jpeg" if ext.lower() in [".jpg", ".jpeg"] else "video/mp4",
+        storage_path=dest_path,
+    )
+    db.add(case_file)
+    await db.commit()
+    await db.refresh(case_file)
+
+    await log_action(
+        db,
+        case_id,
+        actor="InstaLooter",
+        action="file_looted_from_instagram",
+        payload={
+            "filename": filename,
+            "source_url": media_url,
+            "size": len(content),
+        },
+    )
+
+    return {
+        "status": "success",
+        "file_id": str(file_id),
+        "filename": safe_stored_name,
+        "original_filename": filename,
+        "file_size": len(content),
+    }
+
 

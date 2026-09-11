@@ -3,6 +3,7 @@
 import { useState } from "react";
 import FacebookMarketplaceRecon from "./FacebookMarketplaceRecon";
 import FacebookRelationsRecon from "./FacebookRelationsRecon";
+import InstaLooterTool from "./InstaLooterTool";
 import { apiGet } from "@/lib/api";
 import SaveToCaseButton from "./SaveToCaseButton";
 import { CheckIcon, CrossIcon } from "@/components/FlatIcons";
@@ -281,6 +282,7 @@ export default function MetaRecon() {
         {activeSubTab === "instagram" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
             <InstagramRecon />
+            <InstaLooterTool />
           </div>
         )}
 

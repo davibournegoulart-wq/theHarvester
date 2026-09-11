@@ -52,6 +52,9 @@ const NATIVE_TOOL_MAP: Record<string, { tab: string; feature: string }> = {
   "offshoreleaks": { tab: "CORPORATE", feature: "ICIJ Offshore Leaks (Panama/Pandora Papers) search" },
   "ahmia": { tab: "DARK WEB", feature: "Native Tor Ahmia search engine" },
   "telegram": { tab: "TELEGRAM", feature: "Native profile, channel metadata & message feed inspector" },
+  "instalooter": { tab: "META (FB/IG/WA)", feature: "InstaLooter Profile, Post, and Media Scraping Suite" },
+  "insta-looter": { tab: "META (FB/IG/WA)", feature: "Clojure-adapted Instagram Profile & Post Looting API" },
+  "ofxinstalooter": { tab: "META (FB/IG/WA)", feature: "Interactive Media Looting & Case Databank Attachment UI" },
 };
 
 function getNativeEquivalent(tool: Tool) {
