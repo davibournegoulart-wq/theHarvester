@@ -40,11 +40,14 @@ type MentionItem = {
 
 type MonitoringTool = {
   name: string;
+  git_repo?: string;
   url: string;
   category: string;
   description: string;
   capabilities: string[];
-  query_url: string;
+  package_name?: string;
+  status?: string;
+  runner_module?: string;
 };
 
 type AnalyticsResponse = {
@@ -948,92 +951,146 @@ export default function SocialAnalyticsRecon() {
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 5: MONITORING PLATFORMS MATRIX (HOOTSUITE, BUFFER, BRANDWATCH, AUDIENSE) */}
+          {/* TAB 5: GITHUB OPEN-SOURCE REPOSITORIES & MONITORING ENGINES */}
           {/* ========================================================================= */}
           {activeTab === "tools" && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 14 }}>
-              {data.monitoring_tools.map((tool) => (
-                <div
-                  key={tool.name}
-                  style={{
-                    background: "#080c14",
-                    border: "1px solid var(--panel-border)",
-                    padding: 16,
-                    borderRadius: 6,
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                    gap: 12,
-                  }}
-                >
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <span style={{ fontSize: 15, fontWeight: "bold", color: "var(--cyan)" }}>
-                        {tool.name}
-                      </span>
-                      <span
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div
+                style={{
+                  padding: "12px 18px",
+                  background: "rgba(5, 217, 232, 0.08)",
+                  border: "1px solid rgba(5, 217, 232, 0.3)",
+                  borderRadius: 4,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: 10,
+                }}
+              >
+                <div>
+                  <span style={{ fontSize: 13, fontWeight: "bold", color: "var(--cyan)" }}>
+                    OPEN-SOURCE GITHUB REPOSITORIES & NATIVE SDK RUNNERS
+                  </span>
+                  <p style={{ margin: "2px 0 0 0", fontSize: 11, color: "var(--text-muted)" }}>
+                    Direct git repositories and Python client libraries deployed for Brandwatch, Hootsuite, Buffer, Audiense, and Social-Analyzer.
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: 14 }}>
+                {data.monitoring_tools.map((tool) => (
+                  <div
+                    key={tool.name}
+                    style={{
+                      background: "#080c14",
+                      border: "1px solid var(--panel-border)",
+                      padding: 16,
+                      borderRadius: 6,
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      gap: 12,
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                        <div>
+                          <span style={{ fontSize: 15, fontWeight: "bold", color: "#fff" }}>
+                            {tool.name}
+                          </span>
+                          {tool.package_name && (
+                            <span style={{ fontSize: 10, color: "var(--cyan)", display: "block", marginTop: 2, fontFamily: "monospace" }}>
+                              pip: {tool.package_name}
+                            </span>
+                          )}
+                        </div>
+
+                        <span
+                          style={{
+                            fontSize: 9,
+                            padding: "2px 6px",
+                            borderRadius: 3,
+                            background: tool.status === "INSTALLED & DEPLOYED" ? "rgba(0, 255, 170, 0.15)" : "rgba(5, 217, 232, 0.15)",
+                            color: tool.status === "INSTALLED & DEPLOYED" ? "#00ffaa" : "var(--cyan)",
+                            border: tool.status === "INSTALLED & DEPLOYED" ? "1px solid #00ffaa" : "1px solid var(--cyan)",
+                            fontWeight: "bold",
+                          }}
+                        >
+                          {tool.status || "DEPLOYED"}
+                        </span>
+                      </div>
+
+                      <p style={{ fontSize: 11, color: "#ccc", margin: "8px 0", lineHeight: "1.4" }}>
+                        {tool.description}
+                      </p>
+
+                      {tool.git_repo && (
+                        <div
+                          style={{
+                            background: "rgba(0,0,0,0.5)",
+                            border: "1px solid rgba(255,255,255,0.08)",
+                            padding: "6px 8px",
+                            borderRadius: 4,
+                            fontFamily: "monospace",
+                            fontSize: 10,
+                            color: "var(--cyan)",
+                            marginBottom: 8,
+                            wordBreak: "break-all",
+                          }}
+                        >
+                          git clone {tool.git_repo}
+                        </div>
+                      )}
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        {tool.capabilities.map((cap) => (
+                          <div key={cap} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "var(--text-muted)" }}>
+                            <CheckIcon size={10} color="var(--cyan)" />
+                            <span>{cap}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--panel-border)", paddingTop: 10 }}>
+                      <a
+                        href={tool.url}
+                        target="_blank"
+                        rel="noreferrer"
                         style={{
-                          fontSize: 9,
-                          padding: "2px 6px",
-                          borderRadius: 3,
-                          background: "rgba(5, 217, 232, 0.15)",
+                          fontSize: 11,
                           color: "var(--cyan)",
-                          border: "1px solid var(--cyan)",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          textDecoration: "underline",
                           fontWeight: "bold",
                         }}
                       >
-                        {tool.category}
-                      </span>
-                    </div>
+                        GitHub Repository <ExternalLinkIcon size={12} />
+                      </a>
 
-                    <p style={{ fontSize: 11, color: "#ccc", margin: "8px 0", lineHeight: "1.4" }}>
-                      {tool.description}
-                    </p>
-
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8 }}>
-                      {tool.capabilities.map((cap) => (
-                        <div key={cap} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "var(--text-muted)" }}>
-                          <CheckIcon size={10} color="var(--cyan)" />
-                          <span>{cap}</span>
-                        </div>
-                      ))}
+                      <SaveToCaseButton
+                        identifierType="domain"
+                        identifierValue={tool.name}
+                        platform="SocialMediaMonitoring"
+                        url={tool.url}
+                        exists={true}
+                        discoveredBy="social_analytics.github_suite"
+                        metadata={{
+                          tool: tool.name,
+                          git_repo: tool.git_repo,
+                          category: tool.category,
+                          package: tool.package_name,
+                          status: tool.status,
+                          target: data.target,
+                        }}
+                      />
                     </div>
                   </div>
-
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--panel-border)", paddingTop: 10 }}>
-                    <a
-                      href={tool.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{
-                        fontSize: 11,
-                        color: "var(--cyan)",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                        textDecoration: "underline",
-                        fontWeight: "bold",
-                      }}
-                    >
-                      Open {tool.name} <ExternalLinkIcon size={12} />
-                    </a>
-
-                    <SaveToCaseButton
-                      identifierType="domain"
-                      identifierValue={tool.name}
-                      platform="SocialMediaMonitoring"
-                      url={tool.url}
-                      exists={true}
-                      discoveredBy="social_analytics.matrix"
-                      metadata={{
-                        tool: tool.name,
-                        category: tool.category,
-                        target: data.target,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </div>

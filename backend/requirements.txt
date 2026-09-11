@@ -33,3 +33,5 @@ instaloader>=4.14.0
 youtube-transcript-api>=1.2.4
 maigret>=0.6.5
 socialscan>=2.0.1
+bcr-api>=1.5.1
+hootsweet>=0.7.1
