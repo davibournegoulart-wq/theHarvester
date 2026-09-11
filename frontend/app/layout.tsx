@@ -5,8 +5,11 @@ const orbitron = Orbitron({ subsets: ["latin"], variable: "--font-display" });
 const shareTechMono = Share_Tech_Mono({ subsets: ["latin"], weight: "400", variable: "--font-body" });
 
 export const metadata = {
-  title: "Net Scraper",
-  description: "Sistema de investigação OSINT",
+  title: "Franken-Scraper | OSINT Hacking Intelligence",
+  description: "Advanced OSINT Reconnaissance & Scraping Platform — Stitched from Distributed Intelligence Modules",
+  icons: {
+    icon: "/franken_scraper_logo.jpg",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

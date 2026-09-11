@@ -10,9 +10,9 @@ from app.config import settings
 logger = logging.getLogger("net_scraper")
 
 app = FastAPI(
-    title="Net Scraper",
-    description="Sistema de investigação OSINT — módulos internos, sem ferramenta de terceiro embutida.",
-    version="0.1.0",
+    title="Franken-Scraper",
+    description="OSINT Intelligence Beast — Stitched from Distributed Forensic Scrapers",
+    version="0.2.0",
 )
 
 app.add_middleware(

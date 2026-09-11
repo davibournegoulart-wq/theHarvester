@@ -57,17 +57,35 @@ export default function Home() {
       <ActiveCaseProvider>
         <main style={{ maxWidth: 1200, margin: "0 auto", padding: "48px 24px" }}>
           <header style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 40 }}>
-            <div style={{ flex: "1 1 500px", display: "flex", alignItems: "center", gap: 16 }}>
-              <NetScraperLogo size={48} color="var(--cyan)" />
+            <div style={{ flex: "1 1 500px", display: "flex", alignItems: "center", gap: 18 }}>
+              <div
+                style={{
+                  position: "relative",
+                  width: 64,
+                  height: 64,
+                  borderRadius: 8,
+                  overflow: "hidden",
+                  border: "2px solid var(--cyan)",
+                  boxShadow: "0 0 16px rgba(5, 217, 232, 0.45), inset 0 0 8px rgba(5, 217, 232, 0.2)",
+                  flexShrink: 0,
+                  background: "#060812",
+                }}
+              >
+                <img
+                  src="/franken_scraper_logo.jpg"
+                  alt="Franken-Scraper Logo"
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              </div>
               <div>
                 <div style={{ fontSize: 11, color: "var(--cyan)", marginBottom: 4, letterSpacing: "0.15em", fontFamily: "monospace" }}>
-                  {"> SYSTEM ONLINE_"}
+                  {"> SYSTEM ONLINE // FRANKEN_CORE ACTIVE_"}
                 </div>
-                <h1 className="glitch-title" data-text="NET SCRAPER" style={{ fontSize: 40, margin: 0 }}>
-                  NET SCRAPER
+                <h1 className="glitch-title" data-text="FRANKEN-SCRAPER" style={{ fontSize: 38, margin: 0, letterSpacing: "0.14em" }}>
+                  FRANKEN-SCRAPER
                 </h1>
                 <p style={{ color: "var(--text-muted)", fontSize: 13, maxWidth: 600, margin: "4px 0 0 0" }}>
-                  OSINT investigation system — internal modules, no embedded third-party tools.
+                  OSINT Intelligence Beast — Stitched from Distributed Forensic Scrapers
                 </p>
               </div>
             </div>
