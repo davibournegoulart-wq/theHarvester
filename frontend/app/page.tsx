@@ -21,6 +21,10 @@ import ToolsPanel from "@/components/ToolsPanel";
 import UsernameSearch from "@/components/UsernameSearch";
 import OsintArsenal from "@/components/OsintArsenal";
 import GlobalOSINT from "@/components/GlobalOSINT";
+import TorSpiderTool from "@/components/TorSpiderTool";
+import TargetWatchdog from "@/components/TargetWatchdog";
+import WebhookManager from "@/components/WebhookManager";
+import LocalAIAssistant from "@/components/LocalAIAssistant";
 import MetaRecon from "@/components/MetaRecon";
 import TelegramRecon from "@/components/TelegramRecon";
 import TikTokRecon from "@/components/TikTokRecon";
@@ -77,6 +81,14 @@ export default function Home() {
       icon: <DatabaseIcon size={13} />,
       content: <BulkExplorer />,
       description: "Ingest, query, and search massive scraped datasets.",
+    },
+    {
+      id: "ai",
+      label: "LOCAL AI",
+      hub: "investigation",
+      icon: <TerminalIcon size={13} />,
+      content: <LocalAIAssistant />,
+      description: "Local Ollama LLM, forensic named-entity extraction, and case dossier synthesis.",
     },
 
     // 2. IDENTITY & BIOMETRICS HUB
@@ -220,6 +232,14 @@ export default function Home() {
       content: <DorkEngine />,
       description: "Google, Bing, and DuckDuckGo automated forensic dork generators.",
     },
+    {
+      id: "spider",
+      label: "TOR SPIDER",
+      hub: "deep",
+      icon: <ShieldIcon size={13} />,
+      content: <TorSpiderTool />,
+      description: "Automated Tor hidden service spider, crypto address harvesting, and onion graphing.",
+    },
 
     // 5. ARSENAL & ENGINES HUB
     {
@@ -229,6 +249,22 @@ export default function Home() {
       icon: <RadarIcon size={13} />,
       content: <AutoReconTool />,
       description: "Automated multi-stage reconnaissance workflow engine.",
+    },
+    {
+      id: "watchdog",
+      label: "WATCHDOG",
+      hub: "arsenal",
+      icon: <RadarIcon size={13} />,
+      content: <TargetWatchdog />,
+      description: "Scheduled background reconnaissance daemon for automated continuous re-checks.",
+    },
+    {
+      id: "alerts",
+      label: "WEBHOOKS",
+      hub: "arsenal",
+      icon: <TerminalIcon size={13} />,
+      content: <WebhookManager />,
+      description: "Real-time Discord, Telegram, Slack, and REST alerting webhook dispatch.",
     },
     {
       id: "tools",

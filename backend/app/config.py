@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     bscscan_api_key: str | None = None
     polygonscan_api_key: str | None = None
 
+    # Local AI / Ollama integration
+    ollama_url: str = "http://host.docker.internal:11434"
+    ollama_model: str = "llama3"
+
     class Config:
         env_prefix = "NETSCRAPER_"
 

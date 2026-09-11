@@ -3,7 +3,7 @@ import logging
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import bulk, cases, email_forensics, graph, identifiers, recon, arsenal, biometrics
+from app.api.routes import bulk, cases, email_forensics, graph, identifiers, recon, arsenal, biometrics, ai, alerts, monitors, darkweb_spider
 from app.auth import INSECURE_DEFAULT_KEY, require_api_key
 from app.config import settings
 
@@ -39,18 +39,29 @@ app.include_router(bulk.router, dependencies=_auth)
 app.include_router(cases.router, dependencies=_auth)
 app.include_router(arsenal.router, prefix="/arsenal", dependencies=_auth)
 app.include_router(biometrics.router, dependencies=_auth)
+app.include_router(ai.router, dependencies=_auth)
+app.include_router(alerts.router, dependencies=_auth)
+app.include_router(monitors.router, dependencies=_auth)
+app.include_router(darkweb_spider.router, dependencies=_auth)
 
 
 @app.on_event("startup")
 async def ensure_db_schema():
     try:
+        import asyncio
         from sqlalchemy import text
-        from app.db import engine
+        from app.db import engine, Base
+        import app.models.case  # ensure all models registered
         async with engine.begin() as conn:
             await conn.execute(text("ALTER TABLE cases ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;"))
-        logger.info("Database schema check completed: cases.deleted_at verified.")
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database schema check completed: tables verified.")
+
+        # Launch background watchdog scheduler
+        from app.scheduler.daemon import run_scheduler_daemon
+        asyncio.create_task(run_scheduler_daemon())
     except Exception as e:
-        logger.error(f"Error ensuring database schema: {e}")
+        logger.error(f"Error ensuring database schema or starting scheduler: {e}")
 
 
 @app.get("/health")
