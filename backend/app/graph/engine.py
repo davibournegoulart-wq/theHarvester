@@ -18,6 +18,7 @@ class GraphNode:
     label: str
     type: str = "default"
     details: dict | None = None
+    image: str | None = None
 
 
 @dataclass
@@ -26,6 +27,7 @@ class GraphEdge:
     target_id: str
     relation_type: str
     confidence: float = 1.0
+    label: str | None = None
 
 
 @dataclass
@@ -40,9 +42,15 @@ def build_graph(edges: list[GraphEdge], nodes: list[GraphNode] | None = None) ->
     graph = nx.Graph()
     if nodes:
         for n in nodes:
-            graph.add_node(n.id, label=n.label, type=n.type, details=n.details or {})
+            graph.add_node(n.id, label=n.label, type=n.type, details=n.details or {}, image=n.image)
     for edge in edges:
-        graph.add_edge(edge.source_id, edge.target_id, relation_type=edge.relation_type, weight=edge.confidence)
+        graph.add_edge(
+            edge.source_id,
+            edge.target_id,
+            relation_type=edge.relation_type,
+            weight=edge.confidence,
+            label=edge.label or edge.relation_type,
+        )
     return graph
 
 
@@ -76,6 +84,7 @@ def to_frontend_json(graph: nx.Graph, metrics: GraphMetrics) -> dict:
             "id": node,
             "label": graph.nodes[node].get("label", node),
             "type": graph.nodes[node].get("type", "default"),
+            "image": graph.nodes[node].get("image"),
             "details": graph.nodes[node].get("details", {}),
             "degree": metrics.degree_centrality.get(node, 0),
             "betweenness": metrics.betweenness_centrality.get(node, 0),
@@ -85,7 +94,13 @@ def to_frontend_json(graph: nx.Graph, metrics: GraphMetrics) -> dict:
         for node in graph.nodes
     ]
     edges = [
-        {"source": u, "target": v, "relation_type": data.get("relation_type", "related"), "weight": data.get("weight", 1.0)}
+        {
+            "source": u,
+            "target": v,
+            "relation_type": data.get("relation_type", "related"),
+            "label": data.get("label", data.get("relation_type", "related")),
+            "weight": data.get("weight", 1.0),
+        }
         for u, v, data in graph.edges(data=True)
     ]
     return {"nodes": nodes, "edges": edges}

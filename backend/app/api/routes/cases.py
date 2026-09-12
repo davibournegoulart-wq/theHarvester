@@ -48,6 +48,14 @@ class MultiCaseGraphRequest(BaseModel):
     case_ids: list[uuid.UUID]
 
 
+class ManualLinkRequest(BaseModel):
+    source: str
+    target: str
+    relation_type: str = "connected_to"
+    label: str | None = None
+    notes: str | None = None
+
+
 async def hard_delete_case_internal(case_id: uuid.UUID, db: AsyncSession):
     """Permanently delete a case and all associated files, geolocations, accounts, and audit entries."""
     case = await db.get(Case, case_id)
@@ -1032,4 +1040,37 @@ async def get_case_graph_route(case_id: uuid.UUID, db: AsyncSession = Depends(ge
     graph = build_graph(edges, nodes)
     metrics = compute_metrics(graph)
     return to_frontend_json(graph, metrics)
+
+
+@router.post("/{case_id}/manual-links")
+async def create_manual_link_route(case_id: uuid.UUID, body: ManualLinkRequest, db: AsyncSession = Depends(get_db)):
+    """Creates a manual knot / relational connection between two entities in the graph."""
+    case = await db.get(Case, case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    rel_clean = body.relation_type.strip().lower().replace(" ", "_")
+    label_clean = (body.label or body.relation_type).strip()
+
+    await log_action(
+        db,
+        case_id,
+        actor="investigador",
+        action="manual_edge_created",
+        payload={
+            "source": body.source,
+            "target": body.target,
+            "relation_type": rel_clean,
+            "label": label_clean,
+            "notes": body.notes,
+        },
+    )
+
+    return {
+        "status": "created",
+        "source": body.source,
+        "target": body.target,
+        "relation_type": rel_clean,
+        "label": label_clean,
+    }
 

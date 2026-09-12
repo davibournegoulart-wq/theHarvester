@@ -631,6 +631,7 @@ function CanvasGraph({
   const panStartRef = useRef({ x: 0, y: 0 });
   const mousePosRef = useRef<{ x: number; y: number } | null>(null);
   const dragDistanceRef = useRef(0);
+  const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
 
   // Sync edges ref
   edgesRef.current = edges;
@@ -1098,8 +1099,43 @@ function CanvasGraph({
           ctx.setLineDash([]);
         }
 
-        // Inner vector intelligence icon / symbol
-        drawNodeIcon(ctx, p.x, p.y, r, n, Boolean(isDimmed));
+        // Inner visual: Miniature circular photo/avatar if image exists, otherwise drawNodeIcon vector symbol
+        const nodeImgUrl = n.image || n.details?.image;
+        let imageDrawn = false;
+
+        if (nodeImgUrl && r >= 8) {
+          let fullImgUrl = nodeImgUrl.startsWith("http") ? nodeImgUrl : `${API_URL}${nodeImgUrl}`;
+          if (!fullImgUrl.includes("api_key=")) {
+            const sep = fullImgUrl.includes("?") ? "&" : "?";
+            fullImgUrl += `${sep}api_key=${encodeURIComponent(getApiKey())}`;
+          }
+          let img = imageCacheRef.current.get(fullImgUrl);
+          if (!img) {
+            img = new Image();
+            img.crossOrigin = "anonymous";
+            img.src = fullImgUrl;
+            img.onload = () => {
+              // Image loaded; next animation frame will render it
+            };
+            imageCacheRef.current.set(fullImgUrl, img);
+          } else if (img.complete && img.naturalWidth > 0) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, Math.max(1, r - 1.5), 0, Math.PI * 2);
+            ctx.clip();
+            if (isDimmed) {
+              ctx.globalAlpha = 0.35;
+            }
+            ctx.drawImage(img, p.x - r, p.y - r, r * 2, r * 2);
+            ctx.restore();
+            imageDrawn = true;
+          }
+        }
+
+        if (!imageDrawn) {
+          // Inner vector intelligence icon / symbol
+          drawNodeIcon(ctx, p.x, p.y, r, n, Boolean(isDimmed));
+        }
 
         // Paperclip Badge if node has direct attached files or external Dork URLs
         if (hasAttachment && !isDimmed) {
@@ -1414,6 +1450,17 @@ export default function GraphView() {
   const [uploadingNodeFile, setUploadingNodeFile] = useState(false);
   const [nodeFileTypology, setNodeFileTypology] = useState("document");
   const nodeFileInputRef = useRef<HTMLInputElement>(null);
+  const nodePhotoInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  // Manual Knot (Link) Creation States
+  const [manualRelType, setManualRelType] = useState("associates_with");
+  const [manualCustomLabel, setManualCustomLabel] = useState("");
+  const [creatingKnot, setCreatingKnot] = useState(false);
+  const [drawerTargetNodeId, setDrawerTargetNodeId] = useState("");
+  const [drawerRelType, setDrawerRelType] = useState("associates_with");
+  const [drawerCustomLabel, setDrawerCustomLabel] = useState("");
+  const [creatingDrawerKnot, setCreatingDrawerKnot] = useState(false);
 
   // Load available cases once on mount
   useEffect(() => {
@@ -1607,6 +1654,78 @@ export default function GraphView() {
       alert("Failed to upload file: " + (err?.message || err));
     } finally {
       setUploadingNodeFile(false);
+    }
+  }
+
+  // Handle uploading a photo/avatar directly to the inspected node
+  async function handleUploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !activeCase || !inspectedNodeId) return;
+    setUploadingPhoto(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("typology", "image");
+      fd.append("target_node_id", inspectedNodeId);
+
+      await apiPostFormData(`/cases/${activeCase.id}/files/upload`, fd);
+      if (nodePhotoInputRef.current) nodePhotoInputRef.current.value = "";
+      await loadGraphData();
+    } catch (err: any) {
+      alert("Failed to upload node photo: " + (err?.message || err));
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
+  // Handle creating a manual knot (edge) between selected 2 nodes
+  async function handleCreateManualKnot() {
+    if (!activeCase || selectedNodes.length < 2) return;
+    setCreatingKnot(true);
+    try {
+      const source = selectedNodes[0];
+      const target = selectedNodes[1];
+      const rel = manualRelType === "custom" ? (manualCustomLabel.trim().toLowerCase().replace(/ /g, "_") || "connected_to") : manualRelType;
+      const lbl = manualRelType === "custom" ? manualCustomLabel.trim() : manualRelType.replace(/_/g, " ");
+
+      await apiPostJson(`/cases/${activeCase.id}/manual-links`, {
+        source,
+        target,
+        relation_type: rel,
+        label: lbl,
+      });
+
+      setManualCustomLabel("");
+      await loadGraphData();
+    } catch (err: any) {
+      alert("Failed to attach knot: " + (err?.message || err));
+    } finally {
+      setCreatingKnot(false);
+    }
+  }
+
+  // Handle creating a manual knot from inspector drawer
+  async function handleCreateDrawerKnot() {
+    if (!activeCase || !inspectedNodeId || !drawerTargetNodeId) return;
+    setCreatingDrawerKnot(true);
+    try {
+      const rel = drawerRelType === "custom" ? (drawerCustomLabel.trim().toLowerCase().replace(/ /g, "_") || "connected_to") : drawerRelType;
+      const lbl = drawerRelType === "custom" ? drawerCustomLabel.trim() : drawerRelType.replace(/_/g, " ");
+
+      await apiPostJson(`/cases/${activeCase.id}/manual-links`, {
+        source: inspectedNodeId,
+        target: drawerTargetNodeId,
+        relation_type: rel,
+        label: lbl,
+      });
+
+      setDrawerTargetNodeId("");
+      setDrawerCustomLabel("");
+      await loadGraphData();
+    } catch (err: any) {
+      alert("Failed to attach knot: " + (err?.message || err));
+    } finally {
+      setCreatingDrawerKnot(false);
     }
   }
 
@@ -2005,6 +2124,90 @@ export default function GraphView() {
         )}
       </div>
 
+      {/* Manual Knot Attachment Action Bar when 2 nodes are selected */}
+      {selectedNodes.length === 2 && (
+        <div style={{
+          marginBottom: 12,
+          padding: "10px 14px",
+          background: "rgba(10, 14, 24, 0.95)",
+          border: "1px solid var(--cyan)",
+          borderRadius: 6,
+          display: "flex",
+          gap: 10,
+          alignItems: "center",
+          flexWrap: "wrap",
+          boxShadow: "0 0 16px rgba(5, 217, 232, 0.25)"
+        }}>
+          <span style={{ fontSize: 11, fontWeight: "bold", color: "var(--cyan)", display: "flex", alignItems: "center", gap: 6 }}>
+            <span>🔗</span> ATTACH KNOT (LINK NODES):
+          </span>
+          <span style={{ fontSize: 11, color: "#fff", background: "rgba(255,255,255,0.08)", padding: "3px 8px", borderRadius: 4 }}>
+            {nodes.find((n) => n.id === selectedNodes[0])?.label || selectedNodes[0]}
+          </span>
+          <span style={{ color: "var(--cyan)", fontSize: 12, fontWeight: "bold" }}>➔</span>
+          <span style={{ fontSize: 11, color: "#fff", background: "rgba(255,255,255,0.08)", padding: "3px 8px", borderRadius: 4 }}>
+            {nodes.find((n) => n.id === selectedNodes[1])?.label || selectedNodes[1]}
+          </span>
+
+          <select
+            value={manualRelType}
+            onChange={(e) => setManualRelType(e.target.value)}
+            style={{
+              background: "var(--bg)",
+              color: "var(--text)",
+              border: "1px solid var(--panel-border)",
+              padding: "4px 8px",
+              borderRadius: 4,
+              fontSize: 11,
+            }}
+          >
+            <option value="associates_with">Associates With</option>
+            <option value="suspect_link">Suspect / Accomplice</option>
+            <option value="communicates_with">Communicates With</option>
+            <option value="financial_flow">Financial / Crypto Flow</option>
+            <option value="family_relation">Family / Relative</option>
+            <option value="same_owner">Same Owner / Operates</option>
+            <option value="located_at">Located At / Co-resident</option>
+            <option value="custom">Custom Relation...</option>
+          </select>
+
+          {manualRelType === "custom" && (
+            <input
+              type="text"
+              placeholder="e.g. business_partner, ex_spouse..."
+              value={manualCustomLabel}
+              onChange={(e) => setManualCustomLabel(e.target.value)}
+              style={{
+                background: "var(--bg)",
+                color: "var(--text)",
+                border: "1px solid var(--panel-border)",
+                padding: "4px 8px",
+                borderRadius: 4,
+                fontSize: 11,
+                minWidth: 160,
+              }}
+            />
+          )}
+
+          <button
+            onClick={handleCreateManualKnot}
+            disabled={creatingKnot}
+            style={{
+              background: creatingKnot ? "var(--panel)" : "var(--cyan)",
+              color: creatingKnot ? "var(--text-muted)" : "#000",
+              fontWeight: "bold",
+              border: "none",
+              borderRadius: 4,
+              padding: "5px 12px",
+              fontSize: 11,
+              cursor: creatingKnot ? "wait" : "pointer",
+            }}
+          >
+            {creatingKnot ? "Attaching..." : "+ Connect Nodes (Save Knot)"}
+          </button>
+        </div>
+      )}
+
       {/* Main Canvas Container with Inspector Drawer */}
       <div style={{ height: "620px", width: "100%", background: "#060812", border: "1px solid var(--cyan)", borderRadius: 8, position: "relative", overflow: "hidden" }}>
         {loading && (
@@ -2062,16 +2265,43 @@ export default function GraphView() {
           >
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "1px solid var(--panel-border)", paddingBottom: 10, marginBottom: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span 
-                  style={{ 
-                    width: 12, 
-                    height: 12, 
-                    borderRadius: "50%", 
-                    background: (NODE_SETTINGS[inspectedNode.type] || NODE_SETTINGS.default).color,
-                    boxShadow: `0 0 8px ${(NODE_SETTINGS[inspectedNode.type] || NODE_SETTINGS.default).color}`
-                  }} 
-                />
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                {inspectedNode.image || inspectedNode.details?.image ? (
+                  <div style={{ position: "relative" }}>
+                    {(() => {
+                      const rawImg = inspectedNode.image || inspectedNode.details?.image;
+                      let fullSrc = rawImg.startsWith("http") ? rawImg : `${API_URL}${rawImg}`;
+                      if (!fullSrc.includes("api_key=")) {
+                        const sep = fullSrc.includes("?") ? "&" : "?";
+                        fullSrc += `${sep}api_key=${encodeURIComponent(getApiKey())}`;
+                      }
+                      return (
+                        <img
+                          src={fullSrc}
+                          alt="Avatar"
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: "50%",
+                            objectFit: "cover",
+                            border: "2px solid var(--cyan)",
+                            boxShadow: "0 0 10px rgba(5, 217, 232, 0.4)",
+                          }}
+                        />
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  <span 
+                    style={{ 
+                      width: 14, 
+                      height: 14, 
+                      borderRadius: "50%", 
+                      background: (NODE_SETTINGS[inspectedNode.type] || NODE_SETTINGS.default).color,
+                      boxShadow: `0 0 8px ${(NODE_SETTINGS[inspectedNode.type] || NODE_SETTINGS.default).color}`
+                    }} 
+                  />
+                )}
                 <div>
                   <div style={{ fontSize: 10, color: "var(--cyan)", fontWeight: "bold", textTransform: "uppercase" }}>
                     {(NODE_SETTINGS[inspectedNode.type] || NODE_SETTINGS.default).label}
@@ -2081,12 +2311,41 @@ export default function GraphView() {
                   </h4>
                 </div>
               </div>
-              <button 
-                onClick={() => setInspectedNodeId(null)}
-                style={{ background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center" }}
-              >
-                <CrossIcon size={14} color="var(--text-muted)" />
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input
+                  ref={nodePhotoInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleUploadPhoto}
+                  disabled={uploadingPhoto}
+                  style={{ display: "none" }}
+                  id="node-photo-quick-input"
+                />
+                <label
+                  htmlFor="node-photo-quick-input"
+                  title="Attach Photo / Avatar to this Node"
+                  style={{
+                    background: uploadingPhoto ? "var(--panel)" : "rgba(5, 217, 232, 0.15)",
+                    border: "1px solid var(--cyan)",
+                    color: "var(--cyan)",
+                    borderRadius: 4,
+                    padding: "3px 6px",
+                    fontSize: 11,
+                    cursor: uploadingPhoto ? "wait" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 3,
+                  }}
+                >
+                  <span>📷</span> {uploadingPhoto ? "..." : "+ Photo"}
+                </label>
+                <button 
+                  onClick={() => setInspectedNodeId(null)}
+                  style={{ background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center" }}
+                >
+                  <CrossIcon size={14} color="var(--text-muted)" />
+                </button>
+              </div>
             </div>
 
             {/* Centrality Metrics */}
@@ -2336,6 +2595,98 @@ export default function GraphView() {
                 >
                   {uploadingNodeFile ? "Uploading..." : "📁 Browse & Upload to Node"}
                 </label>
+              </div>
+            </div>
+
+            {/* Attach Knot (Link) to Another Node */}
+            <div style={{ marginBottom: 16, borderTop: "1px solid var(--panel-border)", paddingTop: 12 }}>
+              <div style={{ fontSize: 10, color: "var(--cyan)", fontWeight: "bold", marginBottom: 6, textTransform: "uppercase" }}>
+                🔗 Attach Knot to Another Entity
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <select
+                  value={drawerTargetNodeId}
+                  onChange={(e) => setDrawerTargetNodeId(e.target.value)}
+                  style={{
+                    width: "100%",
+                    background: "var(--bg)",
+                    border: "1px solid var(--panel-border)",
+                    color: "var(--text)",
+                    fontSize: 11,
+                    padding: "5px 8px",
+                    borderRadius: 4,
+                  }}
+                >
+                  <option value="">-- Choose Target Entity --</option>
+                  {nodes
+                    .filter((n) => n.id !== inspectedNode.id)
+                    .map((n) => (
+                      <option key={n.id} value={n.id}>
+                        {n.label} ({n.type})
+                      </option>
+                    ))}
+                </select>
+
+                <div style={{ display: "flex", gap: 6 }}>
+                  <select
+                    value={drawerRelType}
+                    onChange={(e) => setDrawerRelType(e.target.value)}
+                    style={{
+                      flex: 1,
+                      background: "var(--bg)",
+                      border: "1px solid var(--panel-border)",
+                      color: "var(--text)",
+                      fontSize: 11,
+                      padding: "4px 6px",
+                      borderRadius: 4,
+                    }}
+                  >
+                    <option value="associates_with">Associates With</option>
+                    <option value="suspect_link">Suspect / Accomplice</option>
+                    <option value="communicates_with">Communicates With</option>
+                    <option value="financial_flow">Financial / Crypto Flow</option>
+                    <option value="family_relation">Family / Relative</option>
+                    <option value="same_owner">Same Owner</option>
+                    <option value="located_at">Located At</option>
+                    <option value="custom">Custom Relation...</option>
+                  </select>
+
+                  {drawerRelType === "custom" && (
+                    <input
+                      type="text"
+                      placeholder="Relation label..."
+                      value={drawerCustomLabel}
+                      onChange={(e) => setDrawerCustomLabel(e.target.value)}
+                      style={{
+                        flex: 1,
+                        background: "var(--bg)",
+                        border: "1px solid var(--panel-border)",
+                        color: "var(--text)",
+                        fontSize: 11,
+                        padding: "4px 6px",
+                        borderRadius: 4,
+                      }}
+                    />
+                  )}
+                </div>
+
+                <button
+                  onClick={handleCreateDrawerKnot}
+                  disabled={creatingDrawerKnot || !drawerTargetNodeId}
+                  style={{
+                    width: "100%",
+                    background: creatingDrawerKnot || !drawerTargetNodeId ? "var(--panel)" : "var(--cyan)",
+                    color: creatingDrawerKnot || !drawerTargetNodeId ? "var(--text-muted)" : "#000",
+                    fontWeight: "bold",
+                    border: "none",
+                    borderRadius: 4,
+                    padding: "6px 10px",
+                    fontSize: 11,
+                    cursor: creatingDrawerKnot || !drawerTargetNodeId ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {creatingDrawerKnot ? "Attaching Knot..." : "+ Create Knot to Selected Entity"}
+                </button>
               </div>
             </div>
 

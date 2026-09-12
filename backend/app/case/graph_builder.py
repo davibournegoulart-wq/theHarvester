@@ -13,7 +13,7 @@ async def get_graph_elements_for_case(db: AsyncSession, case_id: uuid.UUID | Non
     edges: list[dict] = []
     node_ids_set: set[str] = set()
 
-    def add_node(n_id: str, label: str, n_type: str = "default", details: dict | None = None):
+    def add_node(n_id: str, label: str, n_type: str = "default", details: dict | None = None, image: str | None = None):
         if n_id not in node_ids_set:
             node_ids_set.add(n_id)
             nodes.append({
@@ -21,14 +21,23 @@ async def get_graph_elements_for_case(db: AsyncSession, case_id: uuid.UUID | Non
                 "label": label,
                 "type": n_type,
                 "details": details or {},
+                "image": image,
             })
+        else:
+            # If node already exists and an image is now provided, update it
+            if image:
+                for existing in nodes:
+                    if existing["id"] == n_id and not existing.get("image"):
+                        existing["image"] = image
+                        break
 
-    def add_edge(source: str, target: str, rel_type: str = "related", confidence: float = 1.0):
+    def add_edge(source: str, target: str, rel_type: str = "related", confidence: float = 1.0, label: str | None = None):
         edges.append({
             "source_id": source,
             "target_id": target,
             "relation_type": rel_type,
             "confidence": confidence,
+            "label": label or rel_type,
         })
 
     # 1. Cases
@@ -75,7 +84,7 @@ async def get_graph_elements_for_case(db: AsyncSession, case_id: uuid.UUID | Non
         res_files = await db.execute(select(CaseFile))
     case_files = res_files.scalars().all()
 
-    # 5. Audit Log Entries (Evidence, Secrets, Biometrics, Pins)
+    # 5. Audit Log Entries (Evidence, Secrets, Biometrics, Pins, Manual Knots)
     if case_id:
         res_audit = await db.execute(
             select(AuditLogEntry).where(
@@ -89,6 +98,7 @@ async def get_graph_elements_for_case(db: AsyncSession, case_id: uuid.UUID | Non
                     "face_detected",
                     "biometric_recon",
                     "geolocation_pinned",
+                    "manual_edge_created",
                 ])
             )
         )
@@ -104,6 +114,7 @@ async def get_graph_elements_for_case(db: AsyncSession, case_id: uuid.UUID | Non
                     "face_detected",
                     "biometric_recon",
                     "geolocation_pinned",
+                    "manual_edge_created",
                 ])
             )
         )
@@ -188,10 +199,14 @@ async def get_graph_elements_for_case(db: AsyncSession, case_id: uuid.UUID | Non
         prefix = f"[{f.case_id}] " if is_multi else ""
         file_node_id = f"{prefix}file:{f.id}"
         typology = (f.typology or "document").lower()
+        is_image = typology == "image" or (f.mime_type and f.mime_type.startswith("image/"))
+        img_url = f"/cases/{f.case_id}/files/{f.id}/download" if is_image else None
+
         add_node(
             file_node_id,
             label=f.original_filename,
             n_type=typology,
+            image=img_url,
             details={
                 "id": str(f.id),
                 "filename": f.original_filename,
@@ -199,6 +214,7 @@ async def get_graph_elements_for_case(db: AsyncSession, case_id: uuid.UUID | Non
                 "size": f.file_size,
                 "mime": f.mime_type,
                 "source_url": f.source_url,
+                "image": img_url,
             },
         )
         case_node_id = f"case:{f.case_id}"
@@ -207,13 +223,19 @@ async def get_graph_elements_for_case(db: AsyncSession, case_id: uuid.UUID | Non
             cand = f.source_url[5:]
             if cand in node_ids_set:
                 parent_node = cand
+                # If this file is an image attached directly to a node, also set the node's miniature image!
+                if is_image:
+                    for existing in nodes:
+                        if existing["id"] == cand and not existing.get("image"):
+                            existing["image"] = img_url
+                            break
         if not parent_node:
             parent_node = case_node_id
 
         if parent_node in node_ids_set:
             add_edge(parent_node, file_node_id, rel_type="attached_file", confidence=1.0)
 
-    # Connect Audit Log Evidence, Secrets, Biometrics
+    # Connect Audit Log Evidence, Secrets, Biometrics, and Manual Knots
     for entry in audit_logs:
         prefix = f"[{entry.case_id}] " if is_multi else ""
         case_node_id = f"case:{entry.case_id}"
@@ -262,10 +284,12 @@ async def get_graph_elements_for_case(db: AsyncSession, case_id: uuid.UUID | Non
             sim = entry.payload.get("similarity")
             bio_node_id = f"{prefix}biometric:{entry.id}"
             bio_label = f"👤 Face Match ({sim:.1f}%)" if sim is not None else "👤 Biometric Face"
+            face_img = entry.payload.get("image_url") or entry.payload.get("thumbnail_url")
             add_node(
                 bio_node_id,
                 label=bio_label,
                 n_type="biometric",
+                image=face_img,
                 details=entry.payload,
             )
             if case_node_id in node_ids_set:
@@ -284,6 +308,14 @@ async def get_graph_elements_for_case(db: AsyncSession, case_id: uuid.UUID | Non
                 )
                 if case_node_id in node_ids_set:
                     add_edge(case_node_id, geo_node_id, rel_type="located_at", confidence=1.0)
+
+        elif entry.action == "manual_edge_created":
+            src = entry.payload.get("source")
+            tgt = entry.payload.get("target")
+            rel = entry.payload.get("relation_type", "connected_to")
+            lbl = entry.payload.get("label") or rel
+            if src and tgt:
+                add_edge(src, tgt, rel_type=rel, label=lbl, confidence=1.5)
 
     # Cross-case matching across identical identifiers when viewing all cases
     if is_multi:
