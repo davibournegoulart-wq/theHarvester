@@ -174,6 +174,62 @@ export default function UsernameSearch() {
   const [pivotsSearched, setPivotsSearched] = useState(false);
   const [pivotQueryType, setPivotQueryType] = useState<"username" | "email" | "all">("username");
 
+  // Restore cached username search
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("cache_username_search");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.username) setUsername(parsed.username);
+        if (parsed.mode) setMode(parsed.mode);
+        if (parsed.results) {
+          setResults(parsed.results);
+          setSearched(true);
+        }
+        if (parsed.socialIds) setSocialIds(parsed.socialIds);
+        if (parsed.sherlockData) {
+          setSherlockData(parsed.sherlockData);
+          setSherlockSearched(true);
+        }
+        if (parsed.wmnData) {
+          setWmnData(parsed.wmnData);
+          setWmnSearched(true);
+        }
+        if (parsed.maigretData) {
+          setMaigretData(parsed.maigretData);
+          setMaigretSearched(true);
+        }
+        if (parsed.socialscanData) {
+          setSocialscanData(parsed.socialscanData);
+          setSocialscanSearched(true);
+        }
+        if (parsed.pivotsData) {
+          setPivotsData(parsed.pivotsData);
+          setPivotsSearched(true);
+        }
+      }
+    } catch {}
+  }, []);
+
+  // Sync cache on change
+  useEffect(() => {
+    try {
+      if (username || searched || sherlockSearched || wmnSearched || maigretSearched || socialscanSearched) {
+        sessionStorage.setItem("cache_username_search", JSON.stringify({
+          username,
+          mode,
+          results,
+          socialIds,
+          sherlockData,
+          wmnData,
+          maigretData,
+          socialscanData,
+          pivotsData,
+        }));
+      }
+    } catch {}
+  }, [username, mode, results, socialIds, sherlockData, wmnData, maigretData, socialscanData, pivotsData, searched, sherlockSearched, wmnSearched, maigretSearched, socialscanSearched]);
+
   async function handleStandardSearch() {
     if (!username.trim() || !activeCase) return;
     setLoading(true);

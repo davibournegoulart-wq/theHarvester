@@ -86,6 +86,7 @@ const HUBS: HubConfig[] = [
 export default function TacticalNav({ items }: { items: NavItem[] }) {
   const [activeHub, setActiveHub] = useState<HubConfig["id"]>("investigation");
   const [activeItemId, setActiveItemId] = useState<string>(items[0]?.id || "");
+  const [visitedTools, setVisitedTools] = useState<Set<string>>(() => new Set([items[0]?.id || "cases"]));
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -100,8 +101,15 @@ export default function TacticalNav({ items }: { items: NavItem[] }) {
     return items.find((item) => item.id === activeItemId) || items[0];
   }, [items, activeItemId]);
 
-  // Switch tool with View Transitions
+  // Switch tool with View Transitions & Tab Keep-Alive
   const transitionToTool = (toolId: string) => {
+    setVisitedTools((prev) => {
+      if (prev.has(toolId)) return prev;
+      const next = new Set(prev);
+      next.add(toolId);
+      return next;
+    });
+
     const target = items.find((i) => i.id === toolId);
     if (target && target.hub !== activeHub) {
       setActiveHub(target.hub);
@@ -361,7 +369,22 @@ export default function TacticalNav({ items }: { items: NavItem[] }) {
           minHeight: 500,
         }}
       >
-        {currentTool?.content}
+        {items.map((item) => {
+          const isVisited = visitedTools.has(item.id);
+          const isCurrent = activeItemId === item.id;
+          if (!isVisited && !isCurrent) return null;
+          return (
+            <div
+              key={item.id}
+              style={{
+                display: isCurrent ? "block" : "none",
+                height: "100%",
+              }}
+            >
+              {item.content}
+            </div>
+          );
+        })}
       </div>
 
       {/* =========================================================================

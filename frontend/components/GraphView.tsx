@@ -270,6 +270,11 @@ function CanvasGraph({
       const width = container.clientWidth;
       const height = container.clientHeight;
 
+      if (width === 0 || height === 0) {
+        animId = requestAnimationFrame(step);
+        return;
+      }
+
       if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
         canvas.width = width * dpr;
         canvas.height = height * dpr;

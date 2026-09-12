@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { apiGet, apiPostJson } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "@/components/SaveToCaseButton";
@@ -58,6 +58,44 @@ export default function PhoneSearch() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Restore cached phone search from session
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("cache_phone_search");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.phone) setPhone(parsed.phone);
+        if (parsed.region) setRegion(parsed.region);
+        if (parsed.metadata) setMetadata(parsed.metadata);
+        if (parsed.mentionQueries) setMentionQueries(parsed.mentionQueries);
+        if (parsed.ghostTrack) setGhostTrack(parsed.ghostTrack);
+        if (parsed.whatsappResult) setWhatsappResult(parsed.whatsappResult);
+        if (parsed.telegramResult) setTelegramResult(parsed.telegramResult);
+        if (parsed.platformsResult) setPlatformsResult(parsed.platformsResult);
+        if (parsed.fbBreach) setFbBreach(parsed.fbBreach);
+      }
+    } catch {}
+  }, []);
+
+  // Keep search cache in sync
+  useEffect(() => {
+    try {
+      if (phone || metadata) {
+        sessionStorage.setItem("cache_phone_search", JSON.stringify({
+          phone,
+          region,
+          metadata,
+          mentionQueries,
+          ghostTrack,
+          whatsappResult,
+          telegramResult,
+          platformsResult,
+          fbBreach,
+        }));
+      }
+    } catch {}
+  }, [phone, region, metadata, mentionQueries, ghostTrack, whatsappResult, telegramResult, platformsResult, fbBreach]);
 
   async function handleSearch() {
     if (!phone || !activeCase) return;
