@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { apiGet, apiPostJson } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
-import { TerminalIcon, BoltIcon, ShieldIcon, GlobeIcon, UserIcon, FolderIcon } from "@/components/FlatIcons";
+import { TerminalIcon, BoltIcon, ShieldIcon, GlobeIcon, UserIcon, FolderIcon, BotIcon } from "@/components/FlatIcons";
 
 type AIStatus = {
   status: string;
@@ -294,9 +294,13 @@ export default function LocalAIAssistant() {
                 fontWeight: "bold",
                 cursor: "pointer",
                 boxShadow: "0 0 10px rgba(0, 255, 159, 0.2)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
               }}
             >
-              {synthesizing ? "ANALYZING DOSSIER..." : "AI SYNTHESIZE DOSSIER 🧠"}
+              <BotIcon size={16} color="#00FF9F" />
+              {synthesizing ? "ANALYZING DOSSIER..." : "AI SYNTHESIZE DOSSIER"}
             </button>
           </div>
 

@@ -5,7 +5,22 @@ import Graph from "graphology";
 import { bidirectional } from "graphology-shortest-path/unweighted";
 import { useActiveCase } from "@/lib/activeCase";
 import { apiGet, apiPostJson, apiPostFormData, API_URL, getApiKey } from "@/lib/api";
-import { CheckIcon, CrossIcon, BoltIcon, AlertIcon } from "@/components/FlatIcons";
+import {
+  CheckIcon,
+  CrossIcon,
+  BoltIcon,
+  AlertIcon,
+  CameraIcon,
+  MindMapIcon,
+  NetworkIcon,
+  TargetIcon,
+  FileTextIcon,
+  LinkIcon,
+  PaperclipIcon,
+  FolderIcon,
+  DownloadIcon,
+  ExternalLinkIcon,
+} from "@/components/FlatIcons";
 
 type NodeData = {
   id: string;
@@ -1913,11 +1928,11 @@ export default function GraphView() {
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
-                gap: 4,
+                gap: 5,
               }}
               title="Organized MindMeister-style hierarchical branching tree"
             >
-              <span>🧠</span> Mind Map
+              <MindMapIcon size={13} color={layoutMode === "mindmap" ? "#000" : "currentColor"} /> Mind Map
             </button>
             <button
               onClick={() => setLayoutMode("force")}
@@ -1932,11 +1947,11 @@ export default function GraphView() {
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
-                gap: 4,
+                gap: 5,
               }}
               title="Organic dynamic force-directed network simulation"
             >
-              <span>🌌</span> Force Net
+              <NetworkIcon size={13} color={layoutMode === "force" ? "#000" : "currentColor"} /> Force Net
             </button>
             <button
               onClick={() => setLayoutMode("radial")}
@@ -1951,11 +1966,11 @@ export default function GraphView() {
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
-                gap: 4,
+                gap: 5,
               }}
               title="Concentric circular orbit layout around Case Hub"
             >
-              <span>🎯</span> Radial
+              <TargetIcon size={13} color={layoutMode === "radial" ? "#000" : "currentColor"} /> Radial
             </button>
           </div>
 
@@ -2329,15 +2344,15 @@ export default function GraphView() {
                     border: "1px solid var(--cyan)",
                     color: "var(--cyan)",
                     borderRadius: 4,
-                    padding: "3px 6px",
+                    padding: "3px 8px",
                     fontSize: 11,
                     cursor: uploadingPhoto ? "wait" : "pointer",
                     display: "flex",
                     alignItems: "center",
-                    gap: 3,
+                    gap: 5,
                   }}
                 >
-                  <span>📷</span> {uploadingPhoto ? "..." : "+ Photo"}
+                  <CameraIcon size={13} color="var(--cyan)" /> {uploadingPhoto ? "..." : "+ Photo"}
                 </label>
                 <button 
                   onClick={() => setInspectedNodeId(null)}
@@ -2423,8 +2438,8 @@ export default function GraphView() {
             {/* Direct Node Attachments & Dork Documentation Section */}
             <div style={{ marginBottom: 16, borderTop: "1px solid var(--panel-border)", paddingTop: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <span style={{ fontSize: 11, color: "var(--cyan)", fontWeight: "bold", letterSpacing: "0.5px" }}>
-                  📎 ATTACHED EVIDENCE & DORKS:
+                <span style={{ fontSize: 11, color: "var(--cyan)", fontWeight: "bold", letterSpacing: "0.5px", display: "flex", alignItems: "center", gap: 5 }}>
+                  <PaperclipIcon size={13} color="var(--cyan)" /> ATTACHED EVIDENCE &amp; DORKS:
                 </span>
                 <span style={{ fontSize: 10, background: "rgba(5, 217, 232, 0.15)", color: "var(--cyan)", padding: "1px 6px", borderRadius: 3 }}>
                   {edges.filter((e) => e.source === inspectedNode.id && (e.relation_type === "attached_file" || e.relation_type === "attached_link")).length} items
@@ -2457,7 +2472,7 @@ export default function GraphView() {
                       >
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                           <span style={{ fontSize: 11, fontWeight: "bold", color: "#fff", display: "flex", alignItems: "center", gap: 5 }}>
-                            {isFile ? "📄" : "🔗"} {targetNode.label}
+                            {isFile ? <FileTextIcon size={12} color="var(--cyan)" /> : <LinkIcon size={12} color="var(--cyan)" />} {targetNode.label}
                           </span>
                           <span style={{ fontSize: 9, color: "var(--cyan)", textTransform: "uppercase" }}>
                             {targetNode.type}
@@ -2478,7 +2493,8 @@ export default function GraphView() {
                                 gap: 4,
                               }}
                             >
-                              {isFile ? "⬇ Download File" : "↗ Open External URL"}
+                              {isFile ? <DownloadIcon size={11} color="var(--cyan)" /> : <ExternalLinkIcon size={11} color="var(--cyan)" />}
+                              {isFile ? "Download File" : "Open External URL"}
                             </a>
                           </div>
                         )}
@@ -2539,16 +2555,21 @@ export default function GraphView() {
                     padding: "6px 10px",
                     fontSize: 11,
                     cursor: savingLink || !attachUrl.trim() ? "not-allowed" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
                   }}
                 >
-                  {savingLink ? "Preserving URL..." : "🔗 Pin URL to this Node"}
+                  <LinkIcon size={12} color={savingLink || !attachUrl.trim() ? "var(--text-muted)" : "#000"} />
+                  {savingLink ? "Preserving URL..." : "Pin URL to this Node"}
                 </button>
               </div>
 
               {/* Upload File to Node Box */}
               <div style={{ background: "rgba(10, 14, 24, 0.6)", border: "1px solid rgba(5, 217, 232, 0.2)", borderRadius: 4, padding: 10 }}>
-                <div style={{ fontSize: 10, color: "var(--cyan)", fontWeight: "bold", marginBottom: 6, textTransform: "uppercase" }}>
-                  📎 Upload File / Dump to this Node
+                <div style={{ fontSize: 10, color: "var(--cyan)", fontWeight: "bold", marginBottom: 6, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 5 }}>
+                  <PaperclipIcon size={12} color="var(--cyan)" /> Upload File / Dump to this Node
                 </div>
                 <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
                   <select
@@ -2581,8 +2602,10 @@ export default function GraphView() {
                 <label
                   htmlFor="node-file-upload-input"
                   style={{
-                    display: "block",
-                    textAlign: "center",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
                     background: uploadingNodeFile ? "var(--panel)" : "rgba(5, 217, 232, 0.15)",
                     border: "1px dashed var(--cyan)",
                     color: "var(--cyan)",
@@ -2593,15 +2616,16 @@ export default function GraphView() {
                     cursor: uploadingNodeFile ? "wait" : "pointer",
                   }}
                 >
-                  {uploadingNodeFile ? "Uploading..." : "📁 Browse & Upload to Node"}
+                  <FolderIcon size={13} color="var(--cyan)" />
+                  {uploadingNodeFile ? "Uploading..." : "Browse & Upload to Node"}
                 </label>
               </div>
             </div>
 
             {/* Attach Knot (Link) to Another Node */}
             <div style={{ marginBottom: 16, borderTop: "1px solid var(--panel-border)", paddingTop: 12 }}>
-              <div style={{ fontSize: 10, color: "var(--cyan)", fontWeight: "bold", marginBottom: 6, textTransform: "uppercase" }}>
-                🔗 Attach Knot to Another Entity
+              <div style={{ fontSize: 10, color: "var(--cyan)", fontWeight: "bold", marginBottom: 6, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 5 }}>
+                <LinkIcon size={12} color="var(--cyan)" /> Attach Knot to Another Entity
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <select

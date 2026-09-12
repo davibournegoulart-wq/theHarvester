@@ -498,6 +498,62 @@ export function ActivityIcon({ size = 14, color = "currentColor", style }: IconP
   );
 }
 
+export function MindMapIcon({ size = 14, color = "currentColor", style }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", ...style }}>
+      <rect x="2" y="10" width="6" height="4" rx="1.5" />
+      <rect x="16" y="4" width="6" height="4" rx="1.5" />
+      <rect x="16" y="16" width="6" height="4" rx="1.5" />
+      <path d="M8 12h4c1 0 2-.8 2-2V6c0-.5.4-1 1-1h1" />
+      <path d="M12 12c0 1.2.8 2 2 2v2c0 .5.4 1 1 1h1" />
+    </svg>
+  );
+}
+
+export function NetworkIcon({ size = 14, color = "currentColor", style }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", ...style }}>
+      <circle cx="12" cy="12" r="3" />
+      <circle cx="4" cy="6" r="2" />
+      <circle cx="20" cy="6" r="2" />
+      <circle cx="4" cy="18" r="2" />
+      <circle cx="20" cy="18" r="2" />
+      <line x1="5.7" y1="7.3" x2="9.8" y2="10.4" />
+      <line x1="18.3" y1="7.3" x2="14.2" y2="10.4" />
+      <line x1="5.7" y1="16.7" x2="9.8" y2="13.6" />
+      <line x1="18.3" y1="16.7" x2="14.2" y2="13.6" />
+    </svg>
+  );
+}
+
+export function TargetIcon({ size = 14, color = "currentColor", style }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", ...style }}>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1.5" />
+      <line x1="12" y1="1" x2="12" y2="4" />
+      <line x1="12" y1="20" x2="12" y2="23" />
+      <line x1="1" y1="12" x2="4" y2="12" />
+      <line x1="20" y1="12" x2="23" y2="12" />
+    </svg>
+  );
+}
+
+export function FileTextIcon({ size = 14, color = "currentColor", style }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", ...style }}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <polyline points="10 9 9 9 8 9" />
+    </svg>
+  );
+}
+
+
+
 
 
 
