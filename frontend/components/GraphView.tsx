@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo } from "react";
 import Graph from "graphology";
 import { SigmaContainer, ControlsContainer, ZoomControl, useLoadGraph, useRegisterEvents, useSigma } from "@react-sigma/core";
 import { useLayoutForceAtlas2 } from "@react-sigma/layout-forceatlas2";
-import { NodeImageProgram } from "@sigma/node-image";
 import { bidirectional } from "graphology-shortest-path/unweighted";
 import "@react-sigma/core/lib/style.css";
 import { useActiveCase } from "@/lib/activeCase";
@@ -137,13 +136,15 @@ function LoadGraph({
   const loadGraph = useLoadGraph();
 
   useEffect(() => {
+    if (!nodes || nodes.length === 0) return;
+
     const graph = new Graph({ multi: true });
 
-    nodes.forEach((n) => {
+    nodes.forEach((n, idx) => {
       let cleanId = n.id;
       if (cleanId.startsWith("[")) {
-        const idx = cleanId.indexOf("] ");
-        if (idx !== -1) cleanId = cleanId.substring(idx + 2);
+        const cidx = cleanId.indexOf("] ");
+        if (cidx !== -1) cleanId = cleanId.substring(cidx + 2);
       }
 
       let detectedType = (n.type || "default").toLowerCase();
@@ -161,14 +162,19 @@ function LoadGraph({
 
       const st = NODE_SETTINGS[detectedType] || NODE_SETTINGS.default;
 
+      // Deterministic radial orbit placement
+      const angle = (idx / Math.max(1, nodes.length)) * 2 * Math.PI;
+      const radius = detectedType === "case" ? 0 : 35 + (idx % 4) * 18;
+      const x = detectedType === "case" ? 50 : 50 + Math.cos(angle) * radius;
+      const y = detectedType === "case" ? 50 : 50 + Math.sin(angle) * radius;
+
       graph.addNode(n.id, {
-        x: Math.random() * 100,
-        y: Math.random() * 100,
+        x,
+        y,
         label: displayLabel,
         size: n.size || st.size,
         color: n.color || st.color,
-        type: st.image ? "image" : "circle",
-        image: st.image,
+        type: "circle",
         originalColor: n.color || st.color,
         entityType: detectedType,
       });
@@ -192,9 +198,13 @@ function LoadGraph({
     });
 
     loadGraph(graph);
-    assign();
+    try {
+      assign();
+    } catch (err) {
+      console.warn("ForceAtlas2 assign warning:", err);
+    }
     onGraphReady(graph);
-  }, [nodes, edges, assign, loadGraph, onGraphReady]);
+  }, [nodes, edges]);
 
   return null;
 }
@@ -280,7 +290,7 @@ function GraphEvents({
 }
 
 export default function GraphView() {
-  const { activeCase } = useActiveCase();
+  const { activeCase, setActiveCase } = useActiveCase();
   const [nodes, setNodes] = useState<NodeData[]>([]);
   const [edges, setEdges] = useState<EdgeData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -309,6 +319,9 @@ export default function GraphView() {
         setAvailableCases(data || []);
         if (activeCase) {
           setSelectedCaseIds([activeCase.id]);
+        } else if (data && data.length > 0) {
+          setActiveCase({ id: data[0].id, name: data[0].name });
+          setSelectedCaseIds([data[0].id]);
         }
       })
       .catch((err) => console.error("Error loading cases:", err));
@@ -334,8 +347,15 @@ export default function GraphView() {
     try {
       let data: { nodes: NodeData[]; edges: EdgeData[] };
 
-      if (viewMode === "active" && activeCase) {
-        data = await apiGet<{ nodes: NodeData[]; edges: EdgeData[] }>(`/cases/${activeCase.id}/graph`);
+      if (viewMode === "active") {
+        const targetId = activeCase?.id || (availableCases.length > 0 ? availableCases[0].id : null);
+        if (!targetId) {
+          setNodes([]);
+          setEdges([]);
+          setLoading(false);
+          return;
+        }
+        data = await apiGet<{ nodes: NodeData[]; edges: EdgeData[] }>(`/cases/${targetId}/graph`);
       } else if (viewMode === "custom") {
         if (selectedCaseIds.length === 0) {
           setNodes([]);
@@ -447,17 +467,6 @@ export default function GraphView() {
     }
   }
 
-  if (!activeCase && viewMode === "active") {
-    return (
-      <div style={{ color: "var(--warning)", marginTop: 32, padding: 24, background: "var(--panel)", border: "1px solid var(--panel-border)", borderRadius: 8 }}>
-        <h3 style={{ color: "var(--cyan)", marginTop: 0 }}>No Active Case Selected</h3>
-        <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
-          Select or create an active case in the top navigation bar to access the Relational Intelligence Graph.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div style={{ marginTop: 24 }}>
       {/* Top Header & View Controls */}
@@ -476,38 +485,60 @@ export default function GraphView() {
           </p>
         </div>
         
-        {/* Scope Selector */}
-        <div style={{ display: "flex", gap: 12, background: "var(--panel)", padding: "6px 12px", borderRadius: 6, border: "1px solid var(--panel-border)", height: "fit-content", flexWrap: "wrap" }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-            <input 
-              type="radio" 
-              checked={viewMode === "active"} 
-              onChange={() => setViewMode("active")} 
-            />
-            <span style={{ fontSize: 12, fontWeight: viewMode === "active" ? "bold" : "normal", color: viewMode === "active" ? "var(--cyan)" : "inherit" }}>
-              Active Case Only
-            </span>
-          </label>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-            <input 
-              type="radio" 
-              checked={viewMode === "custom"} 
-              onChange={() => setViewMode("custom")} 
-            />
-            <span style={{ fontSize: 12, fontWeight: viewMode === "custom" ? "bold" : "normal", color: viewMode === "custom" ? "var(--cyan)" : "inherit" }}>
-              Select Cases (2 or more)
-            </span>
-          </label>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-            <input 
-              type="radio" 
-              checked={viewMode === "all"} 
-              onChange={() => setViewMode("all")} 
-            />
-            <span style={{ fontSize: 12, fontWeight: viewMode === "all" ? "bold" : "normal", color: viewMode === "all" ? "var(--danger)" : "inherit" }}>
-              Full Merge (All Cases)
-            </span>
-          </label>
+        {/* Scope & Case Selector */}
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          {availableCases.length > 0 && viewMode === "active" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(5, 217, 232, 0.08)", padding: "4px 10px", borderRadius: 6, border: "1px solid var(--cyan)" }}>
+              <span style={{ fontSize: 11, color: "var(--cyan)", fontWeight: "bold" }}>CASE:</span>
+              <select
+                value={activeCase?.id || (availableCases[0]?.id ?? "")}
+                onChange={(e) => {
+                  const c = availableCases.find((x) => x.id === e.target.value);
+                  if (c) setActiveCase({ id: c.id, name: c.name });
+                }}
+                style={{ background: "#0c0e17", color: "#fff", border: "1px solid var(--panel-border)", padding: "4px 8px", borderRadius: 4, fontSize: 12, cursor: "pointer" }}
+              >
+                {availableCases.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 12, background: "var(--panel)", padding: "6px 12px", borderRadius: 6, border: "1px solid var(--panel-border)", height: "fit-content", flexWrap: "wrap" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+              <input 
+                type="radio" 
+                checked={viewMode === "active"} 
+                onChange={() => setViewMode("active")} 
+              />
+              <span style={{ fontSize: 12, fontWeight: viewMode === "active" ? "bold" : "normal", color: viewMode === "active" ? "var(--cyan)" : "inherit" }}>
+                Active Case Only
+              </span>
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+              <input 
+                type="radio" 
+                checked={viewMode === "custom"} 
+                onChange={() => setViewMode("custom")} 
+              />
+              <span style={{ fontSize: 12, fontWeight: viewMode === "custom" ? "bold" : "normal", color: viewMode === "custom" ? "var(--cyan)" : "inherit" }}>
+                Select Cases (2 or more)
+              </span>
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+              <input 
+                type="radio" 
+                checked={viewMode === "all"} 
+                onChange={() => setViewMode("all")} 
+              />
+              <span style={{ fontSize: 12, fontWeight: viewMode === "all" ? "bold" : "normal", color: viewMode === "all" ? "var(--danger)" : "inherit" }}>
+                Full Merge (All Cases)
+              </span>
+            </label>
+          </div>
         </div>
       </div>
 
@@ -744,9 +775,7 @@ export default function GraphView() {
             labelColor: { color: "#d6f3ff" },
             labelSize: 11,
             labelWeight: "600",
-            nodeProgramClasses: {
-              image: NodeImageProgram,
-            }
+            renderEdgeLabels: true,
           }}
         >
           <LoadGraph nodes={displayedNodes} edges={displayedEdges} onGraphReady={setGraphInstance} />
