@@ -6,7 +6,7 @@ import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "@/components/SaveToCaseButton";
 import DeepScraperTool from "./DeepScraperTool";
 import ImageMagnifier from "./ImageMagnifier";
-import GhostTrackIpTool from "./GhostTrackIpTool";
+import GhostTrackSuite from "./GhostTrackSuite";
 import BellingcatToolkitTool from "./BellingcatToolkitTool";
 import InstaLooterTool from "./InstaLooterTool";
 import SocialToolsDirectory from "./SocialToolsDirectory";
@@ -761,7 +761,7 @@ export default function ToolsPanel() {
       <GitleaksTruffleHogTool />
       <ReverseImageTool />
       <InstaLooterTool />
-      <GhostTrackIpTool />
+      <GhostTrackSuite />
       <BellingcatToolkitTool />
       <ImageExifTool />
       <DocumentMetadataTool />

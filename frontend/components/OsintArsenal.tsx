@@ -27,7 +27,7 @@ const NATIVE_TOOL_MAP: Record<string, { tab: string; feature: string }> = {
   "holehe": { tab: "EMAIL", feature: "Password reset / registered services checker" },
   "mailaccess": { tab: "EMAIL", feature: "Infostealer malware detection, M365 tenant realm & MX checks" },
   "phoneinfoga": { tab: "PHONE", feature: "Phone carrier, line type, format & WhatsApp/TG validation" },
-  "ghosttrack": { tab: "DOMAIN/IP", feature: "IP Geolocation, ASN Network Tracer & Carrier Intel" },
+  "ghosttrack": { tab: "TOOLS", feature: "GhostTrack Complete Suite: IP Geolocation, Show My IP, Phone & Username Tracker" },
   "ignorant": { tab: "PHONE", feature: "Phone registration checkers" },
   "moriarty": { tab: "PHONE", feature: "Reverse caller ID search links & spam report pivots" },
   "theharvester": { tab: "DOMAIN/IP", feature: "Subdomain discovery, DNS resolution, and TLS certs" },

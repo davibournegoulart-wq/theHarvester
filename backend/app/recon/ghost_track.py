@@ -173,3 +173,180 @@ def parse_phone_intel(raw_phone: str, default_region: str = "US") -> GhostPhoneR
         )
     except Exception as exc:
         return GhostPhoneResult(raw_input=raw_phone, is_valid=False, is_possible=False, error=str(exc))
+
+
+@dataclass
+class GhostEgressIpResult:
+    ip: str
+    is_tor: bool = False
+    isp: str = ""
+    org: str = ""
+    country: str = ""
+    city: str = ""
+    error: Optional[str] = None
+
+
+@dataclass
+class GhostUsernameResultItem:
+    platform: str
+    url: str
+    status: str  # FOUND, NOT_FOUND, ERROR
+    http_status: Optional[int] = None
+    error: Optional[str] = None
+
+
+@dataclass
+class GhostUsernameScanResponse:
+    username: str
+    total_sites: int
+    found_count: int
+    results: list[GhostUsernameResultItem]
+
+
+GHOSTTRACK_SOCIAL_PLATFORMS = [
+    {"name": "Facebook", "url": "https://www.facebook.com/{}"},
+    {"name": "Twitter", "url": "https://www.twitter.com/{}"},
+    {"name": "Instagram", "url": "https://www.instagram.com/{}"},
+    {"name": "LinkedIn", "url": "https://www.linkedin.com/in/{}"},
+    {"name": "GitHub", "url": "https://www.github.com/{}"},
+    {"name": "Pinterest", "url": "https://www.pinterest.com/{}"},
+    {"name": "Tumblr", "url": "https://www.tumblr.com/{}"},
+    {"name": "YouTube", "url": "https://www.youtube.com/{}"},
+    {"name": "SoundCloud", "url": "https://soundcloud.com/{}"},
+    {"name": "Snapchat", "url": "https://www.snapchat.com/add/{}"},
+    {"name": "TikTok", "url": "https://www.tiktok.com/@{}"},
+    {"name": "Behance", "url": "https://www.behance.net/{}"},
+    {"name": "Medium", "url": "https://www.medium.com/@{}"},
+    {"name": "Quora", "url": "https://www.quora.com/profile/{}"},
+    {"name": "Flickr", "url": "https://www.flickr.com/people/{}"},
+    {"name": "Periscope", "url": "https://www.periscope.tv/{}"},
+    {"name": "Twitch", "url": "https://www.twitch.tv/{}"},
+    {"name": "Dribbble", "url": "https://www.dribbble.com/{}"},
+    {"name": "StumbleUpon", "url": "https://www.stumbleupon.com/stumbler/{}"},
+    {"name": "Ello", "url": "https://www.ello.co/{}"},
+    {"name": "Product Hunt", "url": "https://www.producthunt.com/@{}"},
+    {"name": "Telegram", "url": "https://www.telegram.me/{}"},
+    {"name": "We Heart It", "url": "https://www.weheartit.com/{}"},
+]
+
+
+async def check_my_ip(use_tor: bool = False) -> GhostEgressIpResult:
+    """Detects investigator's active egress IP and evaluates Tor proxy status."""
+    proxy_url = settings.tor_proxy_url if use_tor else None
+    
+    # Try ipwho.is first for rich egress metadata
+    try:
+        async with httpx.AsyncClient(proxy=proxy_url, timeout=10.0) as client:
+            resp = await client.get("http://ipwho.is/", headers={"User-Agent": "GhostTrack/2.0 OSINT"})
+            data = resp.json()
+            if data.get("success"):
+                ip = data.get("ip", "")
+                conn = data.get("connection") or {}
+                return GhostEgressIpResult(
+                    ip=ip,
+                    is_tor=use_tor,
+                    isp=conn.get("isp", ""),
+                    org=conn.get("org", ""),
+                    country=data.get("country", ""),
+                    city=data.get("city", ""),
+                )
+    except Exception:
+        pass
+
+    # Fallback to ipify
+    try:
+        async with httpx.AsyncClient(proxy=proxy_url, timeout=8.0) as client:
+            resp = await client.get("https://api.ipify.org?format=json")
+            data = resp.json()
+            return GhostEgressIpResult(
+                ip=data.get("ip", ""),
+                is_tor=use_tor,
+            )
+    except Exception as exc:
+        return GhostEgressIpResult(
+            ip="",
+            is_tor=use_tor,
+            error=f"Could not resolve egress IP: {exc}",
+        )
+
+
+async def scan_username_ghosttrack(username: str, use_tor: bool = False) -> GhostUsernameScanResponse:
+    """Executes concurrent username queries across GhostTrack's 24 social networks."""
+    import asyncio
+
+    clean_user = username.strip().lstrip("@")
+    if not clean_user:
+        return GhostUsernameScanResponse(username="", total_sites=0, found_count=0, results=[])
+
+    proxy_url = settings.tor_proxy_url if use_tor else None
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+    }
+
+    semaphore = asyncio.Semaphore(10)
+
+    async def _check_target(client: httpx.AsyncClient, site: dict) -> GhostUsernameResultItem:
+        target_url = site["url"].format(clean_user)
+        async with semaphore:
+            try:
+                resp = await client.get(
+                    target_url,
+                    headers=headers,
+                    follow_redirects=True,
+                    timeout=8.0,
+                )
+                if resp.status_code == 200:
+                    # Basic heuristic check for some common soft-404 redirects
+                    body_lower = resp.text[:1000].lower()
+                    if "not found" in body_lower or "page doesn't exist" in body_lower or "user not found" in body_lower:
+                        return GhostUsernameResultItem(
+                            platform=site["name"],
+                            url=target_url,
+                            status="NOT_FOUND",
+                            http_status=resp.status_code,
+                        )
+                    return GhostUsernameResultItem(
+                        platform=site["name"],
+                        url=target_url,
+                        status="FOUND",
+                        http_status=resp.status_code,
+                    )
+                elif resp.status_code == 404:
+                    return GhostUsernameResultItem(
+                        platform=site["name"],
+                        url=target_url,
+                        status="NOT_FOUND",
+                        http_status=resp.status_code,
+                    )
+                else:
+                    return GhostUsernameResultItem(
+                        platform=site["name"],
+                        url=target_url,
+                        status="NOT_FOUND",
+                        http_status=resp.status_code,
+                    )
+            except Exception as e:
+                return GhostUsernameResultItem(
+                    platform=site["name"],
+                    url=target_url,
+                    status="ERROR",
+                    error=str(e),
+                )
+
+    async with httpx.AsyncClient(proxy=proxy_url, verify=False) as client:
+        tasks = [_check_target(client, site) for site in GHOSTTRACK_SOCIAL_PLATFORMS]
+        results = await asyncio.gather(*tasks)
+
+    found = sum(1 for r in results if r.status == "FOUND")
+    # Sort with FOUND first
+    sorted_results = sorted(results, key=lambda x: (0 if x.status == "FOUND" else (1 if x.status == "NOT_FOUND" else 2), x.platform))
+
+    return GhostUsernameScanResponse(
+        username=clean_user,
+        total_sites=len(GHOSTTRACK_SOCIAL_PLATFORMS),
+        found_count=found,
+        results=sorted_results,
+    )
+

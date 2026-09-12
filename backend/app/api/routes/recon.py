@@ -37,7 +37,12 @@ from app.recon.tls_cert import analyze_tls_certificate
 from app.recon.web_archive import check_archive_availability, search_archive
 from app.recon.deep_scraper import scrape_url, extract_entities
 from app.recon.scrapy_crawler import run_scrapy_crawl
-from app.recon.ghost_track import trace_ip as run_ghost_ip_trace, parse_phone_intel as run_ghost_phone_intel
+from app.recon.ghost_track import (
+    trace_ip as run_ghost_ip_trace,
+    parse_phone_intel as run_ghost_phone_intel,
+    check_my_ip as run_ghost_check_my_ip,
+    scan_username_ghosttrack as run_ghost_username_scan,
+)
 from app.recon.visual_geolocation import extract_pic2map_exif, predict_visual_geolocation
 from app.recon.mail_access import run_mail_access_deep_recon
 import json
@@ -407,6 +412,18 @@ async def ghosttrack_ip(ip: str, use_tor: bool = False):
 def ghosttrack_phone(phone: str, default_region: str = "US"):
     """GhostTrack Phone Carrier, Timezone, and Telecommunication Parser."""
     return run_ghost_phone_intel(phone, default_region=default_region)
+
+
+@router.get("/ghosttrack/my-ip")
+async def ghosttrack_my_ip(use_tor: bool = False):
+    """GhostTrack Show Your IP: Detect active investigator egress IP and Tor proxy status."""
+    return await run_ghost_check_my_ip(use_tor=use_tor)
+
+
+@router.get("/ghosttrack/username")
+async def ghosttrack_username(username: str, use_tor: bool = False):
+    """GhostTrack Username Tracker (TrackLu): Fast 24-platform social and developer footprint check."""
+    return await run_ghost_username_scan(username, use_tor=use_tor)
 
 
 # ---------------------------------------------------------------------------
