@@ -40,6 +40,8 @@ class SaveEvidenceRequest(BaseModel):
     url: str
     note: str | None = None
     archived_url: str | None = None
+    target_node_id: str | None = None
+    title: str | None = None
 
 
 class MultiCaseGraphRequest(BaseModel):
@@ -611,21 +613,25 @@ async def save_finding_route(case_id: uuid.UUID, body: SaveFindingRequest, db: A
 
 @router.post("/{case_id}/evidence")
 async def save_evidence_route(case_id: uuid.UUID, body: SaveEvidenceRequest, db: AsyncSession = Depends(get_db)):
-    """Preserva um link como evidência na trilha de auditoria imutável — sem
-    baixar nenhum conteúdo. Registra que aquela URL existia com aquele
-    timestamp (o próprio `created_at` do log), pra caso o post seja apagado
-    depois. Alternativa nativa ao baixador de mídia de terceiro (recusado —
-    ver Tools - Excluded (Risk Review) no vault)."""
+    """Preserva um link como evidência na trilha de auditoria imutável."""
     case = await db.get(Case, case_id)
     if case is None:
         raise HTTPException(status_code=404, detail="Case not found")
+
+    payload = {
+        "url": body.url,
+        "note": body.note,
+        "title": body.title,
+        "target_node_id": body.target_node_id,
+        "archived_url": body.archived_url,
+    }
 
     return await log_action(
         db,
         case_id,
         actor="investigador",
         action="evidence_saved",
-        payload={"url": body.url, "note": body.note},
+        payload=payload,
     )
 
 
@@ -666,6 +672,7 @@ async def upload_case_file(
     file: UploadFile = File(...),
     typology: str = Form("document"),
     source_url: str | None = Form(None),
+    target_node_id: str | None = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Upload any evidence document, image, or dork dump to case databank."""
@@ -684,13 +691,15 @@ async def upload_case_file(
     with open(dest_path, "wb") as out_f:
         out_f.write(content)
 
+    effective_source = source_url or (f"node:{target_node_id}" if target_node_id else None)
+
     case_file = CaseFile(
         id=file_id,
         case_id=case_id,
         filename=safe_stored_name,
         original_filename=file.filename or safe_stored_name,
         typology=typology,
-        source_url=source_url,
+        source_url=effective_source,
         file_size=file_size,
         mime_type=file.content_type,
         storage_path=dest_path,
@@ -705,9 +714,11 @@ async def upload_case_file(
         actor="investigador",
         action="file_uploaded",
         payload={
+            "file_id": str(case_file.id),
             "filename": case_file.original_filename,
             "typology": typology,
             "size": file_size,
+            "target_node_id": target_node_id,
         },
     )
 
@@ -717,6 +728,7 @@ async def upload_case_file(
         "original_filename": case_file.original_filename,
         "typology": case_file.typology,
         "file_size": case_file.file_size,
+        "target_node_id": target_node_id,
         "created_at": case_file.created_at.isoformat(),
     }
 

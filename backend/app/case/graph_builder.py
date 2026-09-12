@@ -202,8 +202,16 @@ async def get_graph_elements_for_case(db: AsyncSession, case_id: uuid.UUID | Non
             },
         )
         case_node_id = f"case:{f.case_id}"
-        if case_node_id in node_ids_set:
-            add_edge(case_node_id, file_node_id, rel_type="attached_file", confidence=1.0)
+        parent_node = None
+        if f.source_url and f.source_url.startswith("node:"):
+            cand = f.source_url[5:]
+            if cand in node_ids_set:
+                parent_node = cand
+        if not parent_node:
+            parent_node = case_node_id
+
+        if parent_node in node_ids_set:
+            add_edge(parent_node, file_node_id, rel_type="attached_file", confidence=1.0)
 
     # Connect Audit Log Evidence, Secrets, Biometrics
     for entry in audit_logs:
@@ -215,15 +223,28 @@ async def get_graph_elements_for_case(db: AsyncSession, case_id: uuid.UUID | Non
             if url:
                 ev_node_id = f"{prefix}evidence:{entry.id}"
                 note = entry.payload.get("note") or ""
-                ev_label = note if note else (url[:40] + "..." if len(url) > 40 else url)
+                title = entry.payload.get("title") or ""
+                target_node = entry.payload.get("target_node_id")
+
+                if title:
+                    ev_label = title
+                elif note:
+                    ev_label = note
+                else:
+                    ev_label = url[:35] + "..." if len(url) > 35 else url
+
+                is_doc = any(url.lower().endswith(ext) for ext in [".pdf", ".doc", ".docx", ".txt", ".xlsx", ".csv"]) or "dork" in note.lower()
+
                 add_node(
                     ev_node_id,
                     label=ev_label,
-                    n_type="evidence",
-                    details={"url": url, "note": note, "preserved_at": entry.created_at.isoformat()},
+                    n_type="document" if is_doc else "evidence",
+                    details={"url": url, "note": note, "title": title, "target_node_id": target_node, "preserved_at": entry.created_at.isoformat()},
                 )
-                if case_node_id in node_ids_set:
-                    add_edge(case_node_id, ev_node_id, rel_type="evidence_saved", confidence=1.0)
+
+                parent_node = target_node if (target_node and target_node in node_ids_set) else case_node_id
+                if parent_node in node_ids_set:
+                    add_edge(parent_node, ev_node_id, rel_type="attached_link" if target_node else "evidence_saved", confidence=1.0)
 
         elif entry.action in ("secret_exposed", "secrets_detected", "leak_found"):
             rule = entry.payload.get("rule", "Credential Leak")

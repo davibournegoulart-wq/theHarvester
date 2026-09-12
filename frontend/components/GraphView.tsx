@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import Graph from "graphology";
 import { bidirectional } from "graphology-shortest-path/unweighted";
 import { useActiveCase } from "@/lib/activeCase";
-import { apiGet, apiPostJson } from "@/lib/api";
+import { apiGet, apiPostJson, apiPostFormData, API_URL, getApiKey } from "@/lib/api";
 import { CheckIcon, CrossIcon, BoltIcon, AlertIcon } from "@/components/FlatIcons";
 
 type NodeData = {
@@ -112,6 +112,7 @@ const EDGE_COLORS: Record<string, string> = {
   located_at: "#FF0055",
   located_document: "#FF0055",
   attached_file: "#05D9E8",
+  attached_link: "#00FF9F",
   evidence_saved: "#00FF9F",
   evidence_url: "#00FF9F",
   exposed_secret: "#FF5500",
@@ -127,6 +128,10 @@ interface SimNode extends NodeData {
   vy: number;
   radius: number;
   nodeColor: string;
+  targetX?: number;
+  targetY?: number;
+  treeLevel?: number;
+  branchId?: number;
 }
 
 function drawNodeIcon(
@@ -384,6 +389,212 @@ function drawNodeIcon(
   ctx.restore();
 }
 
+// --- LAYOUT ENGINES ---
+type LayoutMode = "mindmap" | "force" | "radial";
+
+// Typology branching configuration for MindMeister layout
+// Left side: Documents, Evidence, Dorks, Financial, Geo
+// Right side: Comms/Phones, Identity/Accounts, Web/Infra
+const MINDMAP_BRANCHES: {
+  side: "right" | "left";
+  title: string;
+  types: string[];
+}[] = [
+  {
+    side: "right",
+    title: "Comms & Telecom",
+    types: ["phone", "whatsapp", "telegram", "email", "carrier", "telecom"],
+  },
+  {
+    side: "right",
+    title: "Identity & Accounts",
+    types: [
+      "username",
+      "person",
+      "cpf",
+      "instagram",
+      "facebook",
+      "twitter",
+      "x",
+      "tiktok",
+      "github",
+      "linkedin",
+      "reddit",
+      "youtube",
+    ],
+  },
+  {
+    side: "right",
+    title: "Web, Domains & Infra",
+    types: ["domain", "dns", "ip", "c2", "web", "host"],
+  },
+  {
+    side: "left",
+    title: "Documents & Evidence",
+    types: ["document", "file", "dork_dump", "evidence", "image", "audio_video", "secret"],
+  },
+  {
+    side: "left",
+    title: "Financial & Corporate",
+    types: ["corporate", "company", "enterprise", "partner", "qsa", "work", "employment", "crypto", "bitcoin", "ethereum"],
+  },
+  {
+    side: "left",
+    title: "Locations & Biometrics",
+    types: ["geolocation", "location", "biometric", "face_crop"],
+  },
+];
+
+function computeMindMeisterPositions(
+  nodes: NodeData[],
+  edges: EdgeData[]
+): Map<string, { x: number; y: number; level: number; branchId: number }> {
+  const result = new Map<string, { x: number; y: number; level: number; branchId: number }>();
+  if (!nodes || nodes.length === 0) return result;
+
+  // Find root node (case or highest degree node)
+  const rootNode = nodes.find((n) => (n.type || "").toLowerCase() === "case") || nodes[0];
+  result.set(rootNode.id, { x: 0, y: 0, level: 0, branchId: -1 });
+
+  // Adjacency graph
+  const adj = new Map<string, string[]>();
+  for (const e of edges) {
+    if (!adj.has(e.source)) adj.set(e.source, []);
+    if (!adj.has(e.target)) adj.set(e.target, []);
+    adj.get(e.source)!.push(e.target);
+    adj.get(e.target)!.push(e.source);
+  }
+
+  // Map each non-root node to one of the 6 branches
+  function getBranchIndex(n: NodeData): number {
+    const t = (n.type || "").toLowerCase();
+    for (let bi = 0; bi < MINDMAP_BRANCHES.length; bi++) {
+      if (MINDMAP_BRANCHES[bi].types.includes(t)) return bi;
+    }
+    // Default: split between right (1) and left (3)
+    return (n.id.charCodeAt(0) % 2 === 0) ? 1 : 3;
+  }
+
+  // Collect branch buckets
+  const branchNodes: NodeData[][] = Array.from({ length: 6 }, () => []);
+  for (const n of nodes) {
+    if (n.id === rootNode.id) continue;
+    const bIdx = getBranchIndex(n);
+    branchNodes[bIdx].push(n);
+  }
+
+  // Level 1 and sub-levels
+  // Separate left vs right branches
+  const rightBranchIndices = [0, 1, 2];
+  const leftBranchIndices = [3, 4, 5];
+
+  function layoutBranchGroup(indices: number[], sideSign: number) {
+    let currentY = -((indices.length - 1) * 90);
+
+    for (const bIdx of indices) {
+      const bMembers = branchNodes[bIdx];
+      const branchInfo = MINDMAP_BRANCHES[bIdx];
+
+      // Identify primary level-1 nodes vs child level-2 nodes
+      // Level 1 nodes are either attached to root or have direct edges
+      const level1: NodeData[] = [];
+      const level2: NodeData[] = [];
+
+      for (const m of bMembers) {
+        const neighbors = adj.get(m.id) || [];
+        const isChildOfOtherMember = neighbors.some(
+          (nbr) => bMembers.some((bm) => bm.id === nbr && bm.id !== m.id) && !neighbors.includes(rootNode.id)
+        );
+        // Special case: attached files or attached links to another node in same branch are Level 2
+        const isAttachedToOther = edges.some(
+          (e) => (e.target === m.id && (e.relation_type === "attached_file" || e.relation_type === "attached_link" || e.relation_type === "has_account"))
+        );
+
+        if (isChildOfOtherMember || isAttachedToOther) {
+          level2.push(m);
+        } else {
+          level1.push(m);
+        }
+      }
+
+      // If everything fell into level2, promote the first few to level1
+      if (level1.length === 0 && bMembers.length > 0) {
+        level1.push(...bMembers.slice(0, Math.ceil(bMembers.length / 2)));
+        level2.push(...bMembers.slice(Math.ceil(bMembers.length / 2)));
+      }
+
+      const l1Spacing = 65;
+      const branchHeight = Math.max(80, (level1.length + level2.length) * 35);
+      const startL1Y = currentY - ((level1.length - 1) * l1Spacing) / 2;
+
+      level1.forEach((node, i) => {
+        const ny = startL1Y + i * l1Spacing;
+        const nx = sideSign * 240;
+        result.set(node.id, { x: nx, y: ny, level: 1, branchId: bIdx });
+
+        // Find children of this level1 node
+        const children = level2.filter((c) => {
+          const neighbors = adj.get(c.id) || [];
+          return neighbors.includes(node.id);
+        });
+
+        const childSpacing = 44;
+        const startChildY = ny - ((children.length - 1) * childSpacing) / 2;
+        children.forEach((child, ci) => {
+          if (!result.has(child.id)) {
+            result.set(child.id, {
+              x: sideSign * 460,
+              y: startChildY + ci * childSpacing,
+              level: 2,
+              branchId: bIdx,
+            });
+          }
+        });
+      });
+
+      // Place any leftover level2 nodes
+      level2.forEach((child, ci) => {
+        if (!result.has(child.id)) {
+          result.set(child.id, {
+            x: sideSign * 460,
+            y: currentY + ci * 44,
+            level: 2,
+            branchId: bIdx,
+          });
+        }
+      });
+
+      currentY += branchHeight + 50;
+    }
+  }
+
+  layoutBranchGroup(rightBranchIndices, 1);
+  layoutBranchGroup(leftBranchIndices, -1);
+
+  return result;
+}
+
+function computeRadialPositions(nodes: NodeData[]): Map<string, { x: number; y: number }> {
+  const result = new Map<string, { x: number; y: number }>();
+  if (!nodes || nodes.length === 0) return result;
+
+  const rootNode = nodes.find((n) => (n.type || "").toLowerCase() === "case") || nodes[0];
+  result.set(rootNode.id, { x: 0, y: 0 });
+
+  const others = nodes.filter((n) => n.id !== rootNode.id);
+  const total = others.length;
+  others.forEach((n, idx) => {
+    const angle = (idx / Math.max(1, total)) * 2 * Math.PI;
+    const ring = 160 + (idx % 3) * 90;
+    result.set(n.id, {
+      x: Math.cos(angle) * ring,
+      y: Math.sin(angle) * ring,
+    });
+  });
+
+  return result;
+}
+
 interface CanvasGraphProps {
   nodes: NodeData[];
   edges: EdgeData[];
@@ -392,6 +603,8 @@ interface CanvasGraphProps {
   onClearSelection: () => void;
   shortestPath: string[] | null;
   onInspectNode: (id: string | null) => void;
+  layoutMode: LayoutMode;
+  attachedNodeIds: Set<string>;
 }
 
 function CanvasGraph({
@@ -402,6 +615,8 @@ function CanvasGraph({
   onClearSelection,
   shortestPath,
   onInspectNode,
+  layoutMode,
+  attachedNodeIds,
 }: CanvasGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -447,7 +662,7 @@ function CanvasGraph({
     };
   }, []);
 
-  // Initialize or update simulation nodes
+  // Initialize or update simulation nodes with computed layout targets
   useEffect(() => {
     if (!nodes || nodes.length === 0) {
       simNodesRef.current = [];
@@ -457,6 +672,16 @@ function CanvasGraph({
     const prevMap = new Map<string, SimNode>();
     for (const n of simNodesRef.current) {
       prevMap.set(n.id, n);
+    }
+
+    // Compute MindMeister or Radial targets if active
+    let mindmapTargets = new Map<string, { x: number; y: number; level: number; branchId: number }>();
+    let radialTargets = new Map<string, { x: number; y: number }>();
+
+    if (layoutMode === "mindmap") {
+      mindmapTargets = computeMindMeisterPositions(nodes, edges);
+    } else if (layoutMode === "radial") {
+      radialTargets = computeRadialPositions(nodes);
     }
 
     const newSimNodes: SimNode[] = nodes.map((n, idx) => {
@@ -482,20 +707,33 @@ function CanvasGraph({
       const st = NODE_SETTINGS[detectedType] || NODE_SETTINGS.default;
       const prev = prevMap.get(n.id);
 
-      // Radial orbit start position
+      // Default radial start position
       const angle = (idx / Math.max(1, nodes.length)) * 2 * Math.PI;
       const r = detectedType === "case" ? 0 : 130 + (idx % 4) * 55;
-      const initX = detectedType === "case" ? 0 : Math.cos(angle) * r;
-      const initY = detectedType === "case" ? 0 : Math.sin(angle) * r;
+      const defaultInitX = detectedType === "case" ? 0 : Math.cos(angle) * r;
+      const defaultInitY = detectedType === "case" ? 0 : Math.sin(angle) * r;
+
+      const mmTarget = mindmapTargets.get(n.id);
+      const radTarget = radialTargets.get(n.id);
+
+      const targetX = mmTarget ? mmTarget.x : (radTarget ? radTarget.x : undefined);
+      const targetY = mmTarget ? mmTarget.y : (radTarget ? radTarget.y : undefined);
+
+      const initX = prev ? prev.x : (targetX !== undefined ? targetX : defaultInitX);
+      const initY = prev ? prev.y : (targetY !== undefined ? targetY : defaultInitY);
 
       return {
         ...n,
         label: displayLabel,
         type: detectedType,
-        x: prev ? prev.x : initX,
-        y: prev ? prev.y : initY,
+        x: initX,
+        y: initY,
         vx: prev ? prev.vx : 0,
         vy: prev ? prev.vy : 0,
+        targetX,
+        targetY,
+        treeLevel: mmTarget?.level,
+        branchId: mmTarget?.branchId,
         radius: n.size || st.size || 16,
         nodeColor: n.color || st.color || "#05D9E8",
       };
@@ -503,11 +741,11 @@ function CanvasGraph({
 
     simNodesRef.current = newSimNodes;
 
-    // Trigger auto-fit to frame newly loaded nodes
+    // Trigger auto-fit to frame newly loaded or rearranged nodes
     setTimeout(() => {
       fitToNodes();
-    }, 50);
-  }, [nodes, fitToNodes]);
+    }, 60);
+  }, [nodes, edges, layoutMode, fitToNodes]);
 
   // Main Physics and Render Animation Loop
   useEffect(() => {
@@ -538,68 +776,112 @@ function CanvasGraph({
       ctx.save();
       ctx.scale(dpr, dpr);
 
-      // 1. PHYSICS SIMULATION
+      // 1. PHYSICS SIMULATION / LAYOUT GLIDE
       const simNodes = simNodesRef.current;
       const simEdges = edgesRef.current;
       const nodeMap = new Map<string, SimNode>();
       for (const n of simNodes) nodeMap.set(n.id, n);
 
       if (simNodes.length > 0 && !isDraggingNodeRef.current) {
-        // Node-to-node repulsion
-        const kRepel = 7500;
-        for (let i = 0; i < simNodes.length; i++) {
-          for (let j = i + 1; j < simNodes.length; j++) {
-            const n1 = simNodes[i];
-            const n2 = simNodes[j];
-            let dx = n1.x - n2.x;
-            let dy = n1.y - n2.y;
-            let d2 = dx * dx + dy * dy;
-            if (d2 < 1) {
-              dx = (Math.random() - 0.5) * 4;
-              dy = (Math.random() - 0.5) * 4;
-              d2 = 4;
-            }
-            const dist = Math.sqrt(d2);
-            if (dist < 600) {
-              const force = kRepel / (d2 + 100);
-              const fx = (dx / dist) * force;
-              const fy = (dy / dist) * force;
-              n1.vx += fx;
-              n1.vy += fy;
-              n2.vx -= fx;
-              n2.vy -= fy;
+        if (layoutMode === "mindmap") {
+          // MindMeister layout: smooth lerp to target positions with light repulsion to prevent overlap
+          for (const n of simNodes) {
+            if (n.targetX !== undefined && n.targetY !== undefined) {
+              const dx = n.targetX - n.x;
+              const dy = n.targetY - n.y;
+              n.vx = dx * 0.15;
+              n.vy = dy * 0.15;
             }
           }
-        }
+          // Micro-repulsion to prevent labels from colliding
+          for (let i = 0; i < simNodes.length; i++) {
+            for (let j = i + 1; j < simNodes.length; j++) {
+              const n1 = simNodes[i];
+              const n2 = simNodes[j];
+              const dx = n1.x - n2.x;
+              const dy = n1.y - n2.y;
+              const dist2 = dx * dx + dy * dy;
+              if (dist2 < 900 && dist2 > 0) {
+                const dist = Math.sqrt(dist2);
+                const push = (30 - dist) * 0.05;
+                n1.y += (dy / dist) * push;
+                n2.y -= (dy / dist) * push;
+              }
+            }
+          }
+          for (const n of simNodes) {
+            n.x += n.vx;
+            n.y += n.vy;
+          }
+        } else if (layoutMode === "radial") {
+          // Radial Orbit layout: glide to circular orbits
+          for (const n of simNodes) {
+            if (n.targetX !== undefined && n.targetY !== undefined) {
+              const dx = n.targetX - n.x;
+              const dy = n.targetY - n.y;
+              n.vx = dx * 0.12;
+              n.vy = dy * 0.12;
+            }
+            n.x += n.vx;
+            n.y += n.vy;
+          }
+        } else {
+          // Organic Force-Directed Simulation
+          const kRepel = 7500;
+          for (let i = 0; i < simNodes.length; i++) {
+            for (let j = i + 1; j < simNodes.length; j++) {
+              const n1 = simNodes[i];
+              const n2 = simNodes[j];
+              let dx = n1.x - n2.x;
+              let dy = n1.y - n2.y;
+              let d2 = dx * dx + dy * dy;
+              if (d2 < 1) {
+                dx = (Math.random() - 0.5) * 4;
+                dy = (Math.random() - 0.5) * 4;
+                d2 = 4;
+              }
+              const dist = Math.sqrt(d2);
+              if (dist < 600) {
+                const force = kRepel / (d2 + 100);
+                const fx = (dx / dist) * force;
+                const fy = (dy / dist) * force;
+                n1.vx += fx;
+                n1.vy += fy;
+                n2.vx -= fx;
+                n2.vy -= fy;
+              }
+            }
+          }
 
-        // Edge spring attraction
-        const kSpring = 0.025;
-        const idealDist = 175;
-        for (const e of simEdges) {
-          const n1 = nodeMap.get(e.source);
-          const n2 = nodeMap.get(e.target);
-          if (!n1 || !n2) continue;
-          let dx = n2.x - n1.x;
-          let dy = n2.y - n1.y;
-          let dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 1) dist = 1;
-          const force = (dist - idealDist) * kSpring;
-          const fx = (dx / dist) * force;
-          const fy = (dy / dist) * force;
-          n1.vx += fx;
-          n1.vy += fy;
-          n2.vx -= fx;
-          n2.vy -= fy;
-        }
+          // Edge spring attraction
+          const kSpring = 0.025;
+          const idealDist = 175;
+          for (const e of simEdges) {
+            const n1 = nodeMap.get(e.source);
+            const n2 = nodeMap.get(e.target);
+            if (!n1 || !n2) continue;
+            let dx = n2.x - n1.x;
+            let dy = n2.y - n1.y;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 1) dist = 1;
+            const force = (dist - idealDist) * kSpring;
+            const fx = (dx / dist) * force;
+            const fy = (dy / dist) * force;
+            n1.vx += fx;
+            n1.vy += fy;
+            n2.vx -= fx;
+            n2.vy -= fy;
+          }
 
-        // Gentle centering gravity & velocity damping
-        for (const n of simNodes) {
-          n.vx -= n.x * 0.012;
-          n.vy -= n.y * 0.012;
-          n.vx *= 0.84;
-          n.vy *= 0.84;
-          n.x += n.vx;
-          n.y += n.vy;
+          // Gentle centering gravity & velocity damping
+          for (const n of simNodes) {
+            n.vx -= n.x * 0.012;
+            n.vy -= n.y * 0.012;
+            n.vx *= 0.84;
+            n.vy *= 0.84;
+            n.x += n.vx;
+            n.y += n.vy;
+          }
         }
       }
 
@@ -694,10 +976,18 @@ function CanvasGraph({
           ctx.lineWidth = (e.size || 1.5) * Math.max(0.8, cam.zoom * 0.7);
         }
 
-        // Draw line or curved arc
+        // Draw line: MindMeister smooth cubic Bezier vs standard arc/line
         ctx.beginPath();
         ctx.moveTo(p1.x, p1.y);
-        if (edgeIdx === 0) {
+        if (layoutMode === "mindmap") {
+          // MindMeister-style horizontal S-curve cubic Bezier
+          const cpDist = Math.max(40, Math.abs(p2.x - p1.x) * 0.5);
+          const cp1x = p1.x + (p2.x >= p1.x ? cpDist : -cpDist);
+          const cp1y = p1.y;
+          const cp2x = p2.x + (p2.x >= p1.x ? -cpDist : cpDist);
+          const cp2y = p2.y;
+          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+        } else if (edgeIdx === 0) {
           ctx.lineTo(p2.x, p2.y);
         } else {
           ctx.quadraticCurveTo(midX, midY, p2.x, p2.y);
@@ -705,7 +995,15 @@ function CanvasGraph({
         ctx.stroke();
 
         // Draw arrow towards target
-        const angle = edgeIdx === 0 ? Math.atan2(p2.y - p1.y, p2.x - p1.x) : Math.atan2(p2.y - midY, p2.x - midX);
+        let angle: number;
+        if (layoutMode === "mindmap") {
+          angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+        } else if (edgeIdx === 0) {
+          angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+        } else {
+          angle = Math.atan2(p2.y - midY, p2.x - midX);
+        }
+
         const targetRadius = (n2.radius || 15) * cam.zoom;
         const arrowX = p2.x - Math.cos(angle) * (targetRadius + 3);
         const arrowY = p2.y - Math.sin(angle) * (targetRadius + 3);
@@ -734,18 +1032,21 @@ function CanvasGraph({
           const pillW = textWidth + 8;
           const pillH = 14;
 
+          const labelCenterX = layoutMode === "mindmap" ? (p1.x + p2.x) / 2 : midX;
+          const labelCenterY = layoutMode === "mindmap" ? (p1.y + p2.y) / 2 : midY;
+
           ctx.fillStyle = "rgba(6, 8, 18, 0.9)";
           ctx.strokeStyle = isPathEdge ? "#05D9E8" : "rgba(255, 255, 255, 0.12)";
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.roundRect(midX - pillW / 2, midY - pillH / 2, pillW, pillH, 3);
+          ctx.roundRect(labelCenterX - pillW / 2, labelCenterY - pillH / 2, pillW, pillH, 3);
           ctx.fill();
           ctx.stroke();
 
           ctx.fillStyle = isPathEdge ? "#05D9E8" : "#8899aa";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          ctx.fillText(labelText, midX, midY);
+          ctx.fillText(labelText, labelCenterX, labelCenterY);
         }
 
         ctx.restore();
@@ -759,6 +1060,7 @@ function CanvasGraph({
         const isPathNode = pathSet.has(n.id);
         const isDimmed = hasSelection && !isSelected && !isPathNode;
         const isHovered = hoveredNode?.id === n.id;
+        const hasAttachment = attachedNodeIds.has(n.id);
 
         ctx.save();
 
@@ -799,6 +1101,30 @@ function CanvasGraph({
         // Inner vector intelligence icon / symbol
         drawNodeIcon(ctx, p.x, p.y, r, n, Boolean(isDimmed));
 
+        // Paperclip Badge if node has direct attached files or external Dork URLs
+        if (hasAttachment && !isDimmed) {
+          const badgeR = Math.max(7, r * 0.42);
+          const badgeX = p.x + r * 0.72;
+          const badgeY = p.y - r * 0.72;
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(badgeX, badgeY, badgeR, 0, Math.PI * 2);
+          ctx.fillStyle = "#060812";
+          ctx.strokeStyle = "#05D9E8";
+          ctx.lineWidth = 1.5;
+          ctx.shadowColor = "#05D9E8";
+          ctx.shadowBlur = 8;
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.font = `${Math.round(badgeR * 1.3)}px sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("📎", badgeX, badgeY);
+          ctx.restore();
+        }
+
         // Node label below
         if (!isDimmed || isHovered) {
           const labelText = n.label || n.id;
@@ -831,7 +1157,7 @@ function CanvasGraph({
 
     animId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(animId);
-  }, [selectedNodes, shortestPath, hoveredNode]);
+  }, [selectedNodes, shortestPath, hoveredNode, layoutMode, attachedNodeIds]);
 
   // Mouse Interaction Handlers
   function getMouseWorldPos(e: React.MouseEvent) {
@@ -1075,8 +1401,19 @@ export default function GraphView() {
   const [newTargetValue, setNewTargetValue] = useState("");
   const [addingTarget, setAddingTarget] = useState(false);
 
+  // Layout Mode: MindMeister, Force Net, Radial Orbit
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>("mindmap");
+
   // Typology Filter
   const [typologyFilter, setTypologyFilter] = useState<string>("all");
+
+  // Node Attachment States (Files & External Dork Links)
+  const [attachUrl, setAttachUrl] = useState("");
+  const [attachTitle, setAttachTitle] = useState("");
+  const [savingLink, setSavingLink] = useState(false);
+  const [uploadingNodeFile, setUploadingNodeFile] = useState(false);
+  const [nodeFileTypology, setNodeFileTypology] = useState("document");
+  const nodeFileInputRef = useRef<HTMLInputElement>(null);
 
   // Load available cases once on mount
   useEffect(() => {
@@ -1127,7 +1464,6 @@ export default function GraphView() {
   async function loadGraphData() {
     setLoading(true);
     setSelectedNodes([]);
-    setInspectedNodeId(null);
     try {
       let data: { nodes: NodeData[]; edges: EdgeData[] };
 
@@ -1160,6 +1496,11 @@ export default function GraphView() {
       
       setNodes(data.nodes || []);
       setEdges(data.edges || []);
+      // Pre-select first entity node if none inspected
+      if (data.nodes && data.nodes.length > 0) {
+        const firstTarget = data.nodes.find((n) => (n.type || "").toLowerCase() !== "case") || data.nodes[0];
+        setInspectedNodeId((prev) => (prev ? prev : firstTarget.id));
+      }
     } catch (e) {
       console.error("Error loading graph:", e);
     } finally {
@@ -1215,6 +1556,59 @@ export default function GraphView() {
     if (!inspectedNodeId) return [];
     return edges.filter((e) => e.source === inspectedNodeId || e.target === inspectedNodeId);
   }, [inspectedNodeId, edges]);
+
+  // Set of node IDs that have attached files or attached external Dork links
+  const attachedNodeIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const e of edges) {
+      if (e.relation_type === "attached_file" || e.relation_type === "attached_link") {
+        s.add(e.source);
+      }
+    }
+    return s;
+  }, [edges]);
+
+  // Handle saving an external Dork link / document URL directly to a node
+  async function handleAttachLink() {
+    if (!activeCase || !inspectedNodeId || !attachUrl.trim()) return;
+    setSavingLink(true);
+    try {
+      await apiPostJson(`/cases/${activeCase.id}/evidence`, {
+        url: attachUrl.trim(),
+        title: attachTitle.trim() || undefined,
+        note: `Attached to node ${inspectedNode?.label || inspectedNodeId} via Graph View`,
+        target_node_id: inspectedNodeId,
+      });
+      setAttachUrl("");
+      setAttachTitle("");
+      await loadGraphData();
+    } catch (err: any) {
+      alert("Failed to attach link: " + (err?.message || err));
+    } finally {
+      setSavingLink(false);
+    }
+  }
+
+  // Handle uploading a file directly to the inspected node
+  async function handleUploadNodeFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !activeCase || !inspectedNodeId) return;
+    setUploadingNodeFile(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("typology", nodeFileTypology);
+      fd.append("target_node_id", inspectedNodeId);
+
+      await apiPostFormData(`/cases/${activeCase.id}/files/upload`, fd);
+      if (nodeFileInputRef.current) nodeFileInputRef.current.value = "";
+      await loadGraphData();
+    } catch (err: any) {
+      alert("Failed to upload file: " + (err?.message || err));
+    } finally {
+      setUploadingNodeFile(false);
+    }
+  }
 
   // Quick Add Target
   async function handleAddTarget() {
@@ -1378,10 +1772,76 @@ export default function GraphView() {
         </div>
       )}
 
-      {/* Maltego Transforms & Action Toolbar */}
+      {/* Maltego Transforms, Layout Mode & Action Toolbar */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
-        {/* Typology Filter Tabs */}
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {/* Layout Engine Switcher & Typology Filter Tabs */}
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          {/* Layout Mode Group */}
+          <div style={{ display: "flex", gap: 4, background: "rgba(5, 217, 232, 0.08)", padding: "3px 6px", borderRadius: 6, border: "1px solid rgba(5,217,232,0.25)" }}>
+            <span style={{ fontSize: 10, color: "var(--cyan)", fontWeight: "bold", alignSelf: "center", marginRight: 4, textTransform: "uppercase" }}>
+              Layout:
+            </span>
+            <button
+              onClick={() => setLayoutMode("mindmap")}
+              style={{
+                background: layoutMode === "mindmap" ? "var(--cyan)" : "transparent",
+                color: layoutMode === "mindmap" ? "#000" : "var(--text)",
+                border: "none",
+                padding: "3px 8px",
+                borderRadius: 4,
+                fontSize: 11,
+                fontWeight: layoutMode === "mindmap" ? "bold" : "normal",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+              title="Organized MindMeister-style hierarchical branching tree"
+            >
+              <span>🧠</span> Mind Map
+            </button>
+            <button
+              onClick={() => setLayoutMode("force")}
+              style={{
+                background: layoutMode === "force" ? "var(--cyan)" : "transparent",
+                color: layoutMode === "force" ? "#000" : "var(--text)",
+                border: "none",
+                padding: "3px 8px",
+                borderRadius: 4,
+                fontSize: 11,
+                fontWeight: layoutMode === "force" ? "bold" : "normal",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+              title="Organic dynamic force-directed network simulation"
+            >
+              <span>🌌</span> Force Net
+            </button>
+            <button
+              onClick={() => setLayoutMode("radial")}
+              style={{
+                background: layoutMode === "radial" ? "var(--cyan)" : "transparent",
+                color: layoutMode === "radial" ? "#000" : "var(--text)",
+                border: "none",
+                padding: "3px 8px",
+                borderRadius: 4,
+                fontSize: 11,
+                fontWeight: layoutMode === "radial" ? "bold" : "normal",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+              title="Concentric circular orbit layout around Case Hub"
+            >
+              <span>🎯</span> Radial
+            </button>
+          </div>
+
+          {/* Typology Filter Tabs */}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {[
             { id: "all", label: "All Typologies" },
             { id: "identifiers", label: "Targets & IDs" },
@@ -1407,6 +1867,7 @@ export default function GraphView() {
               {f.label}
             </button>
           ))}
+          </div>
         </div>
 
         {/* Quick Add Target Action */}
@@ -1567,7 +2028,7 @@ export default function GraphView() {
           </div>
         )}
 
-        {/* 100% Reliable HTML5 Canvas 2D Force-Directed Graph */}
+        {/* 100% Reliable HTML5 Canvas 2D Force-Directed / MindMeister Graph */}
         <CanvasGraph
           nodes={displayedNodes}
           edges={displayedEdges}
@@ -1576,6 +2037,8 @@ export default function GraphView() {
           onClearSelection={() => setSelectedNodes([])}
           shortestPath={shortestPath}
           onInspectNode={setInspectedNodeId}
+          layoutMode={layoutMode}
+          attachedNodeIds={attachedNodeIds}
         />
 
         {/* MALTEGO ENTITY INSPECTOR DRAWER */}
@@ -1697,6 +2160,184 @@ export default function GraphView() {
                 </a>
               </div>
             )}
+
+            {/* Direct Node Attachments & Dork Documentation Section */}
+            <div style={{ marginBottom: 16, borderTop: "1px solid var(--panel-border)", paddingTop: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span style={{ fontSize: 11, color: "var(--cyan)", fontWeight: "bold", letterSpacing: "0.5px" }}>
+                  📎 ATTACHED EVIDENCE & DORKS:
+                </span>
+                <span style={{ fontSize: 10, background: "rgba(5, 217, 232, 0.15)", color: "var(--cyan)", padding: "1px 6px", borderRadius: 3 }}>
+                  {edges.filter((e) => e.source === inspectedNode.id && (e.relation_type === "attached_file" || e.relation_type === "attached_link")).length} items
+                </span>
+              </div>
+
+              {/* Existing Node Attached Evidence List */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+                {edges
+                  .filter((e) => e.source === inspectedNode.id && (e.relation_type === "attached_file" || e.relation_type === "attached_link"))
+                  .map((e, idx) => {
+                    const targetNode = nodes.find((n) => n.id === e.target);
+                    if (!targetNode) return null;
+                    const isFile = e.relation_type === "attached_file" || targetNode.type === "document" || targetNode.type === "file";
+                    const fileId = targetNode.details?.id || (targetNode.id.startsWith("file:") ? targetNode.id.substring(5) : null);
+                    const targetUrl = targetNode.details?.url || (fileId && activeCase ? `${API_URL}/cases/${activeCase.id}/files/${fileId}/download` : null);
+
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          padding: "8px 10px",
+                          background: "rgba(6, 8, 18, 0.8)",
+                          border: "1px solid rgba(5, 217, 232, 0.25)",
+                          borderRadius: 4,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 4,
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <span style={{ fontSize: 11, fontWeight: "bold", color: "#fff", display: "flex", alignItems: "center", gap: 5 }}>
+                            {isFile ? "📄" : "🔗"} {targetNode.label}
+                          </span>
+                          <span style={{ fontSize: 9, color: "var(--cyan)", textTransform: "uppercase" }}>
+                            {targetNode.type}
+                          </span>
+                        </div>
+                        {targetUrl && (
+                          <div style={{ marginTop: 2 }}>
+                            <a
+                              href={targetUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                color: "var(--cyan)",
+                                fontSize: 10,
+                                textDecoration: "underline",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                              }}
+                            >
+                              {isFile ? "⬇ Download File" : "↗ Open External URL"}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+
+              {/* Attach External Dork URL / Document Link Box */}
+              <div style={{ background: "rgba(10, 14, 24, 0.6)", border: "1px solid rgba(5, 217, 232, 0.2)", borderRadius: 4, padding: 10, marginBottom: 10 }}>
+                <div style={{ fontSize: 10, color: "var(--cyan)", fontWeight: "bold", marginBottom: 6, textTransform: "uppercase" }}>
+                  + Link External Dork URL / File
+                </div>
+                <input
+                  type="text"
+                  placeholder="Paste URL (e.g. https://target.gov/dork.pdf)..."
+                  value={attachUrl}
+                  onChange={(e) => setAttachUrl(e.target.value)}
+                  style={{
+                    width: "100%",
+                    background: "var(--bg)",
+                    border: "1px solid var(--panel-border)",
+                    color: "var(--text)",
+                    fontSize: 11,
+                    padding: "5px 8px",
+                    borderRadius: 4,
+                    marginBottom: 6,
+                    boxSizing: "border-box",
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Document Title / Note (optional)..."
+                  value={attachTitle}
+                  onChange={(e) => setAttachTitle(e.target.value)}
+                  style={{
+                    width: "100%",
+                    background: "var(--bg)",
+                    border: "1px solid var(--panel-border)",
+                    color: "var(--text)",
+                    fontSize: 11,
+                    padding: "5px 8px",
+                    borderRadius: 4,
+                    marginBottom: 6,
+                    boxSizing: "border-box",
+                  }}
+                />
+                <button
+                  onClick={handleAttachLink}
+                  disabled={savingLink || !attachUrl.trim()}
+                  style={{
+                    width: "100%",
+                    background: savingLink || !attachUrl.trim() ? "var(--panel)" : "var(--cyan)",
+                    color: savingLink || !attachUrl.trim() ? "var(--text-muted)" : "#000",
+                    fontWeight: "bold",
+                    border: "none",
+                    borderRadius: 4,
+                    padding: "6px 10px",
+                    fontSize: 11,
+                    cursor: savingLink || !attachUrl.trim() ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {savingLink ? "Preserving URL..." : "🔗 Pin URL to this Node"}
+                </button>
+              </div>
+
+              {/* Upload File to Node Box */}
+              <div style={{ background: "rgba(10, 14, 24, 0.6)", border: "1px solid rgba(5, 217, 232, 0.2)", borderRadius: 4, padding: 10 }}>
+                <div style={{ fontSize: 10, color: "var(--cyan)", fontWeight: "bold", marginBottom: 6, textTransform: "uppercase" }}>
+                  📎 Upload File / Dump to this Node
+                </div>
+                <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                  <select
+                    value={nodeFileTypology}
+                    onChange={(e) => setNodeFileTypology(e.target.value)}
+                    style={{
+                      flex: 1,
+                      background: "var(--bg)",
+                      border: "1px solid var(--panel-border)",
+                      color: "var(--text)",
+                      fontSize: 11,
+                      padding: "4px 6px",
+                      borderRadius: 4,
+                    }}
+                  >
+                    <option value="document">Document (PDF/DOC)</option>
+                    <option value="dork_dump">Dork Dump / Text</option>
+                    <option value="image">Screenshot / Photo</option>
+                    <option value="audio_video">Audio / Video</option>
+                  </select>
+                </div>
+                <input
+                  ref={nodeFileInputRef}
+                  type="file"
+                  onChange={handleUploadNodeFile}
+                  disabled={uploadingNodeFile}
+                  style={{ display: "none" }}
+                  id="node-file-upload-input"
+                />
+                <label
+                  htmlFor="node-file-upload-input"
+                  style={{
+                    display: "block",
+                    textAlign: "center",
+                    background: uploadingNodeFile ? "var(--panel)" : "rgba(5, 217, 232, 0.15)",
+                    border: "1px dashed var(--cyan)",
+                    color: "var(--cyan)",
+                    fontWeight: "bold",
+                    borderRadius: 4,
+                    padding: "6px 10px",
+                    fontSize: 11,
+                    cursor: uploadingNodeFile ? "wait" : "pointer",
+                  }}
+                >
+                  {uploadingNodeFile ? "Uploading..." : "📁 Browse & Upload to Node"}
+                </label>
+              </div>
+            </div>
 
             {/* Connected Links */}
             <div>
