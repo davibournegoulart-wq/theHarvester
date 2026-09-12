@@ -1,24 +1,11 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import Graph, { MultiGraph } from "graphology";
-import { SigmaContainer, ControlsContainer, ZoomControl, useLoadGraph, useRegisterEvents, useSigma, useCamera } from "@react-sigma/core";
-import { useLayoutForceAtlas2 } from "@react-sigma/layout-forceatlas2";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import Graph from "graphology";
 import { bidirectional } from "graphology-shortest-path/unweighted";
-import "@react-sigma/core/lib/style.css";
 import { useActiveCase } from "@/lib/activeCase";
 import { apiGet, apiPostJson } from "@/lib/api";
 import { CheckIcon, CrossIcon, BoltIcon, AlertIcon } from "@/components/FlatIcons";
-
-const SIGMA_SETTINGS = {
-  defaultNodeType: "circle",
-  defaultNodeColor: "#05D9E8",
-  labelColor: { color: "#d6f3ff" },
-  labelSize: 11,
-  labelWeight: "600",
-  renderEdgeLabels: true,
-  enableEdgeEvents: false,
-};
 
 type NodeData = {
   id: string;
@@ -52,71 +39,71 @@ type CaseOption = {
   status: string;
 };
 
-const NODE_SETTINGS: Record<string, { color: string; size: number; image?: string; label: string }> = {
+const NODE_SETTINGS: Record<string, { color: string; size: number; label: string }> = {
   // Case Root Hub
-  case: { color: "#05D9E8", size: 24, image: "https://unpkg.com/lucide-static@0.400.0/icons/folder-git-2.svg", label: "Case Hub" },
+  case: { color: "#05D9E8", size: 24, label: "Case Hub" },
 
   // Identity & People
-  person: { color: "#FF4D4D", size: 18, image: "https://unpkg.com/lucide-static@0.400.0/icons/user.svg", label: "Person" },
-  username: { color: "#00E676", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/user-check.svg", label: "Username" },
+  person: { color: "#FF4D4D", size: 18, label: "Person" },
+  username: { color: "#00E676", size: 16, label: "Username" },
 
   // Contact & Comms
-  email: { color: "#00B0FF", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/mail.svg", label: "Email" },
-  phone: { color: "#FF9100", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/phone.svg", label: "Phone" },
-  whatsapp: { color: "#25D366", size: 16, image: "https://cdn.simpleicons.org/whatsapp/white", label: "WhatsApp" },
-  telegram: { color: "#2AABEE", size: 16, image: "https://cdn.simpleicons.org/telegram/white", label: "Telegram" },
+  email: { color: "#00B0FF", size: 16, label: "Email" },
+  phone: { color: "#FF9100", size: 16, label: "Phone" },
+  whatsapp: { color: "#25D366", size: 16, label: "WhatsApp" },
+  telegram: { color: "#2AABEE", size: 16, label: "Telegram" },
 
   // Corporate, Organization & Work
-  corporate: { color: "#9C27B0", size: 18, image: "https://unpkg.com/lucide-static@0.400.0/icons/building-2.svg", label: "Corporate / CNPJ" },
-  company: { color: "#9C27B0", size: 18, image: "https://unpkg.com/lucide-static@0.400.0/icons/building-2.svg", label: "Company" },
-  enterprise: { color: "#9C27B0", size: 18, image: "https://unpkg.com/lucide-static@0.400.0/icons/building-2.svg", label: "Enterprise" },
-  partner: { color: "#E040FB", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/users.svg", label: "Partner / QSA" },
-  qsa: { color: "#E040FB", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/users.svg", label: "QSA Partner" },
-  work: { color: "#7C4DFF", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/briefcase.svg", label: "Work" },
-  employment: { color: "#7C4DFF", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/briefcase.svg", label: "Employment" },
+  corporate: { color: "#9C27B0", size: 18, label: "Corporate / CNPJ" },
+  company: { color: "#9C27B0", size: 18, label: "Company" },
+  enterprise: { color: "#9C27B0", size: 18, label: "Enterprise" },
+  partner: { color: "#E040FB", size: 16, label: "Partner / QSA" },
+  qsa: { color: "#E040FB", size: 16, label: "QSA Partner" },
+  work: { color: "#7C4DFF", size: 16, label: "Work" },
+  employment: { color: "#7C4DFF", size: 16, label: "Employment" },
 
   // Network & Infra
-  domain: { color: "#00BCD4", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/globe.svg", label: "Domain" },
-  dns: { color: "#00BCD4", size: 15, image: "https://unpkg.com/lucide-static@0.400.0/icons/network.svg", label: "DNS" },
-  ip: { color: "#607D8B", size: 15, image: "https://unpkg.com/lucide-static@0.400.0/icons/server.svg", label: "IP Address" },
+  domain: { color: "#00BCD4", size: 16, label: "Domain" },
+  dns: { color: "#00BCD4", size: 15, label: "DNS" },
+  ip: { color: "#607D8B", size: 15, label: "IP Address" },
 
   // Crypto & Financial
-  crypto: { color: "#FFD600", size: 16, image: "https://cdn.simpleicons.org/bitcoin/white", label: "Crypto Wallet" },
-  bitcoin: { color: "#F7931A", size: 16, image: "https://cdn.simpleicons.org/bitcoin/white", label: "Bitcoin" },
-  ethereum: { color: "#627EEA", size: 16, image: "https://cdn.simpleicons.org/ethereum/white", label: "Ethereum" },
+  crypto: { color: "#FFD600", size: 16, label: "Crypto Wallet" },
+  bitcoin: { color: "#F7931A", size: 16, label: "Bitcoin" },
+  ethereum: { color: "#627EEA", size: 16, label: "Ethereum" },
 
   // Geolocation & Map Pins
-  geolocation: { color: "#FF0055", size: 18, image: "https://unpkg.com/lucide-static@0.400.0/icons/map-pin.svg", label: "Geolocation Pin" },
-  location: { color: "#FF0055", size: 18, image: "https://unpkg.com/lucide-static@0.400.0/icons/map-pin.svg", label: "Location" },
+  geolocation: { color: "#FF0055", size: 18, label: "Geolocation Pin" },
+  location: { color: "#FF0055", size: 18, label: "Location" },
 
-  // Exposed Secrets & Credentials (Gitleaks / TruffleHog)
-  secret: { color: "#FF5500", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/key.svg", label: "Exposed Secret / Key" },
+  // Exposed Secrets & Credentials
+  secret: { color: "#FF5500", size: 16, label: "Exposed Secret / Key" },
 
   // Biometrics & Facial Intel
-  biometric: { color: "#E040FB", size: 18, image: "https://unpkg.com/lucide-static@0.400.0/icons/scan-face.svg", label: "Biometric Face" },
-  face_crop: { color: "#E040FB", size: 18, image: "https://unpkg.com/lucide-static@0.400.0/icons/scan-face.svg", label: "Face Crop" },
+  biometric: { color: "#E040FB", size: 18, label: "Biometric Face" },
+  face_crop: { color: "#E040FB", size: 18, label: "Face Crop" },
 
   // Databank, Files & Documents
-  document: { color: "#05D9E8", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/file-text.svg", label: "Document / PDF" },
-  file: { color: "#05D9E8", size: 15, image: "https://unpkg.com/lucide-static@0.400.0/icons/file.svg", label: "Databank File" },
-  dork_dump: { color: "#FF2A6D", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/database.svg", label: "Dork Web Dump" },
-  evidence: { color: "#00FF9F", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/shield-check.svg", label: "Preserved Evidence" },
-  image: { color: "#FFAB00", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/image.svg", label: "Image Asset" },
-  audio_video: { color: "#A259FF", size: 16, image: "https://unpkg.com/lucide-static@0.400.0/icons/video.svg", label: "Audio / Video" },
+  document: { color: "#05D9E8", size: 16, label: "Document / PDF" },
+  file: { color: "#05D9E8", size: 15, label: "Databank File" },
+  dork_dump: { color: "#FF2A6D", size: 16, label: "Dork Web Dump" },
+  evidence: { color: "#00FF9F", size: 16, label: "Preserved Evidence" },
+  image: { color: "#FFAB00", size: 16, label: "Image Asset" },
+  audio_video: { color: "#A259FF", size: 16, label: "Audio / Video" },
 
   // Social Platforms
-  facebook: { color: "#1877F2", size: 16, image: "https://cdn.simpleicons.org/facebook/white", label: "Facebook" },
-  instagram: { color: "#E4405F", size: 16, image: "https://cdn.simpleicons.org/instagram/white", label: "Instagram" },
-  twitter: { color: "#1DA1F2", size: 16, image: "https://cdn.simpleicons.org/x/white", label: "Twitter / X" },
-  x: { color: "#FFFFFF", size: 16, image: "https://cdn.simpleicons.org/x/white", label: "X" },
-  tiktok: { color: "#FE2C55", size: 16, image: "https://cdn.simpleicons.org/tiktok/white", label: "TikTok" },
-  github: { color: "#F0F6FC", size: 16, image: "https://cdn.simpleicons.org/github/white", label: "GitHub" },
-  linkedin: { color: "#0A66C2", size: 16, image: "https://cdn.simpleicons.org/linkedin/white", label: "LinkedIn" },
-  reddit: { color: "#FF4500", size: 16, image: "https://cdn.simpleicons.org/reddit/white", label: "Reddit" },
-  youtube: { color: "#FF0000", size: 16, image: "https://cdn.simpleicons.org/youtube/white", label: "YouTube" },
+  facebook: { color: "#1877F2", size: 16, label: "Facebook" },
+  instagram: { color: "#E4405F", size: 16, label: "Instagram" },
+  twitter: { color: "#1DA1F2", size: 16, label: "Twitter / X" },
+  x: { color: "#FFFFFF", size: 16, label: "X" },
+  tiktok: { color: "#FE2C55", size: 16, label: "TikTok" },
+  github: { color: "#F0F6FC", size: 16, label: "GitHub" },
+  linkedin: { color: "#0A66C2", size: 16, label: "LinkedIn" },
+  reddit: { color: "#FF4500", size: 16, label: "Reddit" },
+  youtube: { color: "#FF0000", size: 16, label: "YouTube" },
 
   // System default
-  default: { color: "#888888", size: 12, image: "https://unpkg.com/lucide-static@0.400.0/icons/disc.svg", label: "Entity" },
+  default: { color: "#05D9E8", size: 14, label: "Entity" },
 };
 
 const EDGE_COLORS: Record<string, string> = {
@@ -133,26 +120,91 @@ const EDGE_COLORS: Record<string, string> = {
   default: "#445566",
 };
 
-function LoadGraph({ 
-  nodes, 
-  edges, 
-  onGraphReady 
-}: { 
-  nodes: NodeData[]; 
-  edges: EdgeData[]; 
-  onGraphReady: (g: Graph) => void;
-}) {
-  const { assign } = useLayoutForceAtlas2();
-  const loadGraph = useLoadGraph();
-  const { reset } = useCamera();
-  const sigma = useSigma();
+interface SimNode extends NodeData {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  nodeColor: string;
+}
 
+interface CanvasGraphProps {
+  nodes: NodeData[];
+  edges: EdgeData[];
+  selectedNodes: string[];
+  onSelectNode: (id: string) => void;
+  onClearSelection: () => void;
+  shortestPath: string[] | null;
+  onInspectNode: (id: string | null) => void;
+}
+
+function CanvasGraph({
+  nodes,
+  edges,
+  selectedNodes,
+  onSelectNode,
+  onClearSelection,
+  shortestPath,
+  onInspectNode,
+}: CanvasGraphProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const simNodesRef = useRef<SimNode[]>([]);
+  const edgesRef = useRef<EdgeData[]>(edges);
+  const cameraRef = useRef({ x: 0, y: 0, zoom: 1 });
+
+  const [hoveredNode, setHoveredNode] = useState<SimNode | null>(null);
+  const isDraggingNodeRef = useRef<SimNode | null>(null);
+  const isPanningRef = useRef(false);
+  const panStartRef = useRef({ x: 0, y: 0 });
+  const mousePosRef = useRef<{ x: number; y: number } | null>(null);
+  const dragDistanceRef = useRef(0);
+
+  // Sync edges ref
+  edgesRef.current = edges;
+
+  const fitToNodes = useCallback(() => {
+    if (!containerRef.current || simNodesRef.current.length === 0) return;
+    const { clientWidth: width, clientHeight: height } = containerRef.current;
+    if (width === 0 || height === 0) return;
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const n of simNodesRef.current) {
+      if (n.x < minX) minX = n.x;
+      if (n.x > maxX) maxX = n.x;
+      if (n.y < minY) minY = n.y;
+      if (n.y > maxY) maxY = n.y;
+    }
+
+    const padding = 80;
+    const spanX = Math.max(120, (maxX - minX) + padding * 2);
+    const spanY = Math.max(120, (maxY - minY) + padding * 2);
+    const zoom = Math.min(width / spanX, height / spanY, 1.3);
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    cameraRef.current = {
+      x: width / 2 - centerX * zoom,
+      y: height / 2 - centerY * zoom,
+      zoom: Math.max(0.35, zoom),
+    };
+  }, []);
+
+  // Initialize or update simulation nodes
   useEffect(() => {
-    if (!nodes || nodes.length === 0) return;
+    if (!nodes || nodes.length === 0) {
+      simNodesRef.current = [];
+      return;
+    }
 
-    const graph = new MultiGraph();
+    const prevMap = new Map<string, SimNode>();
+    for (const n of simNodesRef.current) {
+      prevMap.set(n.id, n);
+    }
 
-    nodes.forEach((n, idx) => {
+    const newSimNodes: SimNode[] = nodes.map((n, idx) => {
       let cleanId = n.id;
       if (cleanId.startsWith("[")) {
         const cidx = cleanId.indexOf("] ");
@@ -173,146 +225,561 @@ function LoadGraph({
       }
 
       const st = NODE_SETTINGS[detectedType] || NODE_SETTINGS.default;
+      const prev = prevMap.get(n.id);
 
-      // Deterministic radial orbit placement
+      // Radial orbit start position
       const angle = (idx / Math.max(1, nodes.length)) * 2 * Math.PI;
-      const radius = detectedType === "case" ? 0 : 35 + (idx % 4) * 18;
-      const x = detectedType === "case" ? 50 : 50 + Math.cos(angle) * radius;
-      const y = detectedType === "case" ? 50 : 50 + Math.sin(angle) * radius;
+      const r = detectedType === "case" ? 0 : 130 + (idx % 4) * 55;
+      const initX = detectedType === "case" ? 0 : Math.cos(angle) * r;
+      const initY = detectedType === "case" ? 0 : Math.sin(angle) * r;
 
-      graph.addNode(n.id, {
-        x,
-        y,
+      return {
+        ...n,
         label: displayLabel,
-        size: n.size || st.size || 15,
-        color: n.color || st.color || "#05D9E8",
-        type: "circle",
-        originalColor: n.color || st.color || "#05D9E8",
-        entityType: detectedType,
-      });
+        type: detectedType,
+        x: prev ? prev.x : initX,
+        y: prev ? prev.y : initY,
+        vx: prev ? prev.vx : 0,
+        vy: prev ? prev.vy : 0,
+        radius: n.size || st.size || 16,
+        nodeColor: n.color || st.color || "#05D9E8",
+      };
     });
 
-    edges.forEach((e) => {
-      if (graph.hasNode(e.source) && graph.hasNode(e.target)) {
-        try {
-          const relType = e.relation_type || "default";
-          const edgeColor = EDGE_COLORS[relType] || EDGE_COLORS.default;
-          const isCross = relType === "cross_case_match";
-          graph.addEdge(e.source, e.target, {
-            label: e.label || relType.replace(/_/g, " "),
-            size: isCross ? 3 : (e.size || 1.5),
-            color: isCross ? "#FF2A6D" : edgeColor,
-            originalColor: isCross ? "#FF2A6D" : edgeColor,
-            relationType: relType,
-          });
-        } catch {}
-      }
-    });
+    simNodesRef.current = newSimNodes;
 
-    loadGraph(graph);
-    try {
-      assign();
-    } catch (err) {
-      console.warn("ForceAtlas2 assign warning:", err);
-    }
-    onGraphReady(graph);
+    // Trigger auto-fit to frame newly loaded nodes
+    setTimeout(() => {
+      fitToNodes();
+    }, 50);
+  }, [nodes, fitToNodes]);
 
-    const timer = setTimeout(() => {
-      try {
-        reset();
-        sigma.refresh();
-      } catch (err) {
-        console.warn("Sigma reset warning:", err);
-      }
-    }, 150);
-
-    return () => clearTimeout(timer);
-  }, [nodes, edges]);
-
-  return null;
-}
-
-function GraphEvents({ 
-  selectedNodes, 
-  setSelectedNodes, 
-  pathNodes,
-  onInspectNode
-}: { 
-  selectedNodes: string[]; 
-  setSelectedNodes: (fn: (prev: string[]) => string[]) => void; 
-  pathNodes: string[] | null;
-  onInspectNode: (nodeId: string | null) => void;
-}) {
-  const registerEvents = useRegisterEvents();
-  const sigma = useSigma();
-
+  // Main Physics and Render Animation Loop
   useEffect(() => {
-    registerEvents({
-      clickNode: (e) => {
-        const node = e.node;
-        onInspectNode(node);
-        setSelectedNodes((prev: string[]) => {
-          if (prev.includes(node)) {
-            return prev.filter((n) => n !== node);
+    let animId: number;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    function step() {
+      const container = containerRef.current;
+      if (!container || !canvas || !ctx) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+      }
+
+      ctx.save();
+      ctx.scale(dpr, dpr);
+
+      // 1. PHYSICS SIMULATION
+      const simNodes = simNodesRef.current;
+      const simEdges = edgesRef.current;
+      const nodeMap = new Map<string, SimNode>();
+      for (const n of simNodes) nodeMap.set(n.id, n);
+
+      if (simNodes.length > 0 && !isDraggingNodeRef.current) {
+        // Node-to-node repulsion
+        const kRepel = 7500;
+        for (let i = 0; i < simNodes.length; i++) {
+          for (let j = i + 1; j < simNodes.length; j++) {
+            const n1 = simNodes[i];
+            const n2 = simNodes[j];
+            let dx = n1.x - n2.x;
+            let dy = n1.y - n2.y;
+            let d2 = dx * dx + dy * dy;
+            if (d2 < 1) {
+              dx = (Math.random() - 0.5) * 4;
+              dy = (Math.random() - 0.5) * 4;
+              d2 = 4;
+            }
+            const dist = Math.sqrt(d2);
+            if (dist < 600) {
+              const force = kRepel / (d2 + 100);
+              const fx = (dx / dist) * force;
+              const fy = (dy / dist) * force;
+              n1.vx += fx;
+              n1.vy += fy;
+              n2.vx -= fx;
+              n2.vy -= fy;
+            }
           }
-          if (prev.length >= 2) return [node];
-          return [...prev, node];
-        });
-      },
-      clickStage: () => {
-        setSelectedNodes(() => []);
+        }
+
+        // Edge spring attraction
+        const kSpring = 0.025;
+        const idealDist = 175;
+        for (const e of simEdges) {
+          const n1 = nodeMap.get(e.source);
+          const n2 = nodeMap.get(e.target);
+          if (!n1 || !n2) continue;
+          let dx = n2.x - n1.x;
+          let dy = n2.y - n1.y;
+          let dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 1) dist = 1;
+          const force = (dist - idealDist) * kSpring;
+          const fx = (dx / dist) * force;
+          const fy = (dy / dist) * force;
+          n1.vx += fx;
+          n1.vy += fy;
+          n2.vx -= fx;
+          n2.vy -= fy;
+        }
+
+        // Gentle centering gravity & velocity damping
+        for (const n of simNodes) {
+          n.vx -= n.x * 0.012;
+          n.vy -= n.y * 0.012;
+          n.vx *= 0.84;
+          n.vy *= 0.84;
+          n.x += n.vx;
+          n.y += n.vy;
+        }
+      }
+
+      // 2. CANVAS DRAWING
+      const cam = cameraRef.current;
+
+      // Background clear
+      ctx.fillStyle = "#060812";
+      ctx.fillRect(0, 0, width, height);
+
+      // Subtle cyber grid
+      ctx.strokeStyle = "rgba(5, 217, 232, 0.04)";
+      ctx.lineWidth = 1;
+      const gridSize = 40 * cam.zoom;
+      const startX = (cam.x % gridSize);
+      const startY = (cam.y % gridSize);
+      ctx.beginPath();
+      for (let gx = startX; gx < width; gx += gridSize) {
+        ctx.moveTo(gx, 0);
+        ctx.lineTo(gx, height);
+      }
+      for (let gy = startY; gy < height; gy += gridSize) {
+        ctx.moveTo(0, gy);
+        ctx.lineTo(width, gy);
+      }
+      ctx.stroke();
+
+      const hasSelection = selectedNodes.length > 0 || (shortestPath && shortestPath.length > 0);
+      const pathSet = new Set(shortestPath || selectedNodes);
+
+      // Transform helper
+      function toScreen(x: number, y: number) {
+        return {
+          x: x * cam.zoom + cam.x,
+          y: y * cam.zoom + cam.y,
+        };
+      }
+
+      // 3. DRAW EDGES
+      for (const e of simEdges) {
+        const n1 = nodeMap.get(e.source);
+        const n2 = nodeMap.get(e.target);
+        if (!n1 || !n2) continue;
+
+        const p1 = toScreen(n1.x, n1.y);
+        const p2 = toScreen(n2.x, n2.y);
+
+        // Check if edge is in shortest path
+        let isPathEdge = false;
+        if (shortestPath && shortestPath.length > 1) {
+          for (let pi = 0; pi < shortestPath.length - 1; pi++) {
+            if (
+              (shortestPath[pi] === e.source && shortestPath[pi + 1] === e.target) ||
+              (shortestPath[pi] === e.target && shortestPath[pi + 1] === e.source)
+            ) {
+              isPathEdge = true;
+              break;
+            }
+          }
+        }
+
+        const isDimmed = hasSelection && !isPathEdge && !selectedNodes.includes(e.source) && !selectedNodes.includes(e.target);
+
+        ctx.save();
+        if (isPathEdge) {
+          ctx.strokeStyle = "#05D9E8";
+          ctx.lineWidth = 3.5;
+          ctx.shadowColor = "#05D9E8";
+          ctx.shadowBlur = 12;
+        } else if (isDimmed) {
+          ctx.strokeStyle = "rgba(20, 30, 48, 0.4)";
+          ctx.lineWidth = 1;
+        } else {
+          const relColor = EDGE_COLORS[e.relation_type || "default"] || EDGE_COLORS.default;
+          ctx.strokeStyle = e.relation_type === "cross_case_match" ? "#FF2A6D" : relColor;
+          ctx.lineWidth = (e.size || 1.5) * Math.max(0.8, cam.zoom * 0.7);
+        }
+
+        // Draw line
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+
+        // Draw arrow towards target
+        const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+        const targetRadius = (n2.radius || 15) * cam.zoom;
+        const arrowX = p2.x - Math.cos(angle) * (targetRadius + 3);
+        const arrowY = p2.y - Math.sin(angle) * (targetRadius + 3);
+        const arrowSize = 6 * Math.max(0.7, cam.zoom * 0.6);
+
+        ctx.beginPath();
+        ctx.moveTo(arrowX, arrowY);
+        ctx.lineTo(
+          arrowX - arrowSize * Math.cos(angle - Math.PI / 6),
+          arrowY - arrowSize * Math.sin(angle - Math.PI / 6)
+        );
+        ctx.lineTo(
+          arrowX - arrowSize * Math.cos(angle + Math.PI / 6),
+          arrowY - arrowSize * Math.sin(angle + Math.PI / 6)
+        );
+        ctx.closePath();
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.fill();
+
+        // Edge label pill at midpoint (if not dimmed and zoom > 0.65)
+        if (!isDimmed && cam.zoom > 0.65) {
+          const midX = (p1.x + p2.x) / 2;
+          const midY = (p1.y + p2.y) / 2;
+          const labelText = (e.label || e.relation_type || "link").replace(/_/g, " ");
+
+          ctx.font = "9px system-ui, sans-serif";
+          const textWidth = ctx.measureText(labelText).width;
+          const pillW = textWidth + 8;
+          const pillH = 14;
+
+          ctx.fillStyle = "rgba(6, 8, 18, 0.9)";
+          ctx.strokeStyle = isPathEdge ? "#05D9E8" : "rgba(255, 255, 255, 0.12)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(midX - pillW / 2, midY - pillH / 2, pillW, pillH, 3);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = isPathEdge ? "#05D9E8" : "#8899aa";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(labelText, midX, midY);
+        }
+
+        ctx.restore();
+      }
+
+      // 4. DRAW NODES
+      for (const n of simNodes) {
+        const p = toScreen(n.x, n.y);
+        const r = (n.radius || 15) * cam.zoom;
+        const isSelected = selectedNodes.includes(n.id);
+        const isPathNode = pathSet.has(n.id);
+        const isDimmed = hasSelection && !isSelected && !isPathNode;
+        const isHovered = hoveredNode?.id === n.id;
+
+        ctx.save();
+
+        // Outer glow
+        if (isSelected || isPathNode) {
+          ctx.shadowColor = "#05D9E8";
+          ctx.shadowBlur = 18;
+        } else if (!isDimmed) {
+          ctx.shadowColor = n.nodeColor;
+          ctx.shadowBlur = isHovered ? 20 : 10;
+        }
+
+        // Node filled circle
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        if (isDimmed) {
+          ctx.fillStyle = "#121724";
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+        } else {
+          ctx.fillStyle = n.nodeColor;
+          ctx.strokeStyle = isSelected ? "#FFFFFF" : "rgba(255, 255, 255, 0.6)";
+        }
+        ctx.lineWidth = isSelected ? 3 : 1.5;
+        ctx.fill();
+        ctx.stroke();
+
+        // Selection ring
+        if (isSelected) {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r + 5, 0, Math.PI * 2);
+          ctx.strokeStyle = "#05D9E8";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 3]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // Inner icon / monogram indicator
+        ctx.fillStyle = isDimmed ? "#445566" : "#FFFFFF";
+        ctx.font = `bold ${Math.max(9, Math.floor(r * 0.7))}px monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const iconChar = n.type === "case" ? "★" : n.type === "person" ? "👤" : n.type === "crypto" ? "₿" : n.type === "email" ? "✉" : n.type === "phone" ? "☎" : n.type === "geolocation" ? "📍" : n.type === "secret" ? "🔑" : "•";
+        ctx.fillText(iconChar, p.x, p.y);
+
+        // Node label below
+        if (!isDimmed || isHovered) {
+          const labelText = n.label || n.id;
+          ctx.font = `${isHovered ? "bold " : ""}11px system-ui, sans-serif`;
+          const textMetrics = ctx.measureText(labelText);
+          const lw = textMetrics.width + 10;
+          const lh = 18;
+          const ly = p.y + r + 12;
+
+          ctx.fillStyle = isSelected ? "rgba(5, 217, 232, 0.25)" : "rgba(6, 8, 18, 0.88)";
+          ctx.strokeStyle = isSelected ? "#05D9E8" : "rgba(5, 217, 232, 0.25)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(p.x - lw / 2, ly - lh / 2, lw, lh, 4);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = isSelected ? "#05D9E8" : "#d6f3ff";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(labelText, p.x, ly);
+        }
+
+        ctx.restore();
+      }
+
+      ctx.restore();
+      animId = requestAnimationFrame(step);
+    }
+
+    animId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animId);
+  }, [selectedNodes, shortestPath, hoveredNode]);
+
+  // Mouse Interaction Handlers
+  function getMouseWorldPos(e: React.MouseEvent) {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return { x: 0, y: 0, screenX: 0, screenY: 0 };
+    const clientX = e.clientX - rect.left;
+    const clientY = e.clientY - rect.top;
+    const cam = cameraRef.current;
+    return {
+      x: (clientX - cam.x) / cam.zoom,
+      y: (clientY - cam.y) / cam.zoom,
+      screenX: clientX,
+      screenY: clientY,
+    };
+  }
+
+  function findNodeAt(worldX: number, worldY: number): SimNode | null {
+    for (let i = simNodesRef.current.length - 1; i >= 0; i--) {
+      const n = simNodesRef.current[i];
+      const dx = n.x - worldX;
+      const dy = n.y - worldY;
+      const hitRadius = (n.radius + 6);
+      if (dx * dx + dy * dy <= hitRadius * hitRadius) {
+        return n;
+      }
+    }
+    return null;
+  }
+
+  function handleMouseDown(e: React.MouseEvent) {
+    const pos = getMouseWorldPos(e);
+    dragDistanceRef.current = 0;
+    const node = findNodeAt(pos.x, pos.y);
+
+    if (node) {
+      isDraggingNodeRef.current = node;
+      node.vx = 0;
+      node.vy = 0;
+    } else {
+      isPanningRef.current = true;
+      panStartRef.current = { x: e.clientX, y: e.clientY };
+    }
+  }
+
+  function handleMouseMove(e: React.MouseEvent) {
+    const pos = getMouseWorldPos(e);
+    mousePosRef.current = { x: pos.screenX, y: pos.screenY };
+
+    if (isDraggingNodeRef.current) {
+      dragDistanceRef.current += Math.abs(e.movementX) + Math.abs(e.movementY);
+      isDraggingNodeRef.current.x = pos.x;
+      isDraggingNodeRef.current.y = pos.y;
+      isDraggingNodeRef.current.vx = 0;
+      isDraggingNodeRef.current.vy = 0;
+      return;
+    }
+
+    if (isPanningRef.current) {
+      dragDistanceRef.current += Math.abs(e.movementX) + Math.abs(e.movementY);
+      cameraRef.current.x += e.movementX;
+      cameraRef.current.y += e.movementY;
+      return;
+    }
+
+    // Hover state
+    const node = findNodeAt(pos.x, pos.y);
+    setHoveredNode(node);
+  }
+
+  function handleMouseUp(e: React.MouseEvent) {
+    const pos = getMouseWorldPos(e);
+    const wasDraggingNode = isDraggingNodeRef.current;
+
+    isDraggingNodeRef.current = null;
+    isPanningRef.current = false;
+
+    // Check if it was a click (not a pan/drag)
+    if (dragDistanceRef.current < 6) {
+      const node = wasDraggingNode || findNodeAt(pos.x, pos.y);
+      if (node) {
+        onSelectNode(node.id);
+        onInspectNode(node.id);
+      } else {
+        onClearSelection();
         onInspectNode(null);
       }
-    });
-  }, [registerEvents, setSelectedNodes, onInspectNode]);
-
-  useEffect(() => {
-    const graph = sigma.getGraph();
-    if (!graph || graph.order === 0) return;
-    
-    // Reset colors safely
-    graph.forEachNode((n) => {
-      const orig = graph.getNodeAttribute(n, "originalColor") || "#05D9E8";
-      graph.setNodeAttribute(n, "color", orig);
-    });
-    graph.forEachEdge((e) => {
-      const orig = graph.getEdgeAttribute(e, "originalColor") || "#445566";
-      graph.setEdgeAttribute(e, "color", orig);
-      graph.setEdgeAttribute(e, "size", graph.getEdgeAttribute(e, "relationType") === "cross_case_match" ? 3 : 1.5);
-    });
-
-    if (selectedNodes.length > 0 || (pathNodes && pathNodes.length > 0)) {
-      const activeNodes = new Set(pathNodes || selectedNodes);
-      
-      graph.forEachNode((n) => {
-        if (activeNodes.has(n)) {
-          graph.setNodeAttribute(n, "color", "#05D9E8");
-        } else {
-          graph.setNodeAttribute(n, "color", "#1a2233");
-        }
-      });
-
-      if (pathNodes && pathNodes.length > 1) {
-        for (let i = 0; i < pathNodes.length - 1; i++) {
-          const s = pathNodes[i];
-          const t = pathNodes[i + 1];
-          const edge = graph.edge(s, t) || graph.edge(t, s);
-          if (edge) {
-            graph.setEdgeAttribute(edge, "color", "#05D9E8");
-            graph.setEdgeAttribute(edge, "size", 3.5);
-          }
-        }
-        
-        graph.forEachEdge((e) => {
-          if (graph.getEdgeAttribute(e, "color") !== "#05D9E8") {
-            graph.setEdgeAttribute(e, "color", "#0d1320");
-          }
-        });
-      }
     }
-  }, [selectedNodes, pathNodes, sigma]);
+  }
 
-  return null;
+  function handleWheel(e: React.WheelEvent) {
+    e.preventDefault();
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const cam = cameraRef.current;
+
+    const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
+    const newZoom = Math.min(3.5, Math.max(0.2, cam.zoom * zoomFactor));
+
+    // Zoom centered around mouse position
+    cam.x = mouseX - (mouseX - cam.x) * (newZoom / cam.zoom);
+    cam.y = mouseY - (mouseY - cam.y) * (newZoom / cam.zoom);
+    cam.zoom = newZoom;
+  }
+
+  function handleZoomIn() {
+    const cam = cameraRef.current;
+    if (!containerRef.current) return;
+    const cx = containerRef.current.clientWidth / 2;
+    const cy = containerRef.current.clientHeight / 2;
+    const newZoom = Math.min(3.5, cam.zoom * 1.3);
+    cam.x = cx - (cx - cam.x) * (newZoom / cam.zoom);
+    cam.y = cy - (cy - cam.y) * (newZoom / cam.zoom);
+    cam.zoom = newZoom;
+  }
+
+  function handleZoomOut() {
+    const cam = cameraRef.current;
+    if (!containerRef.current) return;
+    const cx = containerRef.current.clientWidth / 2;
+    const cy = containerRef.current.clientHeight / 2;
+    const newZoom = Math.max(0.2, cam.zoom * 0.77);
+    cam.x = cx - (cx - cam.x) * (newZoom / cam.zoom);
+    cam.y = cy - (cy - cam.y) * (newZoom / cam.zoom);
+    cam.zoom = newZoom;
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        width: "100%",
+        height: "100%",
+        position: "relative",
+        overflow: "hidden",
+        cursor: hoveredNode ? "pointer" : isPanningRef.current ? "grabbing" : "grab",
+      }}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onWheel={handleWheel}
+    >
+      <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} />
+
+      {/* Zoom / Camera Controls Overlay */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 14,
+          right: 14,
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+          zIndex: 10,
+        }}
+      >
+        <button
+          onClick={(e) => { e.stopPropagation(); handleZoomIn(); }}
+          style={{
+            width: 32,
+            height: 32,
+            background: "rgba(10, 14, 24, 0.9)",
+            color: "var(--cyan)",
+            border: "1px solid var(--cyan)",
+            borderRadius: 4,
+            fontSize: 18,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 0 8px rgba(5,217,232,0.2)",
+          }}
+          title="Zoom In"
+        >
+          +
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); handleZoomOut(); }}
+          style={{
+            width: 32,
+            height: 32,
+            background: "rgba(10, 14, 24, 0.9)",
+            color: "var(--cyan)",
+            border: "1px solid var(--cyan)",
+            borderRadius: 4,
+            fontSize: 18,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 0 8px rgba(5,217,232,0.2)",
+          }}
+          title="Zoom Out"
+        >
+          -
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); fitToNodes(); }}
+          style={{
+            width: 32,
+            height: 32,
+            background: "rgba(10, 14, 24, 0.9)",
+            color: "var(--cyan)",
+            border: "1px solid var(--cyan)",
+            borderRadius: 4,
+            fontSize: 13,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 0 8px rgba(5,217,232,0.2)",
+          }}
+          title="Fit View / Center All Nodes"
+        >
+          🎯
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function GraphView() {
@@ -323,7 +790,6 @@ export default function GraphView() {
   const [viewMode, setViewMode] = useState<ViewMode>("active");
   const [availableCases, setAvailableCases] = useState<CaseOption[]>([]);
   const [selectedCaseIds, setSelectedCaseIds] = useState<string[]>([]);
-  const [graphInstance, setGraphInstance] = useState<Graph | null>(null);
   
   // Link Analysis & Inspector State
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
@@ -339,6 +805,7 @@ export default function GraphView() {
   // Typology Filter
   const [typologyFilter, setTypologyFilter] = useState<string>("all");
 
+  // Load available cases once on mount
   useEffect(() => {
     apiGet<CaseOption[]>("/cases/")
       .then((data) => {
@@ -353,10 +820,28 @@ export default function GraphView() {
       .catch((err) => console.error("Error loading cases:", err));
   }, []);
 
+  // Compute graphology instance for shortest path calculations
+  const graphologyInstance = useMemo(() => {
+    if (nodes.length === 0) return null;
+    const g = new Graph({ multi: true });
+    for (const n of nodes) {
+      g.addNode(n.id);
+    }
+    for (const e of edges) {
+      if (g.hasNode(e.source) && g.hasNode(e.target)) {
+        try {
+          g.addEdge(e.source, e.target);
+        } catch {}
+      }
+    }
+    return g;
+  }, [nodes, edges]);
+
+  // Compute shortest path when 2 nodes are selected
   useEffect(() => {
-    if (selectedNodes.length === 2 && graphInstance) {
+    if (selectedNodes.length === 2 && graphologyInstance) {
       try {
-        const path = bidirectional(graphInstance, selectedNodes[0], selectedNodes[1]);
+        const path = bidirectional(graphologyInstance, selectedNodes[0], selectedNodes[1]);
         setShortestPath(path || []);
       } catch (e) {
         setShortestPath([]);
@@ -364,7 +849,7 @@ export default function GraphView() {
     } else {
       setShortestPath(null);
     }
-  }, [selectedNodes, graphInstance]);
+  }, [selectedNodes, graphologyInstance]);
 
   async function loadGraphData() {
     setLoading(true);
@@ -464,7 +949,6 @@ export default function GraphView() {
     setAddingTarget(true);
     try {
       if (newTargetType === "geolocation") {
-        // Parse coords or address
         const parts = newTargetValue.split(",").map((p) => parseFloat(p.trim()));
         const lat = !isNaN(parts[0]) ? parts[0] : 0.0;
         const lon = !isNaN(parts[1]) ? parts[1] : 0.0;
@@ -491,6 +975,16 @@ export default function GraphView() {
     } finally {
       setAddingTarget(false);
     }
+  }
+
+  function handleNodeSelect(nodeId: string) {
+    setSelectedNodes((prev) => {
+      if (prev.includes(nodeId)) {
+        return prev.filter((id) => id !== nodeId);
+      }
+      if (prev.length >= 2) return [nodeId];
+      return [...prev, nodeId];
+    });
   }
 
   return (
@@ -762,14 +1256,14 @@ export default function GraphView() {
       {/* Link Analysis Path Tool Banner */}
       <div style={{ marginBottom: 12, fontSize: 12, background: "rgba(5, 217, 232, 0.08)", padding: "6px 12px", borderRadius: 6, display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid rgba(5,217,232,0.2)" }}>
         <div>
-          <strong style={{ color: "var(--cyan)" }}>MALTEGO LINK ANALYSIS:</strong> Click any 2 nodes to calculate shortest path and correlation hops.
+          <strong style={{ color: "var(--cyan)" }}>MALTEGO LINK ANALYSIS:</strong> Click any 2 nodes to calculate shortest path and correlation hops. Drag nodes to reposition.
           {selectedNodes.length === 1 && <span style={{ color: "var(--warning)", marginLeft: 8 }}>(Node 1 selected, click Node 2...)</span>}
           {selectedNodes.length === 2 && shortestPath && shortestPath.length > 0 && <span style={{ color: "var(--success)", marginLeft: 8 }}>(Correlated path found: {shortestPath.length - 1} hops)</span>}
           {selectedNodes.length === 2 && shortestPath && shortestPath.length === 0 && <span style={{ color: "var(--danger)", marginLeft: 8 }}>(No direct path exists between entities)</span>}
         </div>
         {selectedNodes.length > 0 && (
           <button 
-            onClick={() => setSelectedNodes(() => [])}
+            onClick={() => setSelectedNodes([])}
             style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 11, cursor: "pointer" }}
           >
             Clear selection
@@ -782,7 +1276,7 @@ export default function GraphView() {
         {loading && (
           <div style={{ position: "absolute", top: 12, left: 12, zIndex: 10, color: "var(--cyan)", fontSize: 12, background: "rgba(6,8,18,0.85)", padding: "6px 12px", borderRadius: 4, border: "1px solid rgba(5,217,232,0.3)", display: "flex", alignItems: "center", gap: 6 }}>
             <BoltIcon size={14} color="var(--cyan)" />
-            Computing ForceAtlas2 Graph Topology...
+            Computing Graph Topology...
           </div>
         )}
         
@@ -800,23 +1294,16 @@ export default function GraphView() {
           </div>
         )}
 
-        <SigmaContainer 
-          graph={MultiGraph}
-          style={{ height: "100%", width: "100%", background: "#060812" }} 
-          settings={SIGMA_SETTINGS}
-        >
-          <LoadGraph nodes={displayedNodes} edges={displayedEdges} onGraphReady={setGraphInstance} />
-          <GraphEvents 
-            selectedNodes={selectedNodes} 
-            setSelectedNodes={setSelectedNodes} 
-            pathNodes={shortestPath}
-            onInspectNode={setInspectedNodeId}
-          />
-          
-          <ControlsContainer position={"bottom-right"}>
-            <ZoomControl />
-          </ControlsContainer>
-        </SigmaContainer>
+        {/* 100% Reliable HTML5 Canvas 2D Force-Directed Graph */}
+        <CanvasGraph
+          nodes={displayedNodes}
+          edges={displayedEdges}
+          selectedNodes={selectedNodes}
+          onSelectNode={handleNodeSelect}
+          onClearSelection={() => setSelectedNodes([])}
+          shortestPath={shortestPath}
+          onInspectNode={setInspectedNodeId}
+        />
 
         {/* MALTEGO ENTITY INSPECTOR DRAWER */}
         {inspectedNode && (
@@ -1010,4 +1497,3 @@ export default function GraphView() {
     </div>
   );
 }
-
