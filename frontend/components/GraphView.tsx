@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Graph from "graphology";
-import { SigmaContainer, ControlsContainer, ZoomControl, useLoadGraph, useRegisterEvents, useSigma } from "@react-sigma/core";
+import { SigmaContainer, ControlsContainer, ZoomControl, useLoadGraph, useRegisterEvents, useSigma, useCamera } from "@react-sigma/core";
 import { useLayoutForceAtlas2 } from "@react-sigma/layout-forceatlas2";
 import { bidirectional } from "graphology-shortest-path/unweighted";
 import "@react-sigma/core/lib/style.css";
@@ -134,6 +134,8 @@ function LoadGraph({
 }) {
   const { assign } = useLayoutForceAtlas2();
   const loadGraph = useLoadGraph();
+  const { reset } = useCamera();
+  const sigma = useSigma();
 
   useEffect(() => {
     if (!nodes || nodes.length === 0) return;
@@ -204,6 +206,17 @@ function LoadGraph({
       console.warn("ForceAtlas2 assign warning:", err);
     }
     onGraphReady(graph);
+
+    const timer = setTimeout(() => {
+      try {
+        reset();
+        sigma.refresh();
+      } catch (err) {
+        console.warn("Sigma reset warning:", err);
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [nodes, edges]);
 
   return null;
@@ -348,7 +361,20 @@ export default function GraphView() {
       let data: { nodes: NodeData[]; edges: EdgeData[] };
 
       if (viewMode === "active") {
-        const targetId = activeCase?.id || (availableCases.length > 0 ? availableCases[0].id : null);
+        let targetId = activeCase?.id || (availableCases.length > 0 ? availableCases[0].id : null);
+        if (!targetId) {
+          try {
+            const cases = await apiGet<CaseOption[]>("/cases/");
+            if (cases && cases.length > 0) {
+              setAvailableCases(cases);
+              targetId = cases[0].id;
+              setActiveCase({ id: cases[0].id, name: cases[0].name });
+              setSelectedCaseIds([cases[0].id]);
+            }
+          } catch (err) {
+            console.error("Error fetching cases for graph:", err);
+          }
+        }
         if (!targetId) {
           setNodes([]);
           setEdges([]);
@@ -764,6 +790,13 @@ export default function GraphView() {
           <div style={{ position: "absolute", bottom: 12, left: 12, zIndex: 10, color: "var(--danger)", fontSize: 11, background: "rgba(0,0,0,0.8)", padding: "6px 10px", borderRadius: 4, border: "1px solid var(--danger)", display: "flex", alignItems: "center", gap: 6 }}>
             <AlertIcon size={14} color="var(--danger)" />
             MACRO MULTI-CASE VIEW: Shared identifiers are linked by highlighted correlation lines.
+          </div>
+        )}
+
+        {!loading && nodes.length === 0 && (
+          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center", color: "var(--text-muted)", zIndex: 10 }}>
+            <p style={{ color: "var(--cyan)", fontSize: 15, fontWeight: 600, marginBottom: 6 }}>No Graph Entities Discovered Yet</p>
+            <p style={{ fontSize: 13, maxWidth: 360, margin: "0 auto" }}>Select an active case or run intelligence tools to populate nodes and relational links.</p>
           </div>
         )}
 

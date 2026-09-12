@@ -2,12 +2,16 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8100
 
 const API_KEY_STORAGE_KEY = "net-scraper-api-key";
 
+export const DEFAULT_API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? "change-me-net-scraper-insecure-default";
+
 export function getApiKey(): string {
-  if (typeof window === "undefined") return "";
+  if (typeof window === "undefined") return DEFAULT_API_KEY;
   try {
-    return window.localStorage.getItem(API_KEY_STORAGE_KEY) ?? "";
+    const stored = window.localStorage.getItem(API_KEY_STORAGE_KEY);
+    if (stored && stored.trim().length > 0) return stored.trim();
+    return DEFAULT_API_KEY;
   } catch {
-    return "";
+    return DEFAULT_API_KEY;
   }
 }
 
