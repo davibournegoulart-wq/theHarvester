@@ -129,6 +129,261 @@ interface SimNode extends NodeData {
   nodeColor: string;
 }
 
+function drawNodeIcon(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+  n: SimNode,
+  isDimmed: boolean
+) {
+  if (r < 6) return;
+
+  const t = (n.type || "").toLowerCase();
+  const label = (n.label || "").toLowerCase();
+  const id = (n.id || "").toLowerCase();
+
+  ctx.save();
+  ctx.fillStyle = isDimmed ? "#445566" : "#FFFFFF";
+  ctx.strokeStyle = isDimmed ? "#445566" : "#FFFFFF";
+  ctx.lineWidth = Math.max(1.3, r * 0.09);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  const iconR = r * 0.52;
+
+  // 1. CASE (5-Pointed Star)
+  if (t === "case" || id.startsWith("case:")) {
+    ctx.beginPath();
+    const spikes = 5;
+    const outerR = iconR * 1.1;
+    const innerR = outerR * 0.44;
+    let rot = (Math.PI / 2) * 3;
+    let x = cx;
+    let y = cy;
+    const step = Math.PI / spikes;
+    ctx.moveTo(cx, cy - outerR);
+    for (let i = 0; i < spikes; i++) {
+      x = cx + Math.cos(rot) * outerR;
+      y = cy + Math.sin(rot) * outerR;
+      ctx.lineTo(x, y);
+      rot += step;
+      x = cx + Math.cos(rot) * innerR;
+      y = cy + Math.sin(rot) * innerR;
+      ctx.lineTo(x, y);
+      rot += step;
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  // 2. INSTAGRAM (Camera Vector)
+  if (t === "instagram" || label.includes("instagram") || id.includes("instagram")) {
+    const s = iconR * 1.45;
+    const half = s / 2;
+    const cornerR = s * 0.28;
+    ctx.beginPath();
+    ctx.roundRect(cx - half, cy - half, s, s, cornerR);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, s * 0.28, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx + s * 0.26, cy - s * 0.26, Math.max(1.2, s * 0.08), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  // 3. TELEPHONE / PHONE
+  if (t === "phone" || label.startsWith("+") || /^\+?\d[\d\s-]{7,}/.test(label)) {
+    const s = iconR * 1.35;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(-Math.PI / 4);
+    ctx.beginPath();
+    ctx.roundRect(-s * 0.42, -s * 0.4, s * 0.28, s * 0.22, 2);
+    ctx.roundRect(s * 0.14, -s * 0.4, s * 0.28, s * 0.22, 2);
+    ctx.roundRect(-s * 0.38, -s * 0.24, s * 0.76, s * 0.14, 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.restore();
+    return;
+  }
+
+  // 4. TELECOM / NETWORK / C2 (Radio Tower / Antenna)
+  if (label.includes("telecom") || id.includes("telecom") || t === "telecom" || t === "carrier" || t === "c2") {
+    const h = iconR * 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - h * 0.55);
+    ctx.lineTo(cx - h * 0.38, cy + h * 0.5);
+    ctx.moveTo(cx, cy - h * 0.55);
+    ctx.lineTo(cx + h * 0.38, cy + h * 0.5);
+    ctx.moveTo(cx - h * 0.18, cy - h * 0.05);
+    ctx.lineTo(cx + h * 0.18, cy - h * 0.05);
+    ctx.moveTo(cx - h * 0.3, cy + h * 0.28);
+    ctx.lineTo(cx + h * 0.3, cy + h * 0.28);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy - h * 0.62, Math.max(1.5, h * 0.1), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  // 5. WEB / DOMAIN / URL (Globe Vector)
+  if (label.includes("web") || t === "web" || t === "domain" || t === "dns" || label.includes(".com") || label.includes(".org") || label.includes(".net") || label.includes(".io")) {
+    const s = iconR * 1.25;
+    ctx.beginPath();
+    ctx.arc(cx, cy, s, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - s, cy);
+    ctx.lineTo(cx + s, cy);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, s * 0.45, s, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  // 6. PERSON / USERNAME / SUSPECT
+  if (t === "person" || t === "username" || t === "target" || t === "suspect" || (!label.startsWith("@") && !label.includes(".") && !label.startsWith("+"))) {
+    const headR = iconR * 0.4;
+    const headY = cy - iconR * 0.35;
+    ctx.beginPath();
+    ctx.arc(cx, headY, headR, 0, Math.PI * 2);
+    ctx.fill();
+    const bodyW = iconR * 1.35;
+    const bodyH = iconR * 0.75;
+    const bodyY = cy + iconR * 0.2;
+    ctx.beginPath();
+    ctx.ellipse(cx, bodyY + bodyH * 0.4, bodyW / 2, bodyH / 2, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  // 7. EMAIL (Envelope Vector)
+  if (t === "email" || (label.includes("@") && label.includes("."))) {
+    const w = iconR * 1.5;
+    const h = iconR * 1.0;
+    ctx.beginPath();
+    ctx.roundRect(cx - w / 2, cy - h / 2, w, h, 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - w / 2, cy - h / 2);
+    ctx.lineTo(cx, cy + h * 0.15);
+    ctx.lineTo(cx + w / 2, cy - h / 2);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  // 8. CRYPTO / BITCOIN
+  if (t === "crypto" || t === "bitcoin" || label.startsWith("bc1") || label.startsWith("1") || label.startsWith("0x")) {
+    ctx.font = `bold ${Math.floor(r * 0.85)}px system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("₿", cx, cy);
+    ctx.restore();
+    return;
+  }
+
+  // 9. WHATSAPP
+  if (t === "whatsapp" || label.includes("whatsapp")) {
+    const s = iconR * 1.25;
+    ctx.beginPath();
+    ctx.arc(cx, cy, s * 0.85, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.font = `bold ${Math.floor(r * 0.55)}px system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("WA", cx, cy);
+    ctx.restore();
+    return;
+  }
+
+  // 10. TELEGRAM
+  if (t === "telegram" || label.includes("telegram")) {
+    const s = iconR * 1.3;
+    ctx.beginPath();
+    ctx.moveTo(cx - s * 0.6, cy - s * 0.1);
+    ctx.lineTo(cx + s * 0.7, cy - s * 0.5);
+    ctx.lineTo(cx - s * 0.2, cy + s * 0.6);
+    ctx.lineTo(cx - s * 0.1, cy + s * 0.1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  // 11. LOCATION / GPS PIN
+  if (t === "geolocation" || t === "location") {
+    const s = iconR * 1.3;
+    ctx.beginPath();
+    ctx.arc(cx, cy - s * 0.25, s * 0.5, Math.PI, 0);
+    ctx.lineTo(cx, cy + s * 0.6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy - s * 0.25, s * 0.2, 0, Math.PI * 2);
+    ctx.fillStyle = isDimmed ? "#121724" : n.nodeColor;
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  // 12. CORPORATE / COMPANY
+  if (t === "corporate" || t === "company" || t === "enterprise") {
+    const w = iconR * 1.4;
+    const h = iconR * 1.5;
+    ctx.beginPath();
+    ctx.roundRect(cx - w / 2, cy - h / 2, w, h, 2);
+    ctx.stroke();
+    ctx.fillStyle = ctx.strokeStyle;
+    const dotS = w * 0.14;
+    for (let dy = -0.3; dy <= 0.2; dy += 0.25) {
+      for (let dx = -0.25; dx <= 0.25; dx += 0.5) {
+        ctx.fillRect(cx + dx * w - dotS / 2, cy + dy * h - dotS / 2, dotS, dotS);
+      }
+    }
+    ctx.restore();
+    return;
+  }
+
+  // 13. SECRET / CREDENTIAL
+  if (t === "secret" || t === "password" || t === "credential") {
+    const s = iconR * 1.2;
+    ctx.beginPath();
+    ctx.arc(cx - s * 0.3, cy, s * 0.35, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + s * 0.05, cy);
+    ctx.lineTo(cx + s * 0.7, cy);
+    ctx.moveTo(cx + s * 0.45, cy);
+    ctx.lineTo(cx + s * 0.45, cy + s * 0.25);
+    ctx.moveTo(cx + s * 0.65, cy);
+    ctx.lineTo(cx + s * 0.65, cy + s * 0.2);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  // Default: Forensic Diamond
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - iconR * 0.6);
+  ctx.lineTo(cx + iconR * 0.6, cy);
+  ctx.lineTo(cx, cy + iconR * 0.6);
+  ctx.lineTo(cx - iconR * 0.6, cy);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
 interface CanvasGraphProps {
   nodes: NodeData[];
   edges: EdgeData[];
@@ -384,6 +639,8 @@ function CanvasGraph({
       }
 
       // 3. DRAW EDGES
+      const pairIndexMap = new Map<string, number>();
+
       for (const e of simEdges) {
         const n1 = nodeMap.get(e.source);
         const n2 = nodeMap.get(e.target);
@@ -391,6 +648,20 @@ function CanvasGraph({
 
         const p1 = toScreen(n1.x, n1.y);
         const p2 = toScreen(n2.x, n2.y);
+
+        const pairKey = [e.source, e.target].sort().join("---");
+        const edgeIdx = pairIndexMap.get(pairKey) || 0;
+        pairIndexMap.set(pairKey, edgeIdx + 1);
+
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const nx = -dy / dist;
+        const ny = dx / dist;
+        const offsetDist = edgeIdx === 0 ? 0 : (edgeIdx % 2 === 1 ? 1 : -1) * Math.ceil(edgeIdx / 2) * 22;
+
+        const midX = (p1.x + p2.x) / 2 + nx * offsetDist;
+        const midY = (p1.y + p2.y) / 2 + ny * offsetDist;
 
         // Check if edge is in shortest path
         let isPathEdge = false;
@@ -423,14 +694,18 @@ function CanvasGraph({
           ctx.lineWidth = (e.size || 1.5) * Math.max(0.8, cam.zoom * 0.7);
         }
 
-        // Draw line
+        // Draw line or curved arc
         ctx.beginPath();
         ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
+        if (edgeIdx === 0) {
+          ctx.lineTo(p2.x, p2.y);
+        } else {
+          ctx.quadraticCurveTo(midX, midY, p2.x, p2.y);
+        }
         ctx.stroke();
 
         // Draw arrow towards target
-        const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+        const angle = edgeIdx === 0 ? Math.atan2(p2.y - p1.y, p2.x - p1.x) : Math.atan2(p2.y - midY, p2.x - midX);
         const targetRadius = (n2.radius || 15) * cam.zoom;
         const arrowX = p2.x - Math.cos(angle) * (targetRadius + 3);
         const arrowY = p2.y - Math.sin(angle) * (targetRadius + 3);
@@ -452,8 +727,6 @@ function CanvasGraph({
 
         // Edge label pill at midpoint (if not dimmed and zoom > 0.65)
         if (!isDimmed && cam.zoom > 0.65) {
-          const midX = (p1.x + p2.x) / 2;
-          const midY = (p1.y + p2.y) / 2;
           const labelText = (e.label || e.relation_type || "link").replace(/_/g, " ");
 
           ctx.font = "9px system-ui, sans-serif";
@@ -523,13 +796,8 @@ function CanvasGraph({
           ctx.setLineDash([]);
         }
 
-        // Inner icon / monogram indicator
-        ctx.fillStyle = isDimmed ? "#445566" : "#FFFFFF";
-        ctx.font = `bold ${Math.max(9, Math.floor(r * 0.7))}px monospace`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        const iconChar = n.type === "case" ? "★" : n.type === "person" ? "👤" : n.type === "crypto" ? "₿" : n.type === "email" ? "✉" : n.type === "phone" ? "☎" : n.type === "geolocation" ? "📍" : n.type === "secret" ? "🔑" : "•";
-        ctx.fillText(iconChar, p.x, p.y);
+        // Inner vector intelligence icon / symbol
+        drawNodeIcon(ctx, p.x, p.y, r, n, Boolean(isDimmed));
 
         // Node label below
         if (!isDimmed || isHovered) {

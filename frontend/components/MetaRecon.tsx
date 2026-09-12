@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import FacebookMarketplaceRecon from "./FacebookMarketplaceRecon";
 import FacebookRelationsRecon from "./FacebookRelationsRecon";
 import FacebookStalkerTool from "./FacebookStalkerTool";
@@ -15,6 +15,25 @@ function FacebookPivot() {
   const [profileUrl, setProfileUrl] = useState("");
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("cache_fb_pivot");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.profileUrl) setProfileUrl(parsed.profileUrl);
+        if (parsed.result) setResult(parsed.result);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (profileUrl || result) {
+        sessionStorage.setItem("cache_fb_pivot", JSON.stringify({ profileUrl, result }));
+      }
+    } catch {}
+  }, [profileUrl, result]);
 
   const handleSearch = async () => {
     if (!profileUrl) return;
@@ -70,6 +89,25 @@ function InstagramRecon() {
   const [username, setUsername] = useState("");
   const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("cache_ig_recon");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.username) setUsername(parsed.username);
+        if (parsed.profileData) setProfileData(parsed.profileData);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (username || profileData) {
+        sessionStorage.setItem("cache_ig_recon", JSON.stringify({ username, profileData }));
+      }
+    } catch {}
+  }, [username, profileData]);
 
   const handleInspect = async () => {
     if (!username.trim()) return;
@@ -226,6 +264,20 @@ function WhatsAppRecon() {
 export default function MetaRecon() {
   const [activeSubTab, setActiveSubTab] = useState("facebook");
 
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("cache_meta_subtab");
+      if (saved) setActiveSubTab(saved);
+    } catch {}
+  }, []);
+
+  const handleSubTabChange = (tab: string) => {
+    setActiveSubTab(tab);
+    try {
+      sessionStorage.setItem("cache_meta_subtab", tab);
+    } catch {}
+  };
+
   return (
     <div className="card" style={{ padding: 0, height: "calc(100vh - 180px)", display: "flex", flexDirection: "column" }}>
       <div style={{ padding: 20, borderBottom: "1px solid var(--border)" }}>
@@ -242,59 +294,53 @@ export default function MetaRecon() {
         <button 
           className="btn" 
           style={{ flex: 1, borderRadius: 0, border: "none", borderBottom: activeSubTab === "facebook" ? "2px solid var(--cyan)" : "2px solid transparent", color: activeSubTab === "facebook" ? "var(--cyan)" : "inherit" }}
-          onClick={() => setActiveSubTab("facebook")}
+          onClick={() => handleSubTabChange("facebook")}
         >
           FACEBOOK
         </button>
         <button 
           className="btn" 
           style={{ flex: 1, borderRadius: 0, border: "none", borderBottom: activeSubTab === "instagram" ? "2px solid #E1306C" : "2px solid transparent", color: activeSubTab === "instagram" ? "#E1306C" : "inherit" }}
-          onClick={() => setActiveSubTab("instagram")}
+          onClick={() => handleSubTabChange("instagram")}
         >
           INSTAGRAM
         </button>
         <button 
           className="btn" 
           style={{ flex: 1, borderRadius: 0, border: "none", borderBottom: activeSubTab === "whatsapp" ? "2px solid #25D366" : "2px solid transparent", color: activeSubTab === "whatsapp" ? "#25D366" : "inherit" }}
-          onClick={() => setActiveSubTab("whatsapp")}
+          onClick={() => handleSubTabChange("whatsapp")}
         >
           WHATSAPP
         </button>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
-        {activeSubTab === "facebook" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            <FacebookStalkerTool />
-            <FacebookPivot />
-            <div style={{ border: "1px solid var(--border)", borderRadius: 6, overflow: "hidden" }}>
-              <div style={{ padding: "8px 16px", background: "rgba(255,255,255,0.05)", borderBottom: "1px solid var(--border)", fontWeight: "bold" }}>
-                Relations (Friends/Followers)
-              </div>
-              <FacebookRelationsRecon />
+        <div style={{ display: activeSubTab === "facebook" ? "flex" : "none", flexDirection: "column", gap: 24 }}>
+          <FacebookStalkerTool />
+          <FacebookPivot />
+          <div style={{ border: "1px solid var(--border)", borderRadius: 6, overflow: "hidden" }}>
+            <div style={{ padding: "8px 16px", background: "rgba(255,255,255,0.05)", borderBottom: "1px solid var(--border)", fontWeight: "bold" }}>
+              Relations (Friends/Followers)
             </div>
-            <div style={{ border: "1px solid var(--border)", borderRadius: 6, overflow: "hidden" }}>
-              <div style={{ padding: "8px 16px", background: "rgba(255,255,255,0.05)", borderBottom: "1px solid var(--border)", fontWeight: "bold" }}>
-                Marketplace Recon
-              </div>
-              <FacebookMarketplaceRecon />
+            <FacebookRelationsRecon />
+          </div>
+          <div style={{ border: "1px solid var(--border)", borderRadius: 6, overflow: "hidden" }}>
+            <div style={{ padding: "8px 16px", background: "rgba(255,255,255,0.05)", borderBottom: "1px solid var(--border)", fontWeight: "bold" }}>
+              Marketplace Recon
             </div>
+            <FacebookMarketplaceRecon />
           </div>
-        )}
+        </div>
 
-        {activeSubTab === "instagram" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            <OsintgramTool />
-            <InstaLooterTool />
-            <InstagramRecon />
-          </div>
-        )}
+        <div style={{ display: activeSubTab === "instagram" ? "flex" : "none", flexDirection: "column", gap: 24 }}>
+          <OsintgramTool />
+          <InstaLooterTool />
+          <InstagramRecon />
+        </div>
 
-        {activeSubTab === "whatsapp" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            <WhatsAppRecon />
-          </div>
-        )}
+        <div style={{ display: activeSubTab === "whatsapp" ? "flex" : "none", flexDirection: "column", gap: 24 }}>
+          <WhatsAppRecon />
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { apiGet, apiPostJson } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "@/components/SaveToCaseButton";
@@ -87,6 +87,35 @@ export default function InstaLooterTool() {
   const [cliPassword, setCliPassword] = useState("");
   const [cliLoading, setCliLoading] = useState(false);
   const [cliResult, setCliResult] = useState<CliLootResult | null>(null);
+
+  // Restore and sync session state
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("cache_instalooter");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.userQuery) setUserQuery(parsed.userQuery);
+        if (parsed.profileResult) setProfileResult(parsed.profileResult);
+        if (parsed.postQuery) setPostQuery(parsed.postQuery);
+        if (parsed.postResult) setPostResult(parsed.postResult);
+        if (parsed.activeTab) setActiveTab(parsed.activeTab);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (userQuery || profileResult || postQuery || postResult) {
+        sessionStorage.setItem("cache_instalooter", JSON.stringify({
+          userQuery,
+          profileResult,
+          postQuery,
+          postResult,
+          activeTab,
+        }));
+      }
+    } catch {}
+  }, [userQuery, profileResult, postQuery, postResult, activeTab]);
 
   async function handleLootProfile() {
     const clean = userQuery.trim().replace("@", "");
@@ -284,8 +313,7 @@ export default function InstaLooterTool() {
       {/* ========================================================================= */}
       {/* 1. USER PROFILE LOOTER */}
       {/* ========================================================================= */}
-      {activeTab === "user" && (
-        <div style={{ marginTop: 14 }}>
+      <div style={{ display: activeTab === "user" ? "block" : "none", marginTop: 14 }}>
           <div style={{ display: "flex", gap: 8, maxWidth: 640, alignItems: "center", flexWrap: "wrap" }}>
             <input
               value={userQuery}
@@ -487,13 +515,11 @@ export default function InstaLooterTool() {
             </div>
           )}
         </div>
-      )}
 
       {/* ========================================================================= */}
       {/* 2. POST / REEL MEDIA LOOTER */}
       {/* ========================================================================= */}
-      {activeTab === "post" && (
-        <div style={{ marginTop: 14 }}>
+      <div style={{ display: activeTab === "post" ? "block" : "none", marginTop: 14 }}>
           <div style={{ display: "flex", gap: 8, maxWidth: 640, alignItems: "center", flexWrap: "wrap" }}>
             <input
               value={postQuery}
@@ -622,13 +648,11 @@ export default function InstaLooterTool() {
             </div>
           )}
         </div>
-      )}
 
       {/* ========================================================================= */}
       {/* 3. BATCH / CLI LOOTER (InstaLooter Core) */}
       {/* ========================================================================= */}
-      {activeTab === "cli" && (
-        <div style={{ marginTop: 14 }}>
+      <div style={{ display: activeTab === "cli" ? "block" : "none", marginTop: 14 }}>
           <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
             Executes the native <code>instalooter</code> CLI in an isolated sandbox. Extracts media JSON metadata or downloads batch files.
           </p>
@@ -734,7 +758,6 @@ export default function InstaLooterTool() {
             </div>
           )}
         </div>
-      )}
     </div>
   );
 }
