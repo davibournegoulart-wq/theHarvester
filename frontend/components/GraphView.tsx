@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import Graph from "graphology";
+import Graph, { MultiGraph } from "graphology";
 import { SigmaContainer, ControlsContainer, ZoomControl, useLoadGraph, useRegisterEvents, useSigma, useCamera } from "@react-sigma/core";
 import { useLayoutForceAtlas2 } from "@react-sigma/layout-forceatlas2";
 import { bidirectional } from "graphology-shortest-path/unweighted";
@@ -9,6 +9,16 @@ import "@react-sigma/core/lib/style.css";
 import { useActiveCase } from "@/lib/activeCase";
 import { apiGet, apiPostJson } from "@/lib/api";
 import { CheckIcon, CrossIcon, BoltIcon, AlertIcon } from "@/components/FlatIcons";
+
+const SIGMA_SETTINGS = {
+  defaultNodeType: "circle",
+  defaultNodeColor: "#05D9E8",
+  labelColor: { color: "#d6f3ff" },
+  labelSize: 11,
+  labelWeight: "600",
+  renderEdgeLabels: true,
+  enableEdgeEvents: false,
+};
 
 type NodeData = {
   id: string;
@@ -140,7 +150,7 @@ function LoadGraph({
   useEffect(() => {
     if (!nodes || nodes.length === 0) return;
 
-    const graph = new Graph({ multi: true });
+    const graph = new MultiGraph();
 
     nodes.forEach((n, idx) => {
       let cleanId = n.id;
@@ -174,10 +184,10 @@ function LoadGraph({
         x,
         y,
         label: displayLabel,
-        size: n.size || st.size,
-        color: n.color || st.color,
+        size: n.size || st.size || 15,
+        color: n.color || st.color || "#05D9E8",
         type: "circle",
-        originalColor: n.color || st.color,
+        originalColor: n.color || st.color || "#05D9E8",
         entityType: detectedType,
       });
     });
@@ -214,7 +224,7 @@ function LoadGraph({
       } catch (err) {
         console.warn("Sigma reset warning:", err);
       }
-    }, 100);
+    }, 150);
 
     return () => clearTimeout(timer);
   }, [nodes, edges]);
@@ -258,17 +268,20 @@ function GraphEvents({
 
   useEffect(() => {
     const graph = sigma.getGraph();
+    if (!graph || graph.order === 0) return;
     
-    // Reset colors
+    // Reset colors safely
     graph.forEachNode((n) => {
-      graph.setNodeAttribute(n, "color", graph.getNodeAttribute(n, "originalColor"));
+      const orig = graph.getNodeAttribute(n, "originalColor") || "#05D9E8";
+      graph.setNodeAttribute(n, "color", orig);
     });
     graph.forEachEdge((e) => {
-      graph.setEdgeAttribute(e, "color", graph.getEdgeAttribute(e, "originalColor"));
+      const orig = graph.getEdgeAttribute(e, "originalColor") || "#445566";
+      graph.setEdgeAttribute(e, "color", orig);
       graph.setEdgeAttribute(e, "size", graph.getEdgeAttribute(e, "relationType") === "cross_case_match" ? 3 : 1.5);
     });
 
-    if (selectedNodes.length > 0 || pathNodes) {
+    if (selectedNodes.length > 0 || (pathNodes && pathNodes.length > 0)) {
       const activeNodes = new Set(pathNodes || selectedNodes);
       
       graph.forEachNode((n) => {
@@ -330,15 +343,15 @@ export default function GraphView() {
     apiGet<CaseOption[]>("/cases/")
       .then((data) => {
         setAvailableCases(data || []);
-        if (activeCase) {
-          setSelectedCaseIds([activeCase.id]);
-        } else if (data && data.length > 0) {
-          setActiveCase({ id: data[0].id, name: data[0].name });
-          setSelectedCaseIds([data[0].id]);
+        if (data && data.length > 0) {
+          if (!activeCase) {
+            setActiveCase({ id: data[0].id, name: data[0].name });
+          }
+          setSelectedCaseIds((prev) => (prev.length === 0 ? [data[0].id] : prev));
         }
       })
       .catch((err) => console.error("Error loading cases:", err));
-  }, [activeCase]);
+  }, []);
 
   useEffect(() => {
     if (selectedNodes.length === 2 && graphInstance) {
@@ -361,20 +374,7 @@ export default function GraphView() {
       let data: { nodes: NodeData[]; edges: EdgeData[] };
 
       if (viewMode === "active") {
-        let targetId = activeCase?.id || (availableCases.length > 0 ? availableCases[0].id : null);
-        if (!targetId) {
-          try {
-            const cases = await apiGet<CaseOption[]>("/cases/");
-            if (cases && cases.length > 0) {
-              setAvailableCases(cases);
-              targetId = cases[0].id;
-              setActiveCase({ id: cases[0].id, name: cases[0].name });
-              setSelectedCaseIds([cases[0].id]);
-            }
-          } catch (err) {
-            console.error("Error fetching cases for graph:", err);
-          }
-        }
+        const targetId = activeCase?.id || (availableCases.length > 0 ? availableCases[0].id : null);
         if (!targetId) {
           setNodes([]);
           setEdges([]);
@@ -411,7 +411,7 @@ export default function GraphView() {
 
   useEffect(() => {
     loadGraphData();
-  }, [activeCase, viewMode, selectedCaseIds]);
+  }, [activeCase?.id, viewMode, selectedCaseIds]);
 
   const toggleCaseSelection = (caseId: string) => {
     setSelectedCaseIds((prev) =>
@@ -801,15 +801,9 @@ export default function GraphView() {
         )}
 
         <SigmaContainer 
+          graph={MultiGraph}
           style={{ height: "100%", width: "100%", background: "#060812" }} 
-          settings={{ 
-            defaultNodeType: "circle", 
-            defaultNodeColor: "#05D9E8",
-            labelColor: { color: "#d6f3ff" },
-            labelSize: 11,
-            labelWeight: "600",
-            renderEdgeLabels: true,
-          }}
+          settings={SIGMA_SETTINGS}
         >
           <LoadGraph nodes={displayedNodes} edges={displayedEdges} onGraphReady={setGraphInstance} />
           <GraphEvents 
