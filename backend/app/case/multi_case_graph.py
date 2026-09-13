@@ -65,6 +65,18 @@ async def get_graph_elements_for_case_list(db: AsyncSession, case_ids: list[uuid
             details={"id": str(c.id), "name": c.name, "status": c.status.value, "created_at": c.created_at.isoformat()},
         )
 
+    audit_filter = AuditLogEntry.action.in_([
+        "evidence_saved",
+        "secret_exposed",
+        "secrets_detected",
+        "leak_found",
+        "face_matched",
+        "face_detected",
+        "biometric_recon",
+        "geolocation_pinned",
+        "manual_edge_created",
+    ])
+
     # 2. Identifiers & Accounts
     if case_ids and len(case_ids) == 1:
         res_id = await db.execute(select(Identifier).where(Identifier.case_id == case_ids[0]))
