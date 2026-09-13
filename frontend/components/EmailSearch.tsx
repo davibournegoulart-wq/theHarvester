@@ -5,7 +5,7 @@ import { apiFetch, apiGet, apiPostJson, apiPostFormData } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "@/components/SaveToCaseButton";
 import MailAccessSuite from "./MailAccessSuite";
-import { CheckIcon, CrossIcon, FolderIcon, GlobeIcon, ShieldIcon, AlertIcon } from "@/components/FlatIcons";
+import { CheckIcon, CrossIcon, FolderIcon, GlobeIcon, ShieldIcon, AlertIcon, LayersIcon, ExternalLinkIcon, CopyIcon } from "@/components/FlatIcons";
 
 type EmailResult = {
   service: string;
@@ -32,7 +32,23 @@ type GravatarResult = {
   verified_accounts: { url: string; service_label: string }[] | null;
 };
 
-type EmailBreachResult = { breaches: string[] };
+type EnrichedBreachDossier = {
+  breach_name: string;
+  victim_name: string;
+  victim_domain: string;
+  industry: string;
+  threat_actor: string;
+  provenance_reference: string;
+  breach_date: string;
+  records_count: string;
+  compromised_data_classes: string[];
+  source_description: string;
+};
+
+type EmailBreachResult = {
+  breaches: string[];
+  dossiers?: EnrichedBreachDossier[];
+};
 
 type BreachDirectoryResult = { breaches: string[]; sources_count: number };
 type BreachAnalytics = { risk_score: number | null; breach_count: number; first_breach: string | null; latest_breach: string | null };
@@ -119,6 +135,15 @@ export default function EmailSearch() {
   const [rawHeaders, setRawHeaders] = useState("");
   const [headerAnalysis, setHeaderAnalysis] = useState<EmailHeaderAnalysis | null>(null);
   const [headerLoading, setHeaderLoading] = useState(false);
+  const [copiedBreachUrl, setCopiedBreachUrl] = useState<string | null>(null);
+
+  function copyBreachUrl(url: string) {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+      setCopiedBreachUrl(url);
+      setTimeout(() => setCopiedBreachUrl(null), 2000);
+    }
+  }
 
   async function handleSearch() {
     if (!email || !activeCase) return;
@@ -360,6 +385,181 @@ export default function EmailSearch() {
               </li>
             )}
           </ul>
+
+          {breachResult?.dossiers && breachResult.dossiers.length > 0 && (
+            <div style={{ marginTop: 14, marginBottom: 14, maxWidth: 680 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                <LayersIcon size={14} color="var(--cyan)" />
+                <strong style={{ fontSize: 13, color: "#fff" }}>
+                  Breach Dossiers &amp; Provenance Intelligence ({breachResult.dossiers.length})
+                </strong>
+              </div>
+
+              <div style={{ display: "grid", gap: 10 }}>
+                {breachResult.dossiers.map((dossier, dIdx) => (
+                  <div
+                    key={dIdx}
+                    style={{
+                      background: "rgba(0, 0, 0, 0.35)",
+                      border: "1px solid rgba(255, 255, 255, 0.08)",
+                      borderRadius: 6,
+                      padding: 12,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 8,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: "#fff",
+                            background: "rgba(255, 255, 255, 0.08)",
+                            padding: "2px 8px",
+                            borderRadius: 4,
+                          }}
+                        >
+                          {dossier.breach_name}
+                        </span>
+                        <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "monospace" }}>
+                          Date: {dossier.breach_date}
+                        </span>
+                        <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "monospace" }}>
+                          Records: {dossier.records_count}
+                        </span>
+                      </div>
+
+                      <SaveToCaseButton
+                        key={`${activeCase?.id}-breach-${dossier.breach_name}`}
+                        identifierType="email"
+                        identifierValue={email}
+                        platform={`breach.${dossier.breach_name.toLowerCase()}`}
+                        discoveredBy="recon.breach_check"
+                        metadata={{
+                          breach_name: dossier.breach_name,
+                          victim_name: dossier.victim_name,
+                          victim_domain: dossier.victim_domain,
+                          threat_actor: dossier.threat_actor,
+                          provenance_reference: dossier.provenance_reference,
+                          breach_date: dossier.breach_date,
+                          records_count: dossier.records_count,
+                          compromised_classes: dossier.compromised_data_classes,
+                        }}
+                      />
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                        gap: 8,
+                        background: "rgba(0, 0, 0, 0.2)",
+                        padding: 10,
+                        borderRadius: 4,
+                        border: "1px solid rgba(255, 255, 255, 0.04)",
+                      }}
+                    >
+                      {/* WHERE */}
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--cyan)", display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
+                          <GlobeIcon size={11} color="var(--cyan)" /> WHERE THE LEAK IS
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "#fff" }}>{dossier.victim_name}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                          <span style={{ color: "#38bdf8", fontFamily: "monospace" }}>{dossier.victim_domain}</span> • {dossier.industry}
+                        </div>
+                      </div>
+
+                      {/* WHO */}
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "#f59e0b", display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
+                          <ShieldIcon size={11} color="#f59e0b" /> WHO LEAKED IT
+                        </div>
+                        <div>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: "#fbbf24",
+                              background: "rgba(245, 158, 11, 0.15)",
+                              padding: "2px 6px",
+                              borderRadius: 3,
+                              border: "1px solid rgba(245, 158, 11, 0.3)",
+                            }}
+                          >
+                            {dossier.threat_actor}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* WHERE TO GATHER */}
+                      <div style={{ gridColumn: "1 / -1" }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "#34d399", display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
+                          <LayersIcon size={11} color="#34d399" /> WHERE TO GATHER IT &amp; COMPROMISED DATA
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+                          <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Provenance:</span>
+                          <a
+                            href={dossier.provenance_reference}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ fontSize: 11, color: "#34d399", textDecoration: "underline", display: "flex", alignItems: "center", gap: 4 }}
+                          >
+                            {dossier.provenance_reference} <ExternalLinkIcon size={10} />
+                          </a>
+                          <button
+                            onClick={() => copyBreachUrl(dossier.provenance_reference)}
+                            style={{
+                              background: "rgba(255, 255, 255, 0.08)",
+                              border: "1px solid rgba(255, 255, 255, 0.15)",
+                              color: copiedBreachUrl === dossier.provenance_reference ? "#34d399" : "#fff",
+                              fontSize: 10,
+                              padding: "1px 6px",
+                              borderRadius: 3,
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 3,
+                            }}
+                          >
+                            <CopyIcon size={10} /> {copiedBreachUrl === dossier.provenance_reference ? "Copied!" : "Copy Link"}
+                          </button>
+                        </div>
+
+                        {dossier.compromised_data_classes && dossier.compromised_data_classes.length > 0 && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap", marginBottom: 4 }}>
+                            <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Compromised:</span>
+                            {dossier.compromised_data_classes.map((cls, ci) => (
+                              <span
+                                key={ci}
+                                style={{
+                                  fontSize: 10,
+                                  background: "rgba(239, 68, 68, 0.12)",
+                                  color: "#fca5a5",
+                                  padding: "1px 5px",
+                                  borderRadius: 3,
+                                  border: "1px solid rgba(239, 68, 68, 0.25)",
+                                  fontFamily: "monospace",
+                                }}
+                              >
+                                [{cls}]
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <div style={{ fontSize: 11, color: "var(--text-secondary)", fontStyle: "italic" }}>
+                          {dossier.source_description}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <h4 style={{ marginTop: 16, marginBottom: 8 }}>Accounts and Public Profiles</h4>
           {googleError && <p style={{ color: "var(--danger)", fontSize: 13 }}>{googleError}</p>}

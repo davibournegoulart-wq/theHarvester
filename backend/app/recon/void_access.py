@@ -67,6 +67,15 @@ class LiveThreatItem:
     threat_type: str
     date_discovered: str
     severity: str
+    victim_organization: str = ""
+    victim_domain: str = ""
+    victim_country: str = "US"
+    victim_sector: str = "General"
+    threat_actor: str = "Unattributed"
+    leak_source_url: str = ""
+    exfiltrated_data_size: str = ""
+    compromised_fields: list[str] = field(default_factory=list)
+    status: str = "DATA_LEAKED"
 
 
 @dataclass
@@ -380,19 +389,88 @@ CURATED_ONION_SEEDS: list[OnionSeed] = [
 LIVE_SAMPLE_THREAT_FEEDS: list[LiveThreatItem] = [
     LiveThreatItem(
         source="ransomware.live",
-        title="LockBit 3.0 claims US Regional Healthcare System",
+        title="LockBit 3.0 Extortion: Memorial Regional Hospital & Health Network",
         indicator="health-corp.us",
         threat_type="Ransomware Extortion",
         date_discovered=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         severity="CRITICAL",
+        victim_organization="Memorial Regional Health Care Network",
+        victim_domain="health-corp.us",
+        victim_country="US",
+        victim_sector="Healthcare & Critical Medical Infrastructure",
+        threat_actor="LockBit 3.0",
+        leak_source_url="http://lockbitaptc2iq4atewgahapbm2xap6xqytbvwtfo2d62746zpmfoigyd.onion/post/memorial-health",
+        exfiltrated_data_size="180 GB SQL Databases, HIPAA Records & Employee PII",
+        compromised_fields=["Patient PII", "Social Security Numbers", "SQL Backups", "Physician Passports", "Billing Databases"],
+        status="DATA_LEAKED",
     ),
     LiveThreatItem(
         source="ransomware.live",
-        title="Akira publishes 45GB source code of automotive supplier",
+        title="Akira Cyber Syndicate: Continental Auto Parts & Dynamics GmbH",
         indicator="auto-parts-mfg.de",
         threat_type="Ransomware Extortion",
         date_discovered=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         severity="HIGH",
+        victim_organization="Continental Auto Parts & Dynamics GmbH",
+        victim_domain="auto-parts-mfg.de",
+        victim_country="DE",
+        victim_sector="Automotive & Aerospace Manufacturing",
+        threat_actor="Akira",
+        leak_source_url="http://akiral2iz6a7qgd3ayp3l6dffknooxapbm2xap6xqytbvwtfo2d62746zpm.onion/leaks/continental-auto",
+        exfiltrated_data_size="45 GB Proprietary CAD Schematics & Supplier Agreements",
+        compromised_fields=["CAD Blueprints", "Corporate Contracts", "Employee Credentials", "Internal Git Repositories"],
+        status="DATA_LEAKED",
+    ),
+    LiveThreatItem(
+        source="ransomware.live",
+        title="CL0P Zero-Day Leak: Global Freight Supply Logistics Group",
+        indicator="supply-logistics.uk",
+        threat_type="MOVEit Zero-Day Mass Extortion",
+        date_discovered=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        severity="CRITICAL",
+        victim_organization="Global Freight & Maritime Logistics Group",
+        victim_domain="supply-logistics.uk",
+        victim_country="GB",
+        victim_sector="Supply Chain & Maritime Shipping",
+        threat_actor="CL0P / TA505",
+        leak_source_url="http://clop7z2jwcskxpbokpemdxmltipriw745rwjvg5i75s3ndoxdjjad.onion/victims/global-freight",
+        exfiltrated_data_size="82 GB MOVEit MFT Transfer Cache & Customs Filings",
+        compromised_fields=["Customs Filings", "Wire Transfer Ledgers", "Active Session Tokens", "Bill of Lading"],
+        status="DATA_LEAKED",
+    ),
+    LiveThreatItem(
+        source="ransomware.live",
+        title="BlackCat / ALPHV Extortion: Apex Energy Power Grid Systems",
+        indicator="apex-energy.ca",
+        threat_type="Ransomware Triple Extortion",
+        date_discovered=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        severity="CRITICAL",
+        victim_organization="Apex Energy Power Grid Systems",
+        victim_domain="apex-energy.ca",
+        victim_country="CA",
+        victim_sector="Critical Energy & Electrical Grid",
+        threat_actor="BlackCat / ALPHV",
+        leak_source_url="http://alphvmmm27o3abo3r2mlnxbdgahapbm2xap6xqytbvwtfo2d62746zpmfo.onion/apex-power",
+        exfiltrated_data_size="210 GB SCADA Schematics, Executive Mailboxes & Active Directory",
+        compromised_fields=["SCADA Schematics", "Executive Mailboxes", "Active Directory NTDS.dit", "Substation Maps"],
+        status="EXTORTION_PENDING",
+    ),
+    LiveThreatItem(
+        source="ransomware.live",
+        title="Qilin Syndicate Hospital Hack: Synnovis Pathology Services",
+        indicator="synnovis.co.uk",
+        threat_type="Healthcare Ransomware",
+        date_discovered=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        severity="HIGH",
+        victim_organization="Synnovis Pathology Diagnostics Group",
+        victim_domain="synnovis.co.uk",
+        victim_country="GB",
+        victim_sector="Medical Diagnostics & NHS Pathology",
+        threat_actor="Qilin",
+        leak_source_url="http://qilinxpbokpemdxmltipriw745rwjvg5i75s3ndoxdjjad.onion/synnovis-full-dump",
+        exfiltrated_data_size="300 GB Blood Test Archives & Pathology Reports",
+        compromised_fields=["NHS Patient Numbers", "Pathology Lab Results", "Physician Clinical Notes"],
+        status="DATA_LEAKED",
     ),
     LiveThreatItem(
         source="feodo_tracker",
@@ -401,24 +479,35 @@ LIVE_SAMPLE_THREAT_FEEDS: list[LiveThreatItem] = [
         threat_type="Botnet C2 Server",
         date_discovered=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         severity="CRITICAL",
+        victim_organization="Compromised Commercial VPS Hosting Network",
+        victim_domain="185.220.101.5",
+        victim_country="NL",
+        victim_sector="Command & Control Infrastructure",
+        threat_actor="Black Basta / Qakbot Cartel",
+        leak_source_url="https://feodotracker.abuse.ch/browse/host/185.220.101.5/",
+        exfiltrated_data_size="Active C2 Traffic Stream",
+        compromised_fields=["C2 Heartbeats", "Encrypted Payloads", "Bot Telemetry"],
+        status="ACTIVE_C2",
     ),
     LiveThreatItem(
         source="urlhaus",
-        title="Lumma Stealer Payload Distribution Endpoint",
+        title="Lumma Stealer Payload Exfiltration Endpoint",
         indicator="http://cdn-update-download.net/payload.exe",
-        threat_type="Infostealer Distribution",
+        threat_type="Infostealer Distribution & Exfiltration",
         date_discovered=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         severity="HIGH",
-    ),
-    LiveThreatItem(
-        source="feodo_tracker",
-        title="Dridex Banking Trojan C2 Node",
-        indicator="45.154.255.78:8080",
-        threat_type="Trojan C2",
-        date_discovered=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-        severity="HIGH",
+        victim_organization="Infostealer Exfiltration Relay",
+        victim_domain="cdn-update-download.net",
+        victim_country="RU",
+        victim_sector="Malware Distribution CDN",
+        threat_actor="Lumma Stealer Operators",
+        leak_source_url="https://urlhaus.abuse.ch/url/3104928/",
+        exfiltrated_data_size="Browser Credentials & Crypto Wallets",
+        compromised_fields=["Browser Passwords", "Discord Tokens", "Crypto Private Keys", "Session Cookies"],
+        status="DISTRIBUTING",
     ),
 ]
+
 
 
 async def fetch_live_threat_feed() -> list[LiveThreatItem]:

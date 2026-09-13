@@ -14,7 +14,7 @@ from app.checkers.phone import (
 from app.checkers.social_id_pivot import extract_instagram_id, extract_tiktok_id
 from app.checkers.username import check_username
 from app.config import settings
-from app.recon.breach_check import check_email_breaches, check_password_pwned
+from app.recon.breach_check import check_email_breaches, check_password_pwned, enrich_breach_dossiers
 
 router = APIRouter(prefix="/identifiers", tags=["identifiers"])
 
@@ -253,6 +253,14 @@ async def password_breach(password: str):
 @router.get("/breach/email")
 async def email_breach(email: str):
     return await check_email_breaches(email)
+
+
+@router.get("/breach/dossiers")
+async def breach_dossiers(names: str):
+    """Resolves comma-separated breach names into structured dossiers (Where, Who, Where to Gather)."""
+    breach_list = [n.strip() for n in names.split(",") if n.strip()]
+    dossiers = enrich_breach_dossiers(breach_list)
+    return {"total": len(dossiers), "dossiers": dossiers}
 
 
 @router.get("/phone/metadata")

@@ -19,6 +19,7 @@ import {
   ExternalLinkIcon,
   FileTextIcon,
   DownloadIcon,
+  CopyIcon,
 } from "@/components/FlatIcons";
 
 type ExtractedEntities = {
@@ -54,6 +55,15 @@ type LiveThreatItem = {
   threat_type: string;
   date_discovered: string;
   severity: string;
+  victim_organization?: string;
+  victim_domain?: string;
+  victim_country?: string;
+  victim_sector?: string;
+  threat_actor?: string;
+  leak_source_url?: string;
+  exfiltrated_data_size?: string;
+  compromised_fields?: string[];
+  status?: string;
 };
 
 type VoidAccessInvestigationResult = {
@@ -108,6 +118,15 @@ export default function VoidAccessSuite() {
   const [generatedRule, setGeneratedRule] = useState<string>("");
   const [ruleLoading, setRuleLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+
+  function copyFeedUrl(text: string) {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedUrl(text);
+      setTimeout(() => setCopiedUrl(null), 2000);
+    }
+  }
 
   // Initial load of actors and feeds
   useEffect(() => {
@@ -899,71 +918,256 @@ export default function VoidAccessSuite() {
             </button>
           </div>
 
-          <div style={{ display: "grid", gap: 8 }}>
+          <div style={{ display: "grid", gap: 12 }}>
             {feeds.map((item, idx) => (
               <div
                 key={idx}
                 style={{
-                  background: "rgba(0, 0, 0, 0.3)",
+                  background: "rgba(0, 0, 0, 0.35)",
                   border: "1px solid rgba(255, 255, 255, 0.08)",
-                  borderRadius: 6,
-                  padding: 12,
+                  borderRadius: 8,
+                  padding: 16,
                   display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: 10,
+                  flexDirection: "column",
+                  gap: 12,
                 }}
               >
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                {/* Header row: Source, Status, Severity, Title, SaveToCase */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span
+                        style={{
+                          fontSize: 9,
+                          fontFamily: "monospace",
+                          textTransform: "uppercase",
+                          padding: "2px 6px",
+                          borderRadius: 3,
+                          background: "rgba(168, 85, 247, 0.2)",
+                          color: "#c084fc",
+                          border: "1px solid rgba(168, 85, 247, 0.3)",
+                        }}
+                      >
+                        {item.source}
+                      </span>
+                      {item.status && (
+                        <span
+                          style={{
+                            fontSize: 9,
+                            fontFamily: "monospace",
+                            textTransform: "uppercase",
+                            padding: "2px 6px",
+                            borderRadius: 3,
+                            background: item.status === "DATA_LEAKED" ? "rgba(239, 68, 68, 0.2)" : "rgba(245, 158, 11, 0.2)",
+                            color: item.status === "DATA_LEAKED" ? "#f87171" : "#fbbf24",
+                            border: item.status === "DATA_LEAKED" ? "1px solid rgba(239, 68, 68, 0.4)" : "1px solid rgba(245, 158, 11, 0.4)",
+                          }}
+                        >
+                          {item.status}
+                        </span>
+                      )}
+                      <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "monospace" }}>
+                        Discovered: {item.date_discovered}
+                      </span>
+                    </div>
+                    <strong style={{ fontSize: 14, color: "#fff" }}>{item.title}</strong>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <span
                       style={{
-                        fontSize: 9,
-                        fontFamily: "monospace",
-                        textTransform: "uppercase",
-                        padding: "1px 5px",
-                        borderRadius: 3,
-                        background: "rgba(168, 85, 247, 0.15)",
-                        color: "#c084fc",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: "3px 8px",
+                        borderRadius: 4,
+                        background: `${getSevColor(item.severity)}20`,
+                        color: getSevColor(item.severity),
+                        border: `1px solid ${getSevColor(item.severity)}50`,
                       }}
                     >
-                      {item.source}
+                      {item.severity}
                     </span>
-                    <strong style={{ fontSize: 13, color: "#fff" }}>{item.title}</strong>
-                  </div>
-                  <div style={{ fontSize: 11, fontFamily: "monospace", color: "var(--cyan)" }}>
-                    Indicator: {item.indicator}
+                    <SaveToCaseButton
+                      identifierType="url"
+                      identifierValue={item.leak_source_url || item.indicator}
+                      platform={`threatfeed.${item.source}`}
+                      discoveredBy="voidaccess"
+                      metadata={{
+                        title: item.title,
+                        indicator: item.indicator,
+                        source: item.source,
+                        date: item.date_discovered,
+                        severity: item.severity,
+                        victim_org: item.victim_organization,
+                        victim_domain: item.victim_domain,
+                        threat_actor: item.threat_actor,
+                        leak_url: item.leak_source_url,
+                        data_size: item.exfiltrated_data_size,
+                        compromised_fields: item.compromised_fields,
+                      }}
+                    />
                   </div>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      padding: "2px 6px",
-                      borderRadius: 3,
-                      background: `${getSevColor(item.severity)}20`,
-                      color: getSevColor(item.severity),
-                      border: `1px solid ${getSevColor(item.severity)}50`,
-                    }}
-                  >
-                    {item.severity}
-                  </span>
-                  <SaveToCaseButton
-                    identifierType="url"
-                    identifierValue={item.indicator}
-                    platform={`threatfeed.${item.source}`}
-                    discoveredBy="voidaccess"
-                    metadata={{
-                      title: item.title,
-                      indicator: item.indicator,
-                      source: item.source,
-                      date: item.date_discovered,
-                      severity: item.severity,
-                    }}
-                  />
+                {/* 3-Tier Provenance Grid */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                    gap: 10,
+                    background: "rgba(0, 0, 0, 0.25)",
+                    padding: 12,
+                    borderRadius: 6,
+                    border: "1px solid rgba(255, 255, 255, 0.05)",
+                  }}
+                >
+                  {/* TIER 1: WHERE THE LEAK IS */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <GlobeIcon size={12} color="var(--cyan)" />
+                      <span style={{ fontSize: 10, fontWeight: 700, color: "var(--cyan)", letterSpacing: "0.05em" }}>
+                        WHERE THE LEAK IS
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#fff" }}>
+                      {item.victim_organization || "Target Entity Identification in Progress"}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <span style={{ color: "#38bdf8", fontFamily: "monospace" }}>{item.victim_domain || item.indicator}</span>
+                      {item.victim_country && (
+                        <span style={{ background: "rgba(255, 255, 255, 0.08)", padding: "1px 5px", borderRadius: 3, fontSize: 10 }}>
+                          {item.victim_country}
+                        </span>
+                      )}
+                      {item.victim_sector && (
+                        <span style={{ color: "var(--text-secondary)", fontSize: 10 }}>
+                          • {item.victim_sector}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* TIER 2: WHO LEAKED THE DATA */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <ShieldIcon size={12} color="#f59e0b" />
+                      <span style={{ fontSize: 10, fontWeight: 700, color: "#f59e0b", letterSpacing: "0.05em" }}>
+                        WHO LEAKED IT
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: "#fbbf24",
+                          background: "rgba(245, 158, 11, 0.15)",
+                          padding: "2px 8px",
+                          borderRadius: 4,
+                          border: "1px solid rgba(245, 158, 11, 0.3)",
+                        }}
+                      >
+                        {item.threat_actor || "Unattributed Threat Actor"}
+                      </span>
+                      {item.threat_actor && (
+                        <button
+                          onClick={() => {
+                            setActiveTab("ACTORS");
+                            setActorSearch(item.threat_actor || "");
+                            loadActors(item.threat_actor || "");
+                          }}
+                          style={{
+                            background: "transparent",
+                            border: "1px solid rgba(255, 255, 255, 0.15)",
+                            color: "var(--cyan)",
+                            fontSize: 10,
+                            padding: "2px 6px",
+                            borderRadius: 3,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Pivot to Actor Dossier →
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)" }}>
+                      Threat Type: {item.threat_type}
+                    </div>
+                  </div>
+
+                  {/* TIER 3: WHERE TO GATHER IT */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, gridColumn: "1 / -1" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <LayersIcon size={12} color="#34d399" />
+                      <span style={{ fontSize: 10, fontWeight: 700, color: "#34d399", letterSpacing: "0.05em" }}>
+                        WHERE TO GATHER IT (PROVENANCE & PAYLOAD)
+                      </span>
+                    </div>
+
+                    {item.exfiltrated_data_size && (
+                      <div style={{ fontSize: 11, color: "#d1d5db" }}>
+                        <strong>Compromised Volume:</strong> {item.exfiltrated_data_size}
+                      </div>
+                    )}
+
+                    {item.leak_source_url && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
+                        <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Provenance Source:</span>
+                        <code
+                          style={{
+                            fontSize: 11,
+                            color: "#34d399",
+                            background: "rgba(52, 211, 153, 0.1)",
+                            padding: "2px 8px",
+                            borderRadius: 4,
+                            border: "1px solid rgba(52, 211, 153, 0.2)",
+                            wordBreak: "break-all",
+                          }}
+                        >
+                          {item.leak_source_url}
+                        </code>
+                        <button
+                          onClick={() => copyFeedUrl(item.leak_source_url!)}
+                          style={{
+                            background: "rgba(255, 255, 255, 0.08)",
+                            border: "1px solid rgba(255, 255, 255, 0.15)",
+                            color: copiedUrl === item.leak_source_url ? "#34d399" : "#fff",
+                            fontSize: 10,
+                            padding: "2px 8px",
+                            borderRadius: 3,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <CopyIcon size={11} /> {copiedUrl === item.leak_source_url ? "Copied!" : "Copy Source URL"}
+                        </button>
+                      </div>
+                    )}
+
+                    {item.compromised_fields && item.compromised_fields.length > 0 && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+                        <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Compromised Records:</span>
+                        {item.compromised_fields.map((f, fi) => (
+                          <span
+                            key={fi}
+                            style={{
+                              fontSize: 10,
+                              background: "rgba(239, 68, 68, 0.12)",
+                              color: "#fca5a5",
+                              padding: "1px 6px",
+                              borderRadius: 3,
+                              border: "1px solid rgba(239, 68, 68, 0.25)",
+                              fontFamily: "monospace",
+                            }}
+                          >
+                            [{f}]
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

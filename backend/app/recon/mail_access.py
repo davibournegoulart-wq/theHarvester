@@ -93,6 +93,7 @@ class XposedOrNotIntel:
     breach_count: int = 0
     paste_count: int = 0
     breaches: list[str] = field(default_factory=list)
+    dossiers: list[dict[str, Any]] = field(default_factory=list)
     risk_score: float = 0.0
 
 
@@ -404,10 +405,14 @@ async def check_xposedornot(email: str, use_tor: bool = False) -> XposedOrNotInt
                     elif isinstance(item, str):
                         breach_names.append(item)
 
+                from app.recon.breach_check import enrich_breach_dossiers
+                dossiers = [asdict(d) for d in enrich_breach_dossiers(breach_names[:15])]
+
                 return XposedOrNotIntel(
                     breach_count=len(breach_names),
                     paste_count=0,
                     breaches=breach_names[:15],
+                    dossiers=dossiers,
                     risk_score=min(100.0, len(breach_names) * 15.0),
                 )
     except Exception:
