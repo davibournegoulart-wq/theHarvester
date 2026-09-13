@@ -14,6 +14,7 @@ import FacebookStalkerTool from "./FacebookStalkerTool";
 import OsintgramTool from "./OsintgramTool";
 import LinkdTimeTool from "./LinkdTimeTool";
 import WebanatorTool from "./WebanatorTool";
+import ShadowbrokerSuite from "./ShadowbrokerSuite";
 import { CheckIcon, KeyIcon, ShieldIcon, AlertIcon, FolderIcon, CameraIcon, PinIcon, GlobeIcon, LockIcon, LinkIcon } from "@/components/FlatIcons";
 
 type ReverseImageLink = {
@@ -760,6 +761,7 @@ export default function ToolsPanel() {
       <LinkdTimeTool />
       <DeepScraperTool />
       <WebanatorTool />
+      <ShadowbrokerSuite />
       <GitleaksTruffleHogTool />
       <ReverseImageTool />
       <InstaLooterTool />

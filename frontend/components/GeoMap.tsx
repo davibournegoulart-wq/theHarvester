@@ -7,7 +7,8 @@ import { useActiveCase } from "@/lib/activeCase";
 import { apiGet, apiPostJson, apiFetch } from "@/lib/api";
 import { CaseFileItem } from "./CaseFilesDatabank";
 import WebanatorTool from "./WebanatorTool";
-import { MapIcon, PinIcon, PaperclipIcon, LinkIcon, CameraIcon, CheckIcon, AlertIcon } from "@/components/FlatIcons";
+import ShadowbrokerSuite from "./ShadowbrokerSuite";
+import { MapIcon, PinIcon, PaperclipIcon, LinkIcon, CameraIcon, CheckIcon, AlertIcon, RadarIcon } from "@/components/FlatIcons";
 
 // Dynamically import react-leaflet components (Leaflet relies on window/DOM)
 const MapContainer = dynamic(() => import("react-leaflet").then(m => m.MapContainer), { ssr: false });
@@ -68,6 +69,7 @@ export default function GeoMap() {
   // Photo Geolocation states (Pic2Map & Netryx Astra)
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [showWebanatorModal, setShowWebanatorModal] = useState(false);
+  const [showShadowbrokerModal, setShowShadowbrokerModal] = useState(false);
   const [photoLoading, setPhotoLoading] = useState(false);
   const [pic2mapResult, setPic2mapResult] = useState<{
     has_gps: boolean;
@@ -300,6 +302,7 @@ export default function GeoMap() {
               setShowWebanatorModal(!showWebanatorModal);
               if (showAddModal) setShowAddModal(false);
               if (showPhotoModal) setShowPhotoModal(false);
+              if (showShadowbrokerModal) setShowShadowbrokerModal(false);
             }}
             style={{
               padding: "6px 12px",
@@ -317,6 +320,30 @@ export default function GeoMap() {
           >
             <CameraIcon size={13} color="#ff9e00" />
             {showWebanatorModal ? "Close CCTV (Webanator)" : "Live CCTV (Webanator)"}
+          </button>
+          <button
+            onClick={() => {
+              setShowShadowbrokerModal(!showShadowbrokerModal);
+              if (showAddModal) setShowAddModal(false);
+              if (showPhotoModal) setShowPhotoModal(false);
+              if (showWebanatorModal) setShowWebanatorModal(false);
+            }}
+            style={{
+              padding: "6px 12px",
+              fontSize: 12,
+              background: "rgba(162, 89, 255, 0.15)",
+              color: "#a259ff",
+              border: "1px solid #a259ff",
+              fontWeight: "bold",
+              borderRadius: 4,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <RadarIcon size={13} color="#a259ff" />
+            {showShadowbrokerModal ? "Close Threat (Shadowbroker)" : "Threat Intercept (Shadowbroker)"}
           </button>
           {points.length > 0 && (
             <button
@@ -474,6 +501,19 @@ export default function GeoMap() {
       {showWebanatorModal && (
         <div style={{ marginBottom: 20 }}>
           <WebanatorTool
+            onPinToMap={() => {
+              if (activeCase?.id) {
+                loadCaseGeolocations(activeCase.id);
+              }
+            }}
+          />
+        </div>
+      )}
+
+      {/* Shadowbroker Threat Telemetry Drawer */}
+      {showShadowbrokerModal && (
+        <div style={{ marginBottom: 20 }}>
+          <ShadowbrokerSuite
             onPinToMap={() => {
               if (activeCase?.id) {
                 loadCaseGeolocations(activeCase.id);

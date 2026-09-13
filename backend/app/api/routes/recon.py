@@ -50,6 +50,14 @@ from app.recon.webanator import (
     WEBANATOR_COUNTRIES,
     check_camera_online,
 )
+from app.recon.shadowbroker import (
+    fetch_military_aircraft,
+    detect_gps_jamming,
+    fetch_nasa_firms,
+    fetch_malware_c2,
+    fetch_telegram_osint,
+    fetch_usgs_earthquakes,
+)
 import json
 import os
 
@@ -461,6 +469,46 @@ async def webanator_search(
 async def webanator_check_stream(stream_url: str):
     """Validates if a camera stream is online and responding."""
     return await check_camera_online(stream_url)
+
+
+# ---------------------------------------------------------------------------
+# Shadowbroker: Global Threat & Multi-Domain Telemetry (BigBodyCobain/Shadowbroker)
+# ---------------------------------------------------------------------------
+
+@router.get("/shadowbroker/military-flights")
+async def shadowbroker_military_flights(limit: int = 60):
+    """Fetches live military, reconnaissance, and VIP flights from ADS-B telemetry."""
+    return await fetch_military_aircraft(limit=limit)
+
+
+@router.get("/shadowbroker/gps-jamming")
+async def shadowbroker_gps_jamming():
+    """Detects active GPS jamming and electronic warfare zones from transponder NAC-p degradation."""
+    return await detect_gps_jamming()
+
+
+@router.get("/shadowbroker/nasa-firms")
+async def shadowbroker_nasa_firms(limit: int = 60):
+    """Fetches real-time 24h global thermal anomalies and active fires from NASA FIRMS VIIRS satellite."""
+    return await fetch_nasa_firms(limit=limit)
+
+
+@router.get("/shadowbroker/malware-c2")
+async def shadowbroker_malware_c2(limit: int = 50):
+    """Fetches active botnet C2 servers and malicious infrastructure from abuse.ch Feodo Tracker."""
+    return await fetch_malware_c2(limit=limit)
+
+
+@router.get("/shadowbroker/telegram-feed")
+async def shadowbroker_telegram_feed(channel: str = "osintdefender", limit: int = 20):
+    """Scrapes public conflict and intelligence Telegram channels with geoparsed coordinates."""
+    return await fetch_telegram_osint(channel=channel, limit=limit)
+
+
+@router.get("/shadowbroker/earthquakes")
+async def shadowbroker_earthquakes(limit: int = 50):
+    """Fetches global seismic events (M2.5+) from USGS Hazards Program."""
+    return await fetch_usgs_earthquakes(limit=limit)
 
 
 # ---------------------------------------------------------------------------
