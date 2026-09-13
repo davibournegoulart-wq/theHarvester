@@ -64,6 +64,7 @@ const NATIVE_TOOL_MAP: Record<string, { tab: string; feature: string }> = {
   "social-media-osint-tools-collection": { tab: "TOOLS", feature: "165+ Social Media OSINT Tools Directory across 15+ networks" },
   "social-osint": { tab: "TOOLS", feature: "Social Media OSINT Tools Collection" },
   "torbot": { tab: "DARK WEB", feature: "OWASP TorBot Dark Web OSINT, Onion Link Crawler & Forensic Crypto/Email Extractor" },
+  "horus": { tab: "TOOLS", feature: "Project Horus: Hardware MAC OUI Trace, Financial BIN/IIN, Wi-Fi BSSID Geolocation & Loki Evidence Vault" },
 };
 
 function getNativeEquivalent(tool: Tool) {

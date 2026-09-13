@@ -63,6 +63,15 @@ from app.recon.torbot import (
     extract_onion_intel,
     crawl_onion_link_tree,
 )
+from app.recon.horus import (
+    lookup_mac_vendor,
+    lookup_bank_bin,
+    lookup_wifi_bssid,
+    scan_threat_intel,
+    loki_vault_keygen,
+    loki_vault_encrypt,
+    loki_vault_decrypt,
+)
 import json
 import os
 
@@ -544,6 +553,85 @@ async def torbot_intel_endpoint(req: TorbotTargetRequest):
 async def torbot_crawl_endpoint(req: TorbotCrawlRequest):
     """Crawls dark web onion link tree and maps relationship graph."""
     return await crawl_onion_link_tree(req.url, depth=req.depth, max_pages=req.max_pages)
+
+
+# ---------------------------------------------------------------------------
+# Project Horus: Digital Forensics & Multi-Domain OSINT (6abd/horus)
+# ---------------------------------------------------------------------------
+
+class HorusVtRequest(BaseModel):
+    target: str
+    api_key: Optional[str] = None
+
+
+class HorusLokiRequest(BaseModel):
+    action: str  # "keygen" | "encrypt" | "decrypt"
+    data: Optional[str] = ""
+    key: Optional[str] = None
+
+
+@router.get("/horus/mac")
+async def horus_mac_lookup(mac: str = Query(..., description="Target hardware MAC address")):
+    """Project Horus: MAC address hardware vendor, OUI block, and transmission classification."""
+    try:
+        return await lookup_mac_vendor(mac)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/horus/bin")
+async def horus_bin_lookup(bin: str = Query(..., description="Target 6-8 digit Bank Identification Number")):
+    """Project Horus: Bank card BIN/IIN routing, brand, tier, issuing bank, and country lookup."""
+    try:
+        return await lookup_bank_bin(bin)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/horus/wifi")
+async def horus_wifi_lookup(
+    bssid: str = Query(..., description="Target Wi-Fi BSSID access point MAC"),
+    api_name: Optional[str] = None,
+    api_token: Optional[str] = None
+):
+    """Project Horus: Wireless BSSID geolocation triangulation (Mylnikov open API + WiGLE v2)."""
+    try:
+        return await lookup_wifi_bssid(bssid, api_name=api_name, api_token=api_token)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/horus/vt")
+async def horus_threat_scan(req: HorusVtRequest):
+    """Project Horus: Multi-engine threat intelligence and file hash / URL / IP scanner."""
+    return await scan_threat_intel(req.target, api_key=req.api_key)
+
+
+@router.post("/horus/loki")
+def horus_loki_vault(req: HorusLokiRequest):
+    """Project Horus: Loki cryptographic evidence vault (keygen, encrypt, decrypt)."""
+    action = req.action.lower()
+    if action == "keygen":
+        key = loki_vault_keygen()
+        return {"action": "keygen", "key": key}
+    elif action == "encrypt":
+        if not req.key:
+            raise HTTPException(status_code=400, detail="Fernet encryption key is required.")
+        try:
+            ciphertext = loki_vault_encrypt(req.data or "", req.key)
+            return {"action": "encrypt", "ciphertext": ciphertext}
+        except Exception as err:
+            raise HTTPException(status_code=400, detail=f"Encryption failed: {err}")
+    elif action == "decrypt":
+        if not req.key:
+            raise HTTPException(status_code=400, detail="Fernet encryption key is required.")
+        try:
+            plaintext = loki_vault_decrypt(req.data or "", req.key)
+            return {"action": "decrypt", "plaintext": plaintext}
+        except Exception as err:
+            raise HTTPException(status_code=400, detail=f"Decryption failed: {err}")
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported Loki action: {req.action}")
 
 
 # ---------------------------------------------------------------------------

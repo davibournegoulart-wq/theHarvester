@@ -1,5 +1,36 @@
 [
   {
+    "id": "horus",
+    "name": "Project Horus",
+    "description": "All-in-one OSINT & Digital Forensics investigation suite with MAC OUI tracing, Bank card BIN/IIN routing, Wi-Fi BSSID triangulation, VirusTotal threat scanning, and Loki cryptographic evidence vault",
+    "category": "forensics",
+    "url": "https://github.com/6abd/horus",
+    "install": {
+      "method": "git",
+      "kali": "git clone https://github.com/6abd/horus.git",
+      "raw": "[github.com/6abd/horus](https://github.com/6abd/horus)"
+    },
+    "tags": [
+      "osint",
+      "forensics",
+      "mac",
+      "bin",
+      "bank",
+      "wifi",
+      "bssid",
+      "virustotal",
+      "threat-intel",
+      "loki",
+      "cryptography"
+    ],
+    "source_versions": [
+      "v3.3"
+    ],
+    "aliases": ["horus-osint", "project-horus"],
+    "sections_seen": ["forensics", "osint"],
+    "archived": false
+  },
+  {
     "id": "torbot",
     "name": "OWASP TorBot",
     "description": "Dark Web OSINT, Onion Link Crawler & Forensic Crypto/Email Extractor developed under OWASP",

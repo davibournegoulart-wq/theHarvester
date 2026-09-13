@@ -16,6 +16,7 @@ import LinkdTimeTool from "./LinkdTimeTool";
 import WebanatorTool from "./WebanatorTool";
 import ShadowbrokerSuite from "./ShadowbrokerSuite";
 import TorBotTool from "./TorBotTool";
+import HorusSuite from "./HorusSuite";
 import { CheckIcon, KeyIcon, ShieldIcon, AlertIcon, FolderIcon, CameraIcon, PinIcon, GlobeIcon, LockIcon, LinkIcon } from "@/components/FlatIcons";
 
 type ReverseImageLink = {
@@ -764,6 +765,7 @@ export default function ToolsPanel() {
       <WebanatorTool />
       <ShadowbrokerSuite />
       <TorBotTool />
+      <HorusSuite />
       <GitleaksTruffleHogTool />
       <ReverseImageTool />
       <InstaLooterTool />
