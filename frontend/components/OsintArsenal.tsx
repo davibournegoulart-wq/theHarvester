@@ -35,6 +35,7 @@ const NATIVE_TOOL_MAP: Record<string, { tab: string; feature: string }> = {
   "amass": { tab: "DOMAIN/IP", feature: "Domain reconnaissance & correlation graph" },
   "pic2map": { tab: "GEOLOCATION", feature: "Photo EXIF GPS extractor & reverse geocoding" },
   "netryx": { tab: "GEOLOCATION", feature: "Streetview Panorama & Landmark Geolocation AI" },
+  "webanator": { tab: "GEOLOCATION", feature: "Open Webcam & CCTV Stream Reconnaissance (28+ Countries)" },
   "ghunt": { tab: "TOOLS", feature: "Google GAIA ID, Hangouts, and Google Photos profile extractor" },
   "exiftool": { tab: "TOOLS", feature: "Image EXIF metadata & GPS coordinate mapper" },
   "search-by-image": { tab: "TOOLS", feature: "Multi-engine reverse image search (Lens, Yandex, Baidu, PimEyes)" },

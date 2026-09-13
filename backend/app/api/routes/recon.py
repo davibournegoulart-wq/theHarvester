@@ -45,6 +45,11 @@ from app.recon.ghost_track import (
 )
 from app.recon.visual_geolocation import extract_pic2map_exif, predict_visual_geolocation
 from app.recon.mail_access import run_mail_access_deep_recon
+from app.recon.webanator import (
+    search_webcams_by_country,
+    WEBANATOR_COUNTRIES,
+    check_camera_online,
+)
 import json
 import os
 
@@ -424,6 +429,38 @@ async def ghosttrack_my_ip(use_tor: bool = False):
 async def ghosttrack_username(username: str, use_tor: bool = False):
     """GhostTrack Username Tracker (TrackLu): Fast 24-platform social and developer footprint check."""
     return await run_ghost_username_scan(username, use_tor=use_tor)
+
+
+# ---------------------------------------------------------------------------
+# Webanator: Open Webcam & CCTV Stream Reconnaissance (K3ysTr0K3R/Webanator)
+# ---------------------------------------------------------------------------
+
+@router.get("/webanator/countries")
+def webanator_countries():
+    """Returns the list of supported countries for Webanator surveillance reconnaissance."""
+    return WEBANATOR_COUNTRIES
+
+
+@router.get("/webanator/search")
+async def webanator_search(
+    country_code: str = "US",
+    page: int = 1,
+    max_results: int = 12,
+    use_tor: bool = False,
+):
+    """Scrapes and extracts open webcams, live streaming MJPG URLs, and geolocated coordinates."""
+    return await search_webcams_by_country(
+        country_code=country_code,
+        page=page,
+        max_results=max_results,
+        use_tor=use_tor,
+    )
+
+
+@router.get("/webanator/check")
+async def webanator_check_stream(stream_url: str):
+    """Validates if a camera stream is online and responding."""
+    return await check_camera_online(stream_url)
 
 
 # ---------------------------------------------------------------------------

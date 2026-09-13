@@ -6,6 +6,7 @@ import "leaflet/dist/leaflet.css";
 import { useActiveCase } from "@/lib/activeCase";
 import { apiGet, apiPostJson, apiFetch } from "@/lib/api";
 import { CaseFileItem } from "./CaseFilesDatabank";
+import WebanatorTool from "./WebanatorTool";
 import { MapIcon, PinIcon, PaperclipIcon, LinkIcon, CameraIcon, CheckIcon, AlertIcon } from "@/components/FlatIcons";
 
 // Dynamically import react-leaflet components (Leaflet relies on window/DOM)
@@ -66,6 +67,7 @@ export default function GeoMap() {
 
   // Photo Geolocation states (Pic2Map & Netryx Astra)
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [showWebanatorModal, setShowWebanatorModal] = useState(false);
   const [photoLoading, setPhotoLoading] = useState(false);
   const [pic2mapResult, setPic2mapResult] = useState<{
     has_gps: boolean;
@@ -274,6 +276,7 @@ export default function GeoMap() {
             onClick={() => {
               setShowPhotoModal(!showPhotoModal);
               if (showAddModal) setShowAddModal(false);
+              if (showWebanatorModal) setShowWebanatorModal(false);
             }}
             style={{
               padding: "6px 12px",
@@ -291,6 +294,29 @@ export default function GeoMap() {
           >
             <CameraIcon size={13} color="var(--cyan)" />
             {showPhotoModal ? "Close Photo GPS" : "Photo GPS (Pic2Map & Astra)"}
+          </button>
+          <button
+            onClick={() => {
+              setShowWebanatorModal(!showWebanatorModal);
+              if (showAddModal) setShowAddModal(false);
+              if (showPhotoModal) setShowPhotoModal(false);
+            }}
+            style={{
+              padding: "6px 12px",
+              fontSize: 12,
+              background: "rgba(255, 158, 0, 0.15)",
+              color: "#ff9e00",
+              border: "1px solid #ff9e00",
+              fontWeight: "bold",
+              borderRadius: 4,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <CameraIcon size={13} color="#ff9e00" />
+            {showWebanatorModal ? "Close CCTV (Webanator)" : "Live CCTV (Webanator)"}
           </button>
           {points.length > 0 && (
             <button
@@ -441,6 +467,19 @@ export default function GeoMap() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Webanator CCTV Stream Reconnaissance Drawer */}
+      {showWebanatorModal && (
+        <div style={{ marginBottom: 20 }}>
+          <WebanatorTool
+            onPinToMap={() => {
+              if (activeCase?.id) {
+                loadCaseGeolocations(activeCase.id);
+              }
+            }}
+          />
         </div>
       )}
 
