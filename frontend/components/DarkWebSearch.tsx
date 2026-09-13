@@ -4,7 +4,8 @@ import { useState } from "react";
 import { apiGet, apiPostJson } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "@/components/SaveToCaseButton";
-import { CheckIcon } from "@/components/FlatIcons";
+import TorBotTool from "./TorBotTool";
+import { CheckIcon, ShieldIcon, SpiderIcon } from "@/components/FlatIcons";
 
 type DarkWebMatch = {
   engine: string;
@@ -22,6 +23,8 @@ export default function DarkWebSearch() {
   const [error, setError] = useState<string | null>(null);
   const [savingAll, setSavingAll] = useState(false);
   const [savedCount, setSavedCount] = useState<number | null>(null);
+  const [showTorBot, setShowTorBot] = useState(false);
+  const [inspectUrl, setInspectUrl] = useState<string | null>(null);
 
   async function handleSearch() {
     if (!keyword) return;
@@ -70,12 +73,41 @@ export default function DarkWebSearch() {
 
   return (
     <div>
-      <h2 style={{ color: "var(--cyan)", marginBottom: 8 }}>DARK WEB MONITOR</h2>
-      <p style={{ maxWidth: 700, color: "var(--text-muted)", fontSize: 14 }}>
-        Native query via Tor proxy (SOCKS5). Current engines: Ahmia and Torch.
-        Search is performed 100% on the local backend without exposing your real IP on the onion network.
-        May take 10 to 30 seconds due to Tor network latency.
-      </p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <h2 style={{ color: "var(--cyan)", margin: "0 0 8px 0" }}>DARK WEB MONITOR</h2>
+          <p style={{ maxWidth: 700, color: "var(--text-muted)", fontSize: 14, margin: 0 }}>
+            Native query via Tor proxy (SOCKS5). Current engines: Ahmia and Torch.
+            Search is performed 100% on the local backend without exposing your real IP on the onion network.
+          </p>
+        </div>
+
+        <button
+          onClick={() => setShowTorBot(!showTorBot)}
+          style={{
+            padding: "8px 14px",
+            fontSize: 12,
+            background: "rgba(0, 255, 159, 0.15)",
+            color: "#00ff9f",
+            border: "1px solid #00ff9f",
+            borderRadius: 4,
+            cursor: "pointer",
+            fontWeight: "bold",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <ShieldIcon size={14} color="#00ff9f" />
+          {showTorBot ? "Close TorBot" : "TorBot Onion Crawler & Forensics"}
+        </button>
+      </div>
+
+      {showTorBot && (
+        <div style={{ marginTop: 20, marginBottom: 20 }}>
+          <TorBotTool initialUrl={inspectUrl || undefined} />
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 8, maxWidth: 600, marginTop: 24 }}>
         <input
@@ -139,15 +171,41 @@ export default function DarkWebSearch() {
                       {r.title}
                     </a>
                   </div>
-                  <SaveToCaseButton
-                    key={`${activeCase?.id}-${r.result_url}`}
-                    identifierType="url"
-                    identifierValue={r.result_url}
-                    platform={`darkweb.${r.engine}`}
-                    url={r.result_url}
-                    discoveredBy="darkweb_monitor"
-                    metadata={{ title: r.title, keyword, engine: r.engine }}
-                  />
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInspectUrl(r.result_url);
+                        setShowTorBot(true);
+                      }}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                        fontSize: 11,
+                        padding: "4px 8px",
+                        background: "rgba(168, 85, 247, 0.15)",
+                        border: "1px solid rgba(168, 85, 247, 0.4)",
+                        borderRadius: 4,
+                        color: "#c084fc",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                      }}
+                      title="Inspect with OWASP TorBot"
+                    >
+                      <SpiderIcon size={12} color="#c084fc" />
+                      TorBot Intel
+                    </button>
+                    <SaveToCaseButton
+                      key={`${activeCase?.id}-${r.result_url}`}
+                      identifierType="url"
+                      identifierValue={r.result_url}
+                      platform={`darkweb.${r.engine}`}
+                      url={r.result_url}
+                      discoveredBy="darkweb_monitor"
+                      metadata={{ title: r.title, keyword, engine: r.engine }}
+                    />
+                  </div>
                 </div>
                 <div style={{ fontSize: 13, color: "var(--text-muted)", wordBreak: "break-all" }}>
                   {r.result_url}

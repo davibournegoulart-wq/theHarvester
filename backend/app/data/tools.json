@@ -1,5 +1,32 @@
 [
   {
+    "id": "torbot",
+    "name": "OWASP TorBot",
+    "description": "Dark Web OSINT, Onion Link Crawler & Forensic Crypto/Email Extractor developed under OWASP",
+    "category": "dark-web",
+    "url": "https://github.com/DedSecInside/TorBot",
+    "install": {
+      "method": "git",
+      "kali": "git clone https://github.com/DedSecInside/TorBot.git",
+      "raw": "[github.com/DedSecInside/TorBot](https://github.com/DedSecInside/TorBot)"
+    },
+    "tags": [
+      "dark-web",
+      "tor",
+      "onion",
+      "crawler",
+      "forensics",
+      "crypto",
+      "bitcoin"
+    ],
+    "source_versions": [
+      "v3.3"
+    ],
+    "aliases": ["tor-bot", "owasp-torbot"],
+    "sections_seen": ["dark-web"],
+    "archived": false
+  },
+  {
     "id": "0xdf-hacks",
     "name": "0xdf hacks stuff",
     "description": "HTB writeups and pentesting writeups",

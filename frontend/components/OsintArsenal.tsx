@@ -63,6 +63,7 @@ const NATIVE_TOOL_MAP: Record<string, { tab: string; feature: string }> = {
   "linkdtime": { tab: "CORPORATE", feature: "LinkdTime 41-bit Snowflake LinkedIn Activity Timelines" },
   "social-media-osint-tools-collection": { tab: "TOOLS", feature: "165+ Social Media OSINT Tools Directory across 15+ networks" },
   "social-osint": { tab: "TOOLS", feature: "Social Media OSINT Tools Collection" },
+  "torbot": { tab: "DARK WEB", feature: "OWASP TorBot Dark Web OSINT, Onion Link Crawler & Forensic Crypto/Email Extractor" },
 };
 
 function getNativeEquivalent(tool: Tool) {

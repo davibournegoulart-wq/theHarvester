@@ -58,6 +58,11 @@ from app.recon.shadowbroker import (
     fetch_telegram_osint,
     fetch_usgs_earthquakes,
 )
+from app.recon.torbot import (
+    check_onion_status,
+    extract_onion_intel,
+    crawl_onion_link_tree,
+)
 import json
 import os
 
@@ -509,6 +514,36 @@ async def shadowbroker_telegram_feed(channel: str = "osintdefender", limit: int 
 async def shadowbroker_earthquakes(limit: int = 50):
     """Fetches global seismic events (M2.5+) from USGS Hazards Program."""
     return await fetch_usgs_earthquakes(limit=limit)
+
+
+# ---------------------------------------------------------------------------
+# TorBot: Dark Web OSINT & Onion Crawler (DedSecInside/TorBot)
+# ---------------------------------------------------------------------------
+
+class TorbotTargetRequest(BaseModel):
+    url: str
+
+class TorbotCrawlRequest(BaseModel):
+    url: str
+    depth: int = 1
+    max_pages: int = 12
+
+@router.get("/torbot/check")
+async def torbot_check_endpoint(url: str):
+    """Checks reachability, latency, and status code of an onion or dark web URL."""
+    return await check_onion_status(url)
+
+
+@router.post("/torbot/intel")
+async def torbot_intel_endpoint(req: TorbotTargetRequest):
+    """Deep forensic extraction of emails, crypto wallets, and exposed files from an onion site."""
+    return await extract_onion_intel(req.url)
+
+
+@router.post("/torbot/crawl")
+async def torbot_crawl_endpoint(req: TorbotCrawlRequest):
+    """Crawls dark web onion link tree and maps relationship graph."""
+    return await crawl_onion_link_tree(req.url, depth=req.depth, max_pages=req.max_pages)
 
 
 # ---------------------------------------------------------------------------
