@@ -79,6 +79,16 @@ from app.recon.gods_eye import (
     fetch_maritime_vessels_data,
     fetch_critical_infrastructure_data,
 )
+from app.recon.void_access import (
+    extract_threat_entities,
+    search_threat_actors,
+    fetch_live_threat_feed,
+    generate_yara_rule,
+    generate_sigma_rule,
+    generate_stix_bundle,
+    run_voidaccess_investigation,
+    CURATED_ONION_SEEDS,
+)
 import json
 import os
 
@@ -707,6 +717,73 @@ async def email_mailaccess(email: str, use_tor: bool = False):
 async def email_mailaccess_harvest(domain: str, use_tor: bool = False):
     """MailAccess: Organization email harvester, syntax pattern extrapolator, and role accounts auditor."""
     return await harvest_domain_emails(domain, use_tor=use_tor)
+
+
+# ---------------------------------------------------------------------------
+# VoidAccess (KatrielMoses/voidaccess Dark Web Threat Intel)
+# ---------------------------------------------------------------------------
+
+@router.get("/voidaccess/investigate")
+async def voidaccess_investigate(query: str, category: str = "all", use_tor: bool = False):
+    """VoidAccess: Multi-stage dark web investigation with entity extraction and actor mapping."""
+    return await run_voidaccess_investigation(query=query, category=category, use_tor=use_tor)
+
+
+@router.get("/voidaccess/actors")
+def voidaccess_actors(search: str = ""):
+    """VoidAccess: Query threat actor dossiers and ransomware groups."""
+    return search_threat_actors(search)
+
+
+@router.get("/voidaccess/seeds")
+def voidaccess_seeds(category: str = "all"):
+    """VoidAccess: Curated onion seeds library."""
+    if category == "all":
+        return CURATED_ONION_SEEDS
+    return [s for s in CURATED_ONION_SEEDS if s.category == category]
+
+
+@router.post("/voidaccess/extract")
+def voidaccess_extract(payload: dict):
+    """VoidAccess: High-precision regex & NER entity extractor for IOCs, crypto, and onions."""
+    text = payload.get("text", "")
+    return extract_threat_entities(text)
+
+
+@router.get("/voidaccess/feeds")
+async def voidaccess_feeds():
+    """VoidAccess: Live dark web ransomware extortion and botnet C2 threat feeds."""
+    return await fetch_live_threat_feed()
+
+
+@router.post("/voidaccess/export")
+def voidaccess_export(payload: dict):
+    """VoidAccess: Generate STIX 2.1, YARA, or Sigma detection rules from threat indicators."""
+    fmt = payload.get("format", "yara").lower()
+    text = payload.get("text", "")
+    title = payload.get("title", "Threat Indicator Detection")
+    entities = extract_threat_entities(text)
+
+    if fmt == "yara":
+        rule = generate_yara_rule(title, entities)
+        return {"format": "yara", "content": rule}
+    elif fmt == "sigma":
+        rule = generate_sigma_rule(title, entities)
+        return {"format": "sigma", "content": rule}
+    elif fmt == "stix":
+        bundle = generate_stix_bundle(title, entities)
+        return {"format": "stix", "content": bundle}
+    else:
+        lines = ["Type,Indicator"]
+        for btc in entities.cryptocurrency:
+            lines.append(f"{btc['type']}_address,{btc['address']}")
+        for o in entities.onion_urls:
+            lines.append(f"onion_url,{o}")
+        for h in entities.hashes:
+            lines.append(f"hash_{h['type']},{h['hash']}")
+        for c in entities.cves:
+            lines.append(f"cve,{c}")
+        return {"format": "csv", "content": "\n".join(lines)}
 
 
 # ---------------------------------------------------------------------------

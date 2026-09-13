@@ -1,5 +1,37 @@
 [
   {
+    "id": "voidaccess",
+    "name": "VoidAccess",
+    "description": "Dark-web threat intelligence and research collection platform with high-precision entity extraction (crypto wallets, .onions, CVEs, Telegram handles, combos), ransomware actor dossiers (LockBit, ALPHV, Akira, BianLian), live extortion feeds, and STIX/YARA/Sigma detection generators",
+    "category": "dark-web",
+    "url": "https://github.com/KatrielMoses/voidaccess",
+    "install": {
+      "method": "git",
+      "kali": "git clone https://github.com/KatrielMoses/voidaccess.git",
+      "raw": "[github.com/KatrielMoses/voidaccess](https://github.com/KatrielMoses/voidaccess)"
+    },
+    "tags": [
+      "dark-web",
+      "threat-intel",
+      "ransomware",
+      "actor-profiles",
+      "iocs",
+      "crypto-wallets",
+      "onions",
+      "cve",
+      "mitre-attck",
+      "yara",
+      "sigma",
+      "stix"
+    ],
+    "source_versions": [
+      "v1.0"
+    ],
+    "aliases": ["void-access", "voidaccess-osint"],
+    "sections_seen": ["dark-web", "threat-intel", "reconnaissance"],
+    "archived": false
+  },
+  {
     "id": "mailaccess",
     "name": "MailAccess",
     "description": "Self-hostable OSINT platform for deep email investigations with Defender's Brief risk engine, Name Consensus cross-signal resolver, Hudson Rock infostealers, XposedOrNot breaches, PGP keyserver, Google/M365 tenant intel, and organization email harvester",

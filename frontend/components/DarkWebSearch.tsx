@@ -5,6 +5,7 @@ import { apiGet, apiPostJson } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "@/components/SaveToCaseButton";
 import TorBotTool from "./TorBotTool";
+import VoidAccessSuite from "./VoidAccessSuite";
 import { CheckIcon, ShieldIcon, SpiderIcon } from "@/components/FlatIcons";
 
 type DarkWebMatch = {
@@ -24,6 +25,7 @@ export default function DarkWebSearch() {
   const [savingAll, setSavingAll] = useState(false);
   const [savedCount, setSavedCount] = useState<number | null>(null);
   const [showTorBot, setShowTorBot] = useState(false);
+  const [showVoidAccess, setShowVoidAccess] = useState(false);
   const [inspectUrl, setInspectUrl] = useState<string | null>(null);
 
   async function handleSearch() {
@@ -82,30 +84,58 @@ export default function DarkWebSearch() {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowTorBot(!showTorBot)}
-          style={{
-            padding: "8px 14px",
-            fontSize: 12,
-            background: "rgba(0, 255, 159, 0.15)",
-            color: "#00ff9f",
-            border: "1px solid #00ff9f",
-            borderRadius: 4,
-            cursor: "pointer",
-            fontWeight: "bold",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          <ShieldIcon size={14} color="#00ff9f" />
-          {showTorBot ? "Close TorBot" : "TorBot Onion Crawler & Forensics"}
-        </button>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            onClick={() => setShowTorBot(!showTorBot)}
+            style={{
+              padding: "8px 14px",
+              fontSize: 12,
+              background: "rgba(0, 255, 159, 0.15)",
+              color: "#00ff9f",
+              border: "1px solid #00ff9f",
+              borderRadius: 4,
+              cursor: "pointer",
+              fontWeight: "bold",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <ShieldIcon size={14} color="#00ff9f" />
+            {showTorBot ? "Close TorBot" : "TorBot Onion Crawler"}
+          </button>
+
+          <button
+            onClick={() => setShowVoidAccess(!showVoidAccess)}
+            style={{
+              padding: "8px 14px",
+              fontSize: 12,
+              background: "rgba(168, 85, 247, 0.2)",
+              color: "#c084fc",
+              border: "1px solid #a855f7",
+              borderRadius: 4,
+              cursor: "pointer",
+              fontWeight: "bold",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <SpiderIcon size={14} color="#a855f7" />
+            {showVoidAccess ? "Close VoidAccess" : "VoidAccess Threat Intel & Ransomware"}
+          </button>
+        </div>
       </div>
 
       {showTorBot && (
         <div style={{ marginTop: 20, marginBottom: 20 }}>
           <TorBotTool initialUrl={inspectUrl || undefined} />
+        </div>
+      )}
+
+      {showVoidAccess && (
+        <div style={{ marginTop: 20, marginBottom: 20 }}>
+          <VoidAccessSuite />
         </div>
       )}
 
