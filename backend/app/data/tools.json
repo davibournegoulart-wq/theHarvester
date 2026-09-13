@@ -1,5 +1,62 @@
 [
   {
+    "id": "forensically",
+    "name": "Forensically",
+    "description": "Digital image forensics suite featuring Error Level Analysis (ELA), Clone Detection (Copy-Move Forgery), high-frequency Noise Analysis, Luminance Gradient, JPEG Ghost recompression curves, and Forensic Magnifier",
+    "category": "tools",
+    "url": "https://29a.ch/photo-forensics/",
+    "install": {
+      "method": "web",
+      "kali": "echo 'Native Franken-Scraper Forensics Suite'",
+      "raw": "[29a.ch/photo-forensics](https://29a.ch/photo-forensics/)"
+    },
+    "tags": [
+      "forensics",
+      "image-analysis",
+      "ela",
+      "clone-detection",
+      "copy-move",
+      "noise-analysis",
+      "magnifier",
+      "jpeg-ghost",
+      "metadata",
+      "exif"
+    ],
+    "source_versions": ["v1.0"],
+    "aliases": ["forensically-osint", "photo-forensics"],
+    "sections_seen": ["image-analysis", "forensics", "osint-tools"],
+    "archived": false
+  },
+  {
+    "id": "forensic-image-toolkit",
+    "name": "Forensic-Image-Analysis-Toolkit",
+    "description": "Comprehensive image forensics toolkit with 2D FFT resampling detection, LSB steganography chi-square randomness testing, cryptographic & perceptual hashes (pHash, aHash, dHash), and EXIF camera software tampering detection",
+    "category": "tools",
+    "url": "https://github.com/CodeRafay/Forensic-Image-Analysis-Toolkit",
+    "install": {
+      "method": "git",
+      "kali": "git clone https://github.com/CodeRafay/Forensic-Image-Analysis-Toolkit.git",
+      "raw": "[github.com/CodeRafay/Forensic-Image-Analysis-Toolkit](https://github.com/CodeRafay/Forensic-Image-Analysis-Toolkit)"
+    },
+    "tags": [
+      "image-forensics",
+      "resampling",
+      "fft-spectrum",
+      "steganography",
+      "lsb",
+      "chi-square",
+      "perceptual-hash",
+      "phash",
+      "ahash",
+      "dhash",
+      "tampering-detection"
+    ],
+    "source_versions": ["v1.0"],
+    "aliases": ["forensic-image-analysis", "image-forensics-toolkit"],
+    "sections_seen": ["forensics", "image-analysis"],
+    "archived": false
+  },
+  {
     "id": "voidaccess",
     "name": "VoidAccess",
     "description": "Dark-web threat intelligence and research collection platform with high-precision entity extraction (crypto wallets, .onions, CVEs, Telegram handles, combos), ransomware actor dossiers (LockBit, ALPHV, Akira, BianLian), live extortion feeds, and STIX/YARA/Sigma detection generators",

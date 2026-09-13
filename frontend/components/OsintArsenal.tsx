@@ -68,6 +68,8 @@ const NATIVE_TOOL_MAP: Record<string, { tab: string; feature: string }> = {
   "gods-eye": { tab: "GEOLOCATION", feature: "God's Eye View: Spy-Satellite Simulator, Real-Time Orbital Tracking & Multi-Sensor Intelligence" },
   "gods-eye-view": { tab: "GEOLOCATION", feature: "God's Eye View: Spy-Satellite Simulator, Real-Time Orbital Tracking & Multi-Sensor Intelligence" },
   "voidaccess": { tab: "DARK WEB", feature: "VoidAccess Dark Web Threat Intel: Ransomware Actor Dossiers, Deep Entity Extraction & Detection Rules" },
+  "forensically": { tab: "TOOLS", feature: "Forensically Image Forensics: Error Level Analysis (ELA), Clone Detection, Noise Map & Forensic Magnifier" },
+  "forensic-image": { tab: "TOOLS", feature: "Forensic-Image-Analysis-Toolkit: 2D FFT Resampling, LSB Steganography, Perceptual Hashes & EXIF Forensics" },
 };
 
 function getNativeEquivalent(tool: Tool) {

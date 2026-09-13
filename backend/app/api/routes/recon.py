@@ -1619,15 +1619,176 @@ async def social_analytics_attach_evidence(
         },
     )
 
+
+# ============================================================================
+# DIGITAL IMAGE FORENSICS (Forensically & Forensic Image Analysis Toolkit)
+# ============================================================================
+
+import base64
+from app.recon.forensic_image import (
+    perform_ela,
+    detect_clones,
+    generate_noise_map,
+    analyze_luminance_gradient,
+    detect_jpeg_ghost,
+    detect_resampling,
+    detect_steganography_lsb,
+    compute_hashes,
+    compute_hamming_distance,
+    extract_exif_forensics,
+    run_full_forensic_analysis,
+)
+
+
+class ForensicAnalyzeRequest(BaseModel):
+    image_url: Optional[str] = None
+    image_base64: Optional[str] = None
+    use_tor: bool = False
+
+
+class ForensicElaRequest(BaseModel):
+    image_url: Optional[str] = None
+    image_base64: Optional[str] = None
+    quality: int = 95
+    error_scale: float = 10.0
+    overlay_opacity: float = 0.5
+    use_tor: bool = False
+
+
+class ForensicCloneRequest(BaseModel):
+    image_url: Optional[str] = None
+    image_base64: Optional[str] = None
+    block_size: int = 16
+    threshold: float = 0.96
+    min_distance: int = 40
+    use_tor: bool = False
+
+
+class ForensicCompareRequest(BaseModel):
+    image1_base64: Optional[str] = None
+    image2_base64: Optional[str] = None
+    image1_url: Optional[str] = None
+    image2_url: Optional[str] = None
+    use_tor: bool = False
+
+
+async def _resolve_image_bytes(
+    image_url: Optional[str] = None,
+    image_base64: Optional[str] = None,
+    use_tor: bool = False,
+) -> bytes:
+    """Helper to resolve image bytes from either Base64 or remote URL."""
+    if image_base64:
+        # Strip data URL header if present (e.g. data:image/png;base64,...)
+        if "," in image_base64:
+            image_base64 = image_base64.split(",", 1)[1]
+        return base64.b64decode(image_base64)
+
+    if image_url:
+        proxies = "socks5://127.0.0.1:9050" if use_tor else None
+        async with httpx.AsyncClient(proxy=proxies, timeout=25.0, verify=False) as client:
+            resp = await client.get(image_url)
+            if resp.status_code != 200:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Failed to fetch image from URL: HTTP {resp.status_code}",
+                )
+            return resp.content
+
+    raise HTTPException(
+        status_code=400,
+        detail="Either image_url or image_base64 must be provided.",
+    )
+
+
+@router.post("/image-forensics/upload")
+async def forensic_image_upload(file: UploadFile = File(...)):
+    """Accepts an uploaded image file and runs complete digital image forensics analysis."""
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Empty file uploaded.")
+
+    result = await run_in_threadpool(run_full_forensic_analysis, content)
+    # Include original image data URL so frontend can display side-by-side
+    b64_orig = base64.b64encode(content).decode("utf-8")
+    ext = file.filename.split(".")[-1].lower() if file.filename and "." in file.filename else "jpeg"
+    mime = "image/png" if ext == "png" else "image/jpeg"
+    result["original_image"] = f"data:{mime};base64,{b64_orig}"
+    result["filename"] = file.filename
+    result["file_size"] = len(content)
+    return result
+
+
+@router.post("/image-forensics/analyze")
+async def forensic_image_analyze(req: ForensicAnalyzeRequest):
+    """Runs complete digital image forensics on an image URL or Base64 string."""
+    image_bytes = await _resolve_image_bytes(req.image_url, req.image_base64, req.use_tor)
+    result = await run_in_threadpool(run_full_forensic_analysis, image_bytes)
+
+    b64_orig = base64.b64encode(image_bytes).decode("utf-8")
+    result["original_image"] = f"data:image/jpeg;base64,{b64_orig}"
+    result["file_size"] = len(image_bytes)
+    return result
+
+
+@router.post("/image-forensics/ela")
+async def forensic_image_ela(req: ForensicElaRequest):
+    """Dynamic Error Level Analysis with customizable quality, error scaling, and opacity."""
+    image_bytes = await _resolve_image_bytes(req.image_url, req.image_base64, req.use_tor)
+    return await run_in_threadpool(
+        perform_ela,
+        image_bytes,
+        req.quality,
+        req.error_scale,
+        req.overlay_opacity,
+    )
+
+
+@router.post("/image-forensics/clones")
+async def forensic_image_clones(req: ForensicCloneRequest):
+    """Dynamic Copy-Move Forgery / Clone detection with customizable sensitivity thresholds."""
+    image_bytes = await _resolve_image_bytes(req.image_url, req.image_base64, req.use_tor)
+    return await run_in_threadpool(
+        detect_clones,
+        image_bytes,
+        req.block_size,
+        req.threshold,
+        req.min_distance,
+    )
+
+
+@router.post("/image-forensics/compare")
+async def forensic_image_compare(req: ForensicCompareRequest):
+    """Compares two images using cryptographic and perceptual hashes (Hamming distance)."""
+    bytes1 = await _resolve_image_bytes(req.image1_url, req.image1_base64, req.use_tor)
+    bytes2 = await _resolve_image_bytes(req.image2_url, req.image2_base64, req.use_tor)
+
+    hashes1 = await run_in_threadpool(compute_hashes, bytes1)
+    hashes2 = await run_in_threadpool(compute_hashes, bytes2)
+
+    p_dist = compute_hamming_distance(
+        hashes1["perceptual"]["phash"],
+        hashes2["perceptual"]["phash"],
+    )
+    a_dist = compute_hamming_distance(
+        hashes1["perceptual"]["ahash"],
+        hashes2["perceptual"]["ahash"],
+    )
+    d_dist = compute_hamming_distance(
+        hashes1["perceptual"]["dhash"],
+        hashes2["perceptual"]["dhash"],
+    )
+
+    is_identical = hashes1["cryptographic"]["sha256"] == hashes2["cryptographic"]["sha256"]
+    is_perceptual_match = p_dist <= 10  # 10 bit flips out of 64 indicates near identical/rescaled
+
     return {
         "status": "success",
-        "file_id": str(file_id),
-        "filename": safe_stored_name,
-        "original_filename": filename,
-        "file_size": len(content_bytes),
+        "is_exact_match": is_identical,
+        "is_perceptual_match": is_perceptual_match,
+        "phash_distance": p_dist,
+        "ahash_distance": a_dist,
+        "dhash_distance": d_dist,
+        "image1_hashes": hashes1,
+        "image2_hashes": hashes2,
     }
-
-
-
-
-
