@@ -6,7 +6,6 @@ import "leaflet/dist/leaflet.css";
 import { useActiveCase } from "@/lib/activeCase";
 import { apiGet, apiPostJson, apiFetch } from "@/lib/api";
 import { CaseFileItem } from "./CaseFilesDatabank";
-import WebanatorTool from "./WebanatorTool";
 import ShadowbrokerSuite from "./ShadowbrokerSuite";
 import GodsEyeSuite from "./GodsEyeSuite";
 import { MapIcon, PinIcon, PaperclipIcon, LinkIcon, CameraIcon, CheckIcon, AlertIcon, RadarIcon, EyeIcon } from "@/components/FlatIcons";
@@ -69,7 +68,6 @@ export default function GeoMap() {
 
   // Photo Geolocation states (Pic2Map & Netryx Astra)
   const [showPhotoModal, setShowPhotoModal] = useState(false);
-  const [showWebanatorModal, setShowWebanatorModal] = useState(false);
   const [showShadowbrokerModal, setShowShadowbrokerModal] = useState(false);
   const [showGodsEyeModal, setShowGodsEyeModal] = useState(false);
   const [photoLoading, setPhotoLoading] = useState(false);
@@ -280,7 +278,6 @@ export default function GeoMap() {
             onClick={() => {
               setShowPhotoModal(!showPhotoModal);
               if (showAddModal) setShowAddModal(false);
-              if (showWebanatorModal) setShowWebanatorModal(false);
             }}
             style={{
               padding: "6px 12px",
@@ -301,34 +298,9 @@ export default function GeoMap() {
           </button>
           <button
             onClick={() => {
-              setShowWebanatorModal(!showWebanatorModal);
-              if (showAddModal) setShowAddModal(false);
-              if (showPhotoModal) setShowPhotoModal(false);
-              if (showShadowbrokerModal) setShowShadowbrokerModal(false);
-            }}
-            style={{
-              padding: "6px 12px",
-              fontSize: 12,
-              background: "rgba(255, 158, 0, 0.15)",
-              color: "#ff9e00",
-              border: "1px solid #ff9e00",
-              fontWeight: "bold",
-              borderRadius: 4,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            <CameraIcon size={13} color="#ff9e00" />
-            {showWebanatorModal ? "Close CCTV (Webanator)" : "Live CCTV (Webanator)"}
-          </button>
-          <button
-            onClick={() => {
               setShowShadowbrokerModal(!showShadowbrokerModal);
               if (showAddModal) setShowAddModal(false);
               if (showPhotoModal) setShowPhotoModal(false);
-              if (showWebanatorModal) setShowWebanatorModal(false);
             }}
             style={{
               padding: "6px 12px",
@@ -352,7 +324,6 @@ export default function GeoMap() {
               setShowGodsEyeModal(!showGodsEyeModal);
               if (showAddModal) setShowAddModal(false);
               if (showPhotoModal) setShowPhotoModal(false);
-              if (showWebanatorModal) setShowWebanatorModal(false);
               if (showShadowbrokerModal) setShowShadowbrokerModal(false);
             }}
             style={{
@@ -521,19 +492,6 @@ export default function GeoMap() {
               )}
             </div>
           )}
-        </div>
-      )}
-
-      {/* Webanator CCTV Stream Reconnaissance Drawer */}
-      {showWebanatorModal && (
-        <div style={{ marginBottom: 20 }}>
-          <WebanatorTool
-            onPinToMap={() => {
-              if (activeCase?.id) {
-                loadCaseGeolocations(activeCase.id);
-              }
-            }}
-          />
         </div>
       )}
 

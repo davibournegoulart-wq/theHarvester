@@ -13,7 +13,6 @@ import SocialToolsDirectory from "./SocialToolsDirectory";
 import FacebookStalkerTool from "./FacebookStalkerTool";
 import OsintgramTool from "./OsintgramTool";
 import LinkdTimeTool from "./LinkdTimeTool";
-import WebanatorTool from "./WebanatorTool";
 import ShadowbrokerSuite from "./ShadowbrokerSuite";
 import TorBotTool from "./TorBotTool";
 import HorusSuite from "./HorusSuite";
@@ -766,7 +765,6 @@ export default function ToolsPanel() {
       <OsintgramTool />
       <LinkdTimeTool />
       <DeepScraperTool />
-      <WebanatorTool />
       <ShadowbrokerSuite />
       <TorBotTool />
       <HorusSuite />
