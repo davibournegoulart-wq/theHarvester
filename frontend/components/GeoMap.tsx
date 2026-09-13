@@ -8,7 +8,8 @@ import { apiGet, apiPostJson, apiFetch } from "@/lib/api";
 import { CaseFileItem } from "./CaseFilesDatabank";
 import WebanatorTool from "./WebanatorTool";
 import ShadowbrokerSuite from "./ShadowbrokerSuite";
-import { MapIcon, PinIcon, PaperclipIcon, LinkIcon, CameraIcon, CheckIcon, AlertIcon, RadarIcon } from "@/components/FlatIcons";
+import GodsEyeSuite from "./GodsEyeSuite";
+import { MapIcon, PinIcon, PaperclipIcon, LinkIcon, CameraIcon, CheckIcon, AlertIcon, RadarIcon, EyeIcon } from "@/components/FlatIcons";
 
 // Dynamically import react-leaflet components (Leaflet relies on window/DOM)
 const MapContainer = dynamic(() => import("react-leaflet").then(m => m.MapContainer), { ssr: false });
@@ -70,6 +71,7 @@ export default function GeoMap() {
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [showWebanatorModal, setShowWebanatorModal] = useState(false);
   const [showShadowbrokerModal, setShowShadowbrokerModal] = useState(false);
+  const [showGodsEyeModal, setShowGodsEyeModal] = useState(false);
   const [photoLoading, setPhotoLoading] = useState(false);
   const [pic2mapResult, setPic2mapResult] = useState<{
     has_gps: boolean;
@@ -345,6 +347,31 @@ export default function GeoMap() {
             <RadarIcon size={13} color="#a259ff" />
             {showShadowbrokerModal ? "Close Threat (Shadowbroker)" : "Threat Intercept (Shadowbroker)"}
           </button>
+          <button
+            onClick={() => {
+              setShowGodsEyeModal(!showGodsEyeModal);
+              if (showAddModal) setShowAddModal(false);
+              if (showPhotoModal) setShowPhotoModal(false);
+              if (showWebanatorModal) setShowWebanatorModal(false);
+              if (showShadowbrokerModal) setShowShadowbrokerModal(false);
+            }}
+            style={{
+              padding: "6px 12px",
+              fontSize: 12,
+              background: "rgba(0, 229, 255, 0.15)",
+              color: "#00e5ff",
+              border: "1px solid #00e5ff",
+              fontWeight: "bold",
+              borderRadius: 4,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <EyeIcon size={13} color="#00e5ff" />
+            {showGodsEyeModal ? "Close Satellite (God's Eye)" : "Satellite Recon (God's Eye)"}
+          </button>
           {points.length > 0 && (
             <button
               onClick={handleClearAllPoints}
@@ -520,6 +547,13 @@ export default function GeoMap() {
               }
             }}
           />
+        </div>
+      )}
+
+      {/* God's Eye View Satellite & Multi-Sensor Intelligence Drawer */}
+      {showGodsEyeModal && (
+        <div style={{ marginBottom: 20 }}>
+          <GodsEyeSuite />
         </div>
       )}
 

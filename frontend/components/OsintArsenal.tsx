@@ -65,6 +65,8 @@ const NATIVE_TOOL_MAP: Record<string, { tab: string; feature: string }> = {
   "social-osint": { tab: "TOOLS", feature: "Social Media OSINT Tools Collection" },
   "torbot": { tab: "DARK WEB", feature: "OWASP TorBot Dark Web OSINT, Onion Link Crawler & Forensic Crypto/Email Extractor" },
   "horus": { tab: "TOOLS", feature: "Project Horus: Hardware MAC OUI Trace, Financial BIN/IIN, Wi-Fi BSSID Geolocation & Loki Evidence Vault" },
+  "gods-eye": { tab: "GEOLOCATION", feature: "God's Eye View: Spy-Satellite Simulator, Real-Time Orbital Tracking & Multi-Sensor Intelligence" },
+  "gods-eye-view": { tab: "GEOLOCATION", feature: "God's Eye View: Spy-Satellite Simulator, Real-Time Orbital Tracking & Multi-Sensor Intelligence" },
 };
 
 function getNativeEquivalent(tool: Tool) {

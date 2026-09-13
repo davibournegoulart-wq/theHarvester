@@ -1,5 +1,36 @@
 [
   {
+    "id": "gods-eye-view",
+    "name": "God's Eye View",
+    "description": "Spy-satellite simulator and global multi-sensor intelligence platform tracking real-time orbital satellites (CelesTrak/SGP4), maritime AIS vessels, undersea fiber cables, rocket launches, and critical infrastructure with FLIR/NVG sensor shaders",
+    "category": "geoint",
+    "url": "https://github.com/bilawalsidhu/gods-eye-view",
+    "install": {
+      "method": "git",
+      "kali": "git clone https://github.com/bilawalsidhu/gods-eye-view.git",
+      "raw": "[github.com/bilawalsidhu/gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view)"
+    },
+    "tags": [
+      "geoint",
+      "satellites",
+      "orbit",
+      "ais",
+      "maritime",
+      "submarine-cables",
+      "space-launches",
+      "flir",
+      "thermal",
+      "night-vision",
+      "hud"
+    ],
+    "source_versions": [
+      "v3.3"
+    ],
+    "aliases": ["worldview", "gods-eye"],
+    "sections_seen": ["geoint", "reconnaissance"],
+    "archived": false
+  },
+  {
     "id": "horus",
     "name": "Project Horus",
     "description": "All-in-one OSINT & Digital Forensics investigation suite with MAC OUI tracing, Bank card BIN/IIN routing, Wi-Fi BSSID triangulation, VirusTotal threat scanning, and Loki cryptographic evidence vault",

@@ -72,6 +72,13 @@ from app.recon.horus import (
     loki_vault_encrypt,
     loki_vault_decrypt,
 )
+from app.recon.gods_eye import (
+    fetch_orbital_satellites,
+    fetch_space_launches,
+    fetch_submarine_cables_data,
+    fetch_maritime_vessels_data,
+    fetch_critical_infrastructure_data,
+)
 import json
 import os
 
@@ -632,6 +639,40 @@ def horus_loki_vault(req: HorusLokiRequest):
             raise HTTPException(status_code=400, detail=f"Decryption failed: {err}")
     else:
         raise HTTPException(status_code=400, detail=f"Unsupported Loki action: {req.action}")
+
+
+# ---------------------------------------------------------------------------
+# God's Eye View: Spy-Satellite Simulator & Multi-Sensor Intelligence (bilawalsidhu/gods-eye-view)
+# ---------------------------------------------------------------------------
+
+@router.get("/godseye/satellites")
+async def godseye_satellites(group: str = "stations"):
+    """God's Eye View: Real-time orbital satellite propagation, ground tracks & velocity telemetry (CelesTrak / SGP4)."""
+    return await fetch_orbital_satellites(group=group)
+
+
+@router.get("/godseye/launches")
+async def godseye_launches():
+    """God's Eye View: Space missions, launch countdowns, rockets & launchpad coordinates (Launch Library 2)."""
+    return await fetch_space_launches()
+
+
+@router.get("/godseye/submarine-cables")
+def godseye_submarine_cables():
+    """God's Eye View: Global undersea fiber-optic telecommunications cables & landing stations."""
+    return fetch_submarine_cables_data()
+
+
+@router.get("/godseye/vessels")
+def godseye_vessels():
+    """God's Eye View: Strategic maritime AIS vessels and international choke-point traffic."""
+    return fetch_maritime_vessels_data()
+
+
+@router.get("/godseye/critical-infra")
+def godseye_critical_infra(category: str = "all"):
+    """God's Eye View: Critical global infrastructure (datacenters, mega-dams, defense installations)."""
+    return fetch_critical_infrastructure_data(category=category)
 
 
 # ---------------------------------------------------------------------------
