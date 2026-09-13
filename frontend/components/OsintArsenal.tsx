@@ -25,7 +25,7 @@ const NATIVE_TOOL_MAP: Record<string, { tab: string; feature: string }> = {
   "blackbird": { tab: "USERNAME", feature: "Native username checker with Blackbird endpoints" },
   "whatsmyname": { tab: "USERNAME", feature: "Fast username enumeration across hundreds of sites" },
   "holehe": { tab: "EMAIL", feature: "Password reset / registered services checker" },
-  "mailaccess": { tab: "EMAIL", feature: "Infostealer malware detection, M365 tenant realm & MX checks" },
+  "mailaccess": { tab: "EMAIL", feature: "MailAccess Pro: Defender's Brief, Name Consensus Engine, Hudson Rock Infostealers, PGP & Domain Harvester" },
   "phoneinfoga": { tab: "PHONE", feature: "Phone carrier, line type, format & WhatsApp/TG validation" },
   "ghosttrack": { tab: "TOOLS", feature: "GhostTrack Complete Suite: IP Geolocation, Show My IP, Phone & Username Tracker" },
   "ignorant": { tab: "PHONE", feature: "Phone registration checkers" },

@@ -1,5 +1,37 @@
 [
   {
+    "id": "mailaccess",
+    "name": "MailAccess",
+    "description": "Self-hostable OSINT platform for deep email investigations with Defender's Brief risk engine, Name Consensus cross-signal resolver, Hudson Rock infostealers, XposedOrNot breaches, PGP keyserver, Google/M365 tenant intel, and organization email harvester",
+    "category": "email",
+    "url": "https://github.com/KatrielMoses/MailAccess",
+    "install": {
+      "method": "git",
+      "kali": "git clone https://github.com/KatrielMoses/MailAccess.git",
+      "raw": "[github.com/KatrielMoses/MailAccess](https://github.com/KatrielMoses/MailAccess)"
+    },
+    "tags": [
+      "email",
+      "osint",
+      "defenders-brief",
+      "name-consensus",
+      "infostealer",
+      "hudson-rock",
+      "breaches",
+      "m365",
+      "google",
+      "pgp",
+      "gravatar",
+      "harvester"
+    ],
+    "source_versions": [
+      "v0.15.0"
+    ],
+    "aliases": ["mail-access", "mailaccess-osint"],
+    "sections_seen": ["email", "identity", "reconnaissance"],
+    "archived": false
+  },
+  {
     "id": "gods-eye-view",
     "name": "God's Eye View",
     "description": "Spy-satellite simulator and global multi-sensor intelligence platform tracking real-time orbital satellites (CelesTrak/SGP4), maritime AIS vessels, undersea fiber cables, rocket launches, and critical infrastructure with FLIR/NVG sensor shaders",

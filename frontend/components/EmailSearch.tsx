@@ -4,6 +4,7 @@ import { useState } from "react";
 import { apiFetch, apiGet, apiPostJson, apiPostFormData } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "@/components/SaveToCaseButton";
+import MailAccessSuite from "./MailAccessSuite";
 import { CheckIcon, CrossIcon, FolderIcon, GlobeIcon, ShieldIcon, AlertIcon } from "@/components/FlatIcons";
 
 type EmailResult = {
@@ -81,6 +82,19 @@ type MailAccessResult = {
     auth_url: string | null;
     federation_brand: string | null;
   };
+  name_consensus?: {
+    confirmed_name: string | null;
+    name_confidence: string;
+    confidence_score: number;
+    name_sources: string[];
+    name_reasoning: string;
+  };
+  defenders_brief?: {
+    risk_level: string;
+    risk_summary: string;
+    top_findings: { title: string; detail: string; severity: string; remediation: string }[];
+    next_action: string;
+  };
   key_findings: string[];
   error?: string | null;
 };
@@ -97,6 +111,7 @@ export default function EmailSearch() {
   const [bdResult, setBdResult] = useState<BreachDirectoryResult | null>(null);
   const [analyticsResult, setAnalyticsResult] = useState<BreachAnalytics | null>(null);
   const [mailAccess, setMailAccess] = useState<MailAccessResult | null>(null);
+  const [showMailAccessSuite, setShowMailAccessSuite] = useState(false);
   
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -421,6 +436,21 @@ export default function EmailSearch() {
                   >
                     RISK: {mailAccess.risk_level}
                   </span>
+                  <button
+                    onClick={() => setShowMailAccessSuite(!showMailAccessSuite)}
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: "3px 8px",
+                      borderRadius: 3,
+                      background: "rgba(0, 240, 255, 0.15)",
+                      color: "var(--cyan)",
+                      border: "1px solid rgba(0, 240, 255, 0.4)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {showMailAccessSuite ? "HIDE PRO CONSOLE" : "MAILACCESS PRO"}
+                  </button>
                   <SaveToCaseButton
                     key={`${activeCase?.id}-mailaccess-${email}`}
                     identifierType="email"
@@ -430,6 +460,8 @@ export default function EmailSearch() {
                     metadata={{
                       credibility_score: mailAccess.credibility_score,
                       risk_level: mailAccess.risk_level,
+                      confirmed_name: mailAccess.name_consensus?.confirmed_name,
+                      defenders_brief: mailAccess.defenders_brief,
                       hudson_rock: mailAccess.hudson_rock,
                       m365: mailAccess.m365,
                       key_findings: mailAccess.key_findings,
@@ -437,6 +469,53 @@ export default function EmailSearch() {
                   />
                 </div>
               </div>
+
+              {mailAccess.name_consensus?.confirmed_name && (
+                <div
+                  style={{
+                    background: "rgba(0, 240, 255, 0.05)",
+                    border: "1px solid rgba(0, 240, 255, 0.2)",
+                    borderRadius: 4,
+                    padding: "8px 12px",
+                    marginBottom: 12,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div>
+                    <span style={{ fontSize: 10, color: "var(--cyan)", fontWeight: 700 }}>CONFIRMED IDENTITY CONSENSUS:</span>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>
+                      {mailAccess.name_consensus.confirmed_name}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", fontSize: 10, color: "var(--text-muted)" }}>
+                    <span style={{ color: "var(--success)", fontWeight: 700 }}>
+                      {mailAccess.name_consensus.name_confidence} ({Math.round(mailAccess.name_consensus.confidence_score * 100)}%)
+                    </span>
+                    <div>{mailAccess.name_consensus.name_sources.join(", ")}</div>
+                  </div>
+                </div>
+              )}
+
+              {mailAccess.defenders_brief?.next_action && (
+                <div
+                  style={{
+                    background: "rgba(255, 255, 255, 0.03)",
+                    borderLeft: "3px solid var(--cyan)",
+                    padding: "6px 10px",
+                    marginBottom: 12,
+                    fontSize: 11,
+                    display: "flex",
+                    gap: 6,
+                    alignItems: "center",
+                  }}
+                >
+                  <AlertIcon size={12} color="var(--cyan)" />
+                  <strong style={{ color: "var(--cyan)" }}>Defender Action:</strong>
+                  <span style={{ color: "#ddd" }}>{mailAccess.defenders_brief.next_action}</span>
+                </div>
+              )}
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, fontSize: 12 }}>
                 <div>
@@ -477,6 +556,12 @@ export default function EmailSearch() {
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {showMailAccessSuite && (
+                <div style={{ marginTop: 16 }}>
+                  <MailAccessSuite initialEmail={email} />
                 </div>
               )}
             </div>

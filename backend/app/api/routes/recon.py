@@ -44,7 +44,7 @@ from app.recon.ghost_track import (
     scan_username_ghosttrack as run_ghost_username_scan,
 )
 from app.recon.visual_geolocation import extract_pic2map_exif, predict_visual_geolocation
-from app.recon.mail_access import run_mail_access_deep_recon
+from app.recon.mail_access import run_mail_access_deep_recon, harvest_domain_emails
 from app.recon.webanator import (
     search_webcams_by_country,
     WEBANATOR_COUNTRIES,
@@ -699,8 +699,14 @@ async def geo_netryx_astra(file: UploadFile = File(...)):
 
 @router.get("/email/mailaccess")
 async def email_mailaccess(email: str, use_tor: bool = False):
-    """MailAccess: Multi-module deep email OSINT (Hudson Rock infostealers, EmailRep, M365 tenant, MX deliverability)."""
+    """MailAccess: Multi-module deep email OSINT (Hudson Rock infostealers, EmailRep, M365 tenant, MX deliverability, Name Consensus, Defender's Brief)."""
     return await run_mail_access_deep_recon(email, use_tor=use_tor)
+
+
+@router.get("/email/mailaccess/harvest")
+async def email_mailaccess_harvest(domain: str, use_tor: bool = False):
+    """MailAccess: Organization email harvester, syntax pattern extrapolator, and role accounts auditor."""
+    return await harvest_domain_emails(domain, use_tor=use_tor)
 
 
 # ---------------------------------------------------------------------------
