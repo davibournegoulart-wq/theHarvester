@@ -24,6 +24,7 @@ import {
   CrossIcon,
 } from "@/components/FlatIcons";
 import SaveToCaseButton from "./SaveToCaseButton";
+import OsirisIntelSuite from "./OsirisIntelSuite";
 import type { VisualShaderMode } from "./GodsEyeCesiumGlobe";
 
 const GodsEyeCesiumGlobe = dynamic(() => import("./GodsEyeCesiumGlobe"), {
@@ -64,7 +65,7 @@ export type CaseGeolocationItem = {
 
 import L from "leaflet";
 
-// Leaflet custom marker icon
+// Leaflet custom marker icons
 const customPinIcon = typeof window !== "undefined" ? new L.Icon({
   iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
@@ -72,6 +73,41 @@ const customPinIcon = typeof window !== "undefined" ? new L.Icon({
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
   shadowSize: [41, 41]
+}) : (null as any);
+
+const conflictIcon = typeof window !== "undefined" ? L.divIcon({
+  className: "custom-div-icon",
+  html: `<div style="background: rgba(255, 60, 60, 0.9); border: 2px solid #ff1111; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; box-shadow: 0 0 10px #ff3333;">⚔️</div>`,
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+}) : (null as any);
+
+const earthquakeIcon = typeof window !== "undefined" ? L.divIcon({
+  className: "custom-div-icon",
+  html: `<div style="background: rgba(255, 170, 0, 0.9); border: 2px solid #ffaa00; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; box-shadow: 0 0 8px #ffaa00;">🌋</div>`,
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+}) : (null as any);
+
+const cctvIcon = typeof window !== "undefined" ? L.divIcon({
+  className: "custom-div-icon",
+  html: `<div style="background: rgba(0, 229, 255, 0.9); border: 2px solid #00e5ff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; box-shadow: 0 0 8px #00e5ff;">📹</div>`,
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+}) : (null as any);
+
+const newsIcon = typeof window !== "undefined" ? L.divIcon({
+  className: "custom-div-icon",
+  html: `<div style="background: rgba(162, 89, 255, 0.9); border: 2px solid #a259ff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; box-shadow: 0 0 8px #a259ff;">📺</div>`,
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+}) : (null as any);
+
+const militaryFlightIcon = typeof window !== "undefined" ? L.divIcon({
+  className: "custom-div-icon",
+  html: `<div style="background: rgba(0, 230, 118, 0.9); border: 2px solid #00E676; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; box-shadow: 0 0 8px #00E676;">✈️</div>`,
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
 }) : (null as any);
 
 export default function GeoMap() {
@@ -120,11 +156,28 @@ export default function GeoMap() {
     }
   }
 
-  // Photo Geolocation states (Pic2Map & Netryx Astra)
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [showShadowbrokerModal, setShowShadowbrokerModal] = useState(false);
   const [showGodsEyeModal, setShowGodsEyeModal] = useState(false);
+  const [showOsirisModal, setShowOsirisModal] = useState(false);
   const [photoLoading, setPhotoLoading] = useState(false);
+
+  // Osiris Intelligence Multi-layer States
+  const [conflicts, setConflicts] = useState<any[]>([]);
+  const [earthquakes, setEarthquakes] = useState<any[]>([]);
+  const [cctvs, setCctvs] = useState<any[]>([]);
+  const [newsPoints, setNewsPoints] = useState<any[]>([]);
+  const [militaryFlights, setMilitaryFlights] = useState<any[]>([]);
+
+  // 2D Tactical Layer Visibility Toggles
+  const [layerWars, setLayerWars] = useState(true);
+  const [layerQuakes, setLayerQuakes] = useState(true);
+  const [layerCctv, setLayerCctv] = useState(true);
+  const [layerNews, setLayerNews] = useState(true);
+  const [layerFlights, setLayerFlights] = useState(true);
+
+  // Video News Player Modal in 2D map
+  const [activeNewsStream, setActiveNewsStream] = useState<any | null>(null);
   const [pic2mapResult, setPic2mapResult] = useState<{
     has_gps: boolean;
     latitude?: number;
@@ -206,6 +259,29 @@ export default function GeoMap() {
       loadCaseGeolocations(activeCase.id);
     }
   }, [activeCase?.id]);
+
+  // Load Osiris & Shadowbroker intelligence layers
+  useEffect(() => {
+    async function loadOsirisData() {
+      try {
+        const [czRes, eqRes, cctvRes, newsRes, flRes] = await Promise.allSettled([
+          apiGet<any>("/recon/osiris/conflicts"),
+          apiGet<any>("/recon/osiris/earthquakes?min_magnitude=3.0"),
+          apiGet<any>("/recon/osiris/cctv?limit=60"),
+          apiGet<any>("/recon/osiris/live-news"),
+          apiGet<any>("/recon/shadowbroker/military-flights?limit=50"),
+        ]);
+        if (czRes.status === "fulfilled") setConflicts(czRes.value?.zones || []);
+        if (eqRes.status === "fulfilled") setEarthquakes(eqRes.value?.earthquakes || []);
+        if (cctvRes.status === "fulfilled") setCctvs(cctvRes.value?.cameras || []);
+        if (newsRes.status === "fulfilled") setNewsPoints(newsRes.value?.feeds || []);
+        if (flRes.status === "fulfilled") setMilitaryFlights(Array.isArray(flRes.value) ? flRes.value : []);
+      } catch (err) {
+        console.warn("Error loading Osiris layers:", err);
+      }
+    }
+    loadOsirisData();
+  }, []);
 
   async function handleAddPin(e: React.FormEvent) {
     e.preventDefault();
@@ -478,6 +554,31 @@ export default function GeoMap() {
             <EyeIcon size={13} color="#00e5ff" />
             {showGodsEyeModal ? "Close Satellite (God's Eye)" : "Satellite Recon (God's Eye)"}
           </button>
+          <button
+            onClick={() => {
+              setShowOsirisModal(!showOsirisModal);
+              if (showAddModal) setShowAddModal(false);
+              if (showPhotoModal) setShowPhotoModal(false);
+              if (showShadowbrokerModal) setShowShadowbrokerModal(false);
+              if (showGodsEyeModal) setShowGodsEyeModal(false);
+            }}
+            style={{
+              padding: "6px 12px",
+              fontSize: 12,
+              background: "rgba(0, 230, 118, 0.15)",
+              color: "#00E676",
+              border: "1px solid #00E676",
+              fontWeight: "bold",
+              borderRadius: 4,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <GlobeIcon size={13} color="#00E676" />
+            {showOsirisModal ? "Close Global Intel (Osiris)" : "Global Intel & Feeds (Osiris)"}
+          </button>
           {points.length > 0 && (
             <button
               onClick={handleClearAllPoints}
@@ -650,6 +751,13 @@ export default function GeoMap() {
         </div>
       )}
 
+      {/* Osiris Global Situational Intelligence & Feeds Drawer */}
+      {showOsirisModal && (
+        <div style={{ marginBottom: 20 }}>
+          <OsirisIntelSuite />
+        </div>
+      )}
+
       {/* Pin Geolocation Form / Modal Drawer */}
       {showAddModal && (
         <form
@@ -786,155 +894,329 @@ export default function GeoMap() {
             onSelectCountry={(countryCode) => handleFetchCountryDossier(countryCode)}
           />
         </div>
-      ) : points.length === 0 ? (
-        <div
-          style={{
-            height: 420,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            border: "1px dashed var(--panel-border)",
-            borderRadius: 8,
-            color: "var(--text-muted)",
-            gap: 12,
-          }}
-        >
-          {loading ? (
-            <span>Fetching case coordinates...</span>
-          ) : (
-            <>
-              <PinIcon size={36} color="var(--text-muted)" />
-              <span>No geolocated coordinates recorded for <strong>{activeCase.name}</strong>.</span>
-              <span style={{ fontSize: 12, maxWidth: 500, textAlign: "center" }}>
-                Extract GPS coordinates from images via <strong>TOOLS &gt; Image EXIF</strong>, or click <strong>+ Pin Geolocation</strong> to pinpoint where documents and links were found.
-              </span>
-            </>
-          )}
-        </div>
       ) : (
-        <div style={{ height: 520, width: "100%", borderRadius: 8, overflow: "hidden", border: "1px solid var(--cyan)", position: "relative", marginBottom: 20 }}>
-          <MapContainer
-            center={defaultCenter}
-            zoom={points.length === 1 ? 14 : 11}
-            style={{ height: "100%", width: "100%", backgroundColor: "#0a0c12" }}
+        <div style={{ marginBottom: 20 }}>
+          {/* 2D Multi-layer Switcher Bar */}
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
+              alignItems: "center",
+              flexWrap: "wrap",
+              marginBottom: 10,
+              padding: "8px 12px",
+              background: "rgba(0,0,0,0.4)",
+              border: "1px solid var(--panel-border)",
+              borderRadius: 6,
+              fontSize: 11,
+              fontFamily: "monospace",
+            }}
           >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
-            />
+            <span style={{ color: "var(--cyan)", fontWeight: "bold", marginRight: 4 }}>LAYERS:</span>
 
-            {/* Tracing path between recorded evidence coordinates */}
-            {showTraceLine && polylineCoords.length > 1 && (
-              <Polyline
-                positions={polylineCoords}
-                pathOptions={{ color: "var(--cyan)", weight: 3, dashArray: "6, 8", opacity: 0.85 }}
+            <button
+              onClick={() => setLayerWars(!layerWars)}
+              style={{
+                padding: "3px 8px",
+                borderRadius: 3,
+                fontSize: 10,
+                background: layerWars ? "rgba(255, 85, 85, 0.25)" : "transparent",
+                color: layerWars ? "#ff5555" : "var(--text-muted)",
+                border: `1px solid ${layerWars ? "#ff5555" : "rgba(255,255,255,0.1)"}`,
+                cursor: "pointer",
+              }}
+            >
+              ⚔️ Wars ({conflicts.length})
+            </button>
+
+            <button
+              onClick={() => setLayerQuakes(!layerQuakes)}
+              style={{
+                padding: "3px 8px",
+                borderRadius: 3,
+                fontSize: 10,
+                background: layerQuakes ? "rgba(255, 170, 0, 0.25)" : "transparent",
+                color: layerQuakes ? "#ffaa00" : "var(--text-muted)",
+                border: `1px solid ${layerQuakes ? "#ffaa00" : "rgba(255,255,255,0.1)"}`,
+                cursor: "pointer",
+              }}
+            >
+              🌋 Quakes ({earthquakes.length})
+            </button>
+
+            <button
+              onClick={() => setLayerCctv(!layerCctv)}
+              style={{
+                padding: "3px 8px",
+                borderRadius: 3,
+                fontSize: 10,
+                background: layerCctv ? "rgba(0, 229, 255, 0.25)" : "transparent",
+                color: layerCctv ? "var(--cyan)" : "var(--text-muted)",
+                border: `1px solid ${layerCctv ? "var(--cyan)" : "rgba(255,255,255,0.1)"}`,
+                cursor: "pointer",
+              }}
+            >
+              📹 CCTVs ({cctvs.length})
+            </button>
+
+            <button
+              onClick={() => setLayerNews(!layerNews)}
+              style={{
+                padding: "3px 8px",
+                borderRadius: 3,
+                fontSize: 10,
+                background: layerNews ? "rgba(162, 89, 255, 0.25)" : "transparent",
+                color: layerNews ? "#c084fc" : "var(--text-muted)",
+                border: `1px solid ${layerNews ? "#a259ff" : "rgba(255,255,255,0.1)"}`,
+                cursor: "pointer",
+              }}
+            >
+              📺 News ({newsPoints.length})
+            </button>
+
+            <button
+              onClick={() => setLayerFlights(!layerFlights)}
+              style={{
+                padding: "3px 8px",
+                borderRadius: 3,
+                fontSize: 10,
+                background: layerFlights ? "rgba(0, 230, 118, 0.25)" : "transparent",
+                color: layerFlights ? "#00E676" : "var(--text-muted)",
+                border: `1px solid ${layerFlights ? "#00E676" : "rgba(255,255,255,0.1)"}`,
+                cursor: "pointer",
+              }}
+            >
+              ✈️ Flights ({militaryFlights.length})
+            </button>
+
+            <label style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 6, color: "var(--text-muted)", cursor: "pointer", marginLeft: "auto" }}>
+              <input
+                type="checkbox"
+                checked={showTraceLine}
+                onChange={(e) => setShowTraceLine(e.target.checked)}
               />
-            )}
+              Case Trace Line
+            </label>
+          </div>
 
-            {points.map((p, idx) => (
-              <Marker
-                key={p.id}
-                position={[p.latitude, p.longitude]}
-                icon={customPinIcon}
-              >
-                <Popup>
-                  <div style={{ minWidth: 200, fontSize: 12, color: "#222" }}>
-                    <div style={{ fontWeight: "bold", fontSize: 14, color: "#000", borderBottom: "1px solid #ccc", paddingBottom: 4, marginBottom: 6 }}>
-                      #{idx + 1} {p.label}
-                    </div>
+          <div style={{ height: 560, width: "100%", borderRadius: 8, overflow: "hidden", border: "1px solid var(--cyan)", position: "relative" }}>
+            <MapContainer
+              center={points.length > 0 ? [points[0].latitude, points[0].longitude] : [20.0, 0.0]}
+              zoom={points.length === 1 ? 14 : points.length > 1 ? 10 : 2}
+              style={{ height: "100%", width: "100%", backgroundColor: "#0a0c12" }}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
+              />
 
-                    <div style={{ marginBottom: 4 }}>
-                      <strong>Coords:</strong> {p.latitude.toFixed(5)}, {p.longitude.toFixed(5)}
-                    </div>
+              {/* Tracing path between recorded evidence coordinates */}
+              {showTraceLine && polylineCoords.length > 1 && (
+                <Polyline
+                  positions={polylineCoords}
+                  pathOptions={{ color: "var(--cyan)", weight: 3, dashArray: "6, 8", opacity: 0.85 }}
+                />
+              )}
 
-                    {p.description && (
+              {/* 1. Case Evidence Pins */}
+              {points.map((p, idx) => (
+                <Marker key={p.id} position={[p.latitude, p.longitude]} icon={customPinIcon}>
+                  <Popup>
+                    <div style={{ minWidth: 200, fontSize: 12, color: "#222" }}>
+                      <div style={{ fontWeight: "bold", fontSize: 14, color: "#000", borderBottom: "1px solid #ccc", paddingBottom: 4, marginBottom: 6 }}>
+                        #{idx + 1} {p.label}
+                      </div>
                       <div style={{ marginBottom: 4 }}>
-                        <strong>Details:</strong> {p.description}
+                        <strong>Coords:</strong> {p.latitude.toFixed(5)}, {p.longitude.toFixed(5)}
                       </div>
-                    )}
-
-                    {p.source && (
-                      <div style={{ marginBottom: 4, color: "#555" }}>
-                        <strong>Source:</strong> {p.source}
-                      </div>
-                    )}
-
-                    {/* Attached Web Evidence Link */}
-                    {p.source_url && (
-                      <div style={{ marginBottom: 6 }}>
-                        <strong>Origin URL:</strong>{" "}
-                        <a
-                          href={p.source_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{ color: "#0066cc", wordBreak: "break-all" }}
-                        >
-                          Visit Link ↗
-                        </a>
-                      </div>
-                    )}
-
-                    {/* Attached Case Databank File */}
-                    {p.attached_file && (
-                      <div
-                        style={{
-                          background: "#f0f4f8",
-                          padding: "6px 8px",
-                          borderRadius: 4,
-                          marginBottom: 8,
-                          border: "1px solid #d0d7de",
-                        }}
-                      >
-                        <div style={{ fontWeight: "bold", color: "#0969da", display: "flex", alignItems: "center", gap: 4 }}>
-                          <PaperclipIcon size={12} color="#0969da" /> Pinned Document:
+                      {p.description && (
+                        <div style={{ marginBottom: 4 }}>
+                          <strong>Details:</strong> {p.description}
                         </div>
-                        <div style={{ fontSize: 11 }}>{p.attached_file.original_filename}</div>
-                        <a
-                          href={getDownloadUrl(p.attached_file.id)}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{
-                            display: "inline-block",
-                            marginTop: 4,
-                            color: "#fff",
-                            background: "#0969da",
-                            padding: "2px 8px",
-                            borderRadius: 3,
-                            textDecoration: "none",
-                            fontSize: 10,
-                            fontWeight: "bold",
-                          }}
-                        >
-                          Download Attached File
-                        </a>
+                      )}
+                      {p.source && (
+                        <div style={{ marginBottom: 4, color: "#555" }}>
+                          <strong>Source:</strong> {p.source}
+                        </div>
+                      )}
+                      {p.source_url && (
+                        <div style={{ marginBottom: 6 }}>
+                          <a href={p.source_url} target="_blank" rel="noreferrer" style={{ color: "#0066cc", wordBreak: "break-all" }}>
+                            Visit Link ↗
+                          </a>
+                        </div>
+                      )}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                        <span style={{ fontSize: 10, color: "#888" }}>{new Date(p.created_at).toLocaleDateString()}</span>
+                        <button onClick={() => handleDeletePoint(p.id)} style={{ fontSize: 10, padding: "2px 6px", background: "#ff4d4f", color: "#fff", border: "none", borderRadius: 3, cursor: "pointer" }}>
+                          Delete Pin
+                        </button>
                       </div>
-                    )}
-
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-                      <span style={{ fontSize: 10, color: "#888" }}>
-                        {new Date(p.created_at).toLocaleDateString()}
-                      </span>
-                      <button
-                        onClick={() => handleDeletePoint(p.id)}
-                        style={{
-                          fontSize: 10,
-                          padding: "2px 6px",
-                          background: "#ff4d4f",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: 3,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Delete Pin
-                      </button>
                     </div>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
-          </MapContainer>
+                  </Popup>
+                </Marker>
+              ))}
+
+              {/* 2. Osiris Conflict Zones */}
+              {layerWars &&
+                conflicts.map((cz) => (
+                  <Marker key={`cz-${cz.id}`} position={[cz.lat, cz.lon]} icon={conflictIcon}>
+                    <Popup>
+                      <div style={{ minWidth: 240, fontSize: 12, color: "#1e293b" }}>
+                        <div style={{ fontWeight: "bold", fontSize: 13, color: "#dc2626", borderBottom: "1px solid #fecaca", paddingBottom: 4, marginBottom: 6 }}>
+                          ⚔️ {cz.label}
+                        </div>
+                        <div style={{ fontSize: 10, fontWeight: "bold", color: "#b91c1c", marginBottom: 4 }}>
+                          {cz.threat_level || cz.severity?.toUpperCase()}
+                        </div>
+                        <div style={{ fontSize: 11, marginBottom: 6, lineHeight: 1.4 }}>{cz.description}</div>
+                        {cz.belligerents && (
+                          <div style={{ fontSize: 10, color: "#7c3aed", marginBottom: 6 }}>
+                            <strong>Combatants:</strong> {cz.belligerents.join(" vs ")}
+                          </div>
+                        )}
+                        <SaveToCaseButton
+                          identifierType="domain"
+                          identifierValue={cz.label}
+                          platform="osiris_conflict_zone"
+                          discoveredBy="osiris_c4isr"
+                          metadata={cz}
+                        />
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+
+              {/* 3. Osiris Earthquakes */}
+              {layerQuakes &&
+                earthquakes.map((eq) => (
+                  <Marker key={`eq-${eq.id}`} position={[eq.lat, eq.lon]} icon={earthquakeIcon}>
+                    <Popup>
+                      <div style={{ minWidth: 200, fontSize: 12, color: "#1e293b" }}>
+                        <div style={{ fontWeight: "bold", fontSize: 13, color: "#d97706", borderBottom: "1px solid #fef3c7", paddingBottom: 4, marginBottom: 6 }}>
+                          🌋 M{eq.magnitude} — {eq.place}
+                        </div>
+                        <div style={{ fontSize: 11, marginBottom: 4 }}>
+                          <strong>Depth:</strong> {eq.depth_km} km | <strong>Tsunami:</strong> {eq.tsunami ? "YES" : "NO"}
+                        </div>
+                        <SaveToCaseButton
+                          identifierType="domain"
+                          identifierValue={eq.place}
+                          platform="osiris_earthquake"
+                          discoveredBy="osiris_seismic_feed"
+                          metadata={eq}
+                        />
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+
+              {/* 4. Osiris CCTV Cameras */}
+              {layerCctv &&
+                cctvs.map((cam) => (
+                  <Marker key={`cctv-${cam.id}`} position={[cam.lat, cam.lon]} icon={cctvIcon}>
+                    <Popup>
+                      <div style={{ minWidth: 240, fontSize: 12, color: "#1e293b" }}>
+                        <div style={{ fontWeight: "bold", fontSize: 12, color: "#0284c7", marginBottom: 4 }}>
+                          📹 {cam.name}
+                        </div>
+                        <div style={{ fontSize: 10, color: "#64748b", marginBottom: 6 }}>
+                          {cam.city}, {cam.country} · {cam.source}
+                        </div>
+                        <div style={{ width: "100%", height: 130, borderRadius: 4, overflow: "hidden", background: "#000", marginBottom: 6 }}>
+                          <img
+                            src={cam.feed_url}
+                            alt={cam.name}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            onError={(e: any) => {
+                              e.target.src = "https://placehold.co/300x160/0a0e17/00e5ff?text=FEED+STANDBY";
+                            }}
+                          />
+                        </div>
+                        <SaveToCaseButton
+                          identifierType="domain"
+                          identifierValue={cam.name}
+                          platform="cctv_surveillance"
+                          discoveredBy="osiris_cctv_recon"
+                          metadata={cam}
+                        />
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+
+              {/* 5. Osiris Live News */}
+              {layerNews &&
+                newsPoints.map((nw) => (
+                  <Marker key={`news-${nw.id}`} position={[nw.lat, nw.lon]} icon={newsIcon}>
+                    <Popup>
+                      <div style={{ minWidth: 220, fontSize: 12, color: "#1e293b" }}>
+                        <div style={{ fontWeight: "bold", fontSize: 13, color: "#7c3aed", marginBottom: 4 }}>
+                          📺 {nw.name}
+                        </div>
+                        <div style={{ fontSize: 10, color: "#64748b", marginBottom: 6 }}>
+                          {nw.city}, {nw.country} · {nw.category}
+                        </div>
+                        <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                          <a
+                            href={nw.stream_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              flex: 1,
+                              padding: "4px 8px",
+                              fontSize: 10,
+                              background: "#7c3aed",
+                              color: "#fff",
+                              borderRadius: 3,
+                              textAlign: "center",
+                              textDecoration: "none",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            Watch Live Stream ↗
+                          </a>
+                        </div>
+                        <SaveToCaseButton
+                          identifierType="domain"
+                          identifierValue={nw.name}
+                          platform="osiris_live_news"
+                          discoveredBy="osiris_news_monitor"
+                          metadata={nw}
+                        />
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+
+              {/* 6. Shadowbroker Military Flights */}
+              {layerFlights &&
+                militaryFlights.map((fl, i) => (
+                  <Marker key={`fl-${fl.hex || i}`} position={[fl.lat, fl.lon]} icon={militaryFlightIcon}>
+                    <Popup>
+                      <div style={{ minWidth: 200, fontSize: 12, color: "#1e293b" }}>
+                        <div style={{ fontWeight: "bold", fontSize: 13, color: "#16a34a", marginBottom: 4 }}>
+                          ✈️ {fl.flight?.trim() || fl.hex}
+                        </div>
+                        <div style={{ fontSize: 10, color: "#64748b", marginBottom: 4 }}>
+                          Alt: {fl.alt_baro?.toLocaleString() || "N/A"} ft | Speed: {fl.speed || "N/A"} kts
+                        </div>
+                        <div style={{ fontSize: 10, color: "#64748b", marginBottom: 6 }}>
+                          Country: {fl.country || "Military"} | Track: {fl.track}°
+                        </div>
+                        <SaveToCaseButton
+                          identifierType="corporate"
+                          identifierValue={fl.flight?.trim() || fl.hex}
+                          platform="military_flight_radar"
+                          discoveredBy="shadowbroker_radar"
+                          metadata={fl}
+                        />
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+            </MapContainer>
+          </div>
         </div>
       )}
 

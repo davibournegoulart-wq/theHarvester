@@ -42,8 +42,21 @@ export default function GodsEyeCesiumGlobe({
   // Entities state
   const [satellites, setSatellites] = useState<any[]>([]);
   const [flights, setFlights] = useState<any[]>([]);
+  const [conflicts, setConflicts] = useState<any[]>([]);
+  const [earthquakes, setEarthquakes] = useState<any[]>([]);
+  const [newsFeeds, setNewsFeeds] = useState<any[]>([]);
+  const [cctvs, setCctvs] = useState<any[]>([]);
+
   const [satLoading, setSatLoading] = useState(false);
   const [flightLoading, setFlightLoading] = useState(false);
+
+  // Active layer visibility filters
+  const [showConflicts, setShowConflicts] = useState(true);
+  const [showQuakes, setShowQuakes] = useState(true);
+  const [showNews, setShowNews] = useState(true);
+  const [showCctv, setShowCctv] = useState(true);
+  const [showSats, setShowSats] = useState(true);
+  const [showFlights, setShowFlights] = useState(true);
 
   // Cockpit Simulator State
   const [cockpitTarget, setCockpitTarget] = useState<any | null>(null);
@@ -224,9 +237,13 @@ export default function GodsEyeCesiumGlobe({
         }
       }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
 
-      // Auto-fetch data
+      // Auto-fetch data from God's Eye, Shadowbroker, and Osiris
       fetchSatellites();
       fetchFlights();
+      fetchConflicts();
+      fetchEarthquakes();
+      fetchNews();
+      fetchCctv();
     } catch (err: any) {
       console.error("Cesium initialization error:", err);
       setLoadError("WebGL Cesium Initialization Error: " + err.message);
@@ -241,12 +258,252 @@ export default function GodsEyeCesiumGlobe({
       const res = await apiGet<any>("/recon/godseye/satellites?group=stations");
       const list = Array.isArray(res) ? res : (res?.satellites || []);
       setSatellites(list);
-      plotSatellitesInCesium(list);
+      if (showSats) plotSatellitesInCesium(list);
     } catch (err) {
       console.warn("Error fetching satellites for Cesium:", err);
     } finally {
       setSatLoading(false);
     }
+  }
+
+  // 3b. Fetch Osiris Active Conflict Zones
+  async function fetchConflicts() {
+    try {
+      const res = await apiGet<any>("/recon/osiris/conflicts");
+      const list = res?.zones || [];
+      setConflicts(list);
+      if (showConflicts) plotConflictsInCesium(list);
+    } catch (err) {
+      console.warn("Error fetching conflicts for Cesium:", err);
+    }
+  }
+
+  function plotConflictsInCesium(conflictList: any[]) {
+    if (!viewerRef.current || !window.Cesium) return;
+    const Cesium = window.Cesium;
+    const viewer = viewerRef.current;
+
+    const toRemove: any[] = [];
+    viewer.entities.values.forEach((e: any) => {
+      if (e.id && e.id.startsWith("conflict-")) toRemove.push(e);
+    });
+    toRemove.forEach((e) => viewer.entities.remove(e));
+
+    conflictList.forEach((cz: any) => {
+      if (!cz.lat || !cz.lon) return;
+      const position = Cesium.Cartesian3.fromDegrees(cz.lon, cz.lat, 8000);
+
+      viewer.entities.add({
+        id: `conflict-${cz.id}`,
+        name: `WARZONE: ${cz.label}`,
+        position: position,
+        point: {
+          pixelSize: 12,
+          color: Cesium.Color.RED,
+          outlineColor: Cesium.Color.WHITE,
+          outlineWidth: 2,
+        },
+        label: {
+          text: `⚔️ ${cz.label}`,
+          font: "bold 10px monospace",
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          fillColor: Cesium.Color.fromCssColorString("#ff5555"),
+          outlineColor: Cesium.Color.BLACK,
+          outlineWidth: 2,
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          pixelOffset: new Cesium.Cartesian2(0, -10),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 25000000.0),
+        },
+        properties: {
+          type: "CONFLICT_ZONE",
+          name: cz.label,
+          severity: cz.severity,
+          threat_level: cz.threat_level,
+          description: cz.description,
+          region: cz.region,
+          lat: cz.lat,
+          lon: cz.lon,
+          belligerents: cz.belligerents,
+        },
+      });
+    });
+  }
+
+  // 3c. Fetch Osiris Earthquakes
+  async function fetchEarthquakes() {
+    try {
+      const res = await apiGet<any>("/recon/osiris/earthquakes?min_magnitude=3.0");
+      const list = res?.earthquakes || [];
+      setEarthquakes(list);
+      if (showQuakes) plotEarthquakesInCesium(list);
+    } catch (err) {
+      console.warn("Error fetching earthquakes for Cesium:", err);
+    }
+  }
+
+  function plotEarthquakesInCesium(eqList: any[]) {
+    if (!viewerRef.current || !window.Cesium) return;
+    const Cesium = window.Cesium;
+    const viewer = viewerRef.current;
+
+    const toRemove: any[] = [];
+    viewer.entities.values.forEach((e: any) => {
+      if (e.id && e.id.startsWith("quake-")) toRemove.push(e);
+    });
+    toRemove.forEach((e) => viewer.entities.remove(e));
+
+    eqList.slice(0, 35).forEach((eq: any) => {
+      if (!eq.lat || !eq.lon) return;
+      const mag = eq.magnitude || 3.0;
+      const position = Cesium.Cartesian3.fromDegrees(eq.lon, eq.lat, 4000);
+
+      viewer.entities.add({
+        id: `quake-${eq.id}`,
+        name: `EARTHQUAKE M${mag}: ${eq.place}`,
+        position: position,
+        point: {
+          pixelSize: Math.min(16, Math.max(7, Math.round(mag * 2.5))),
+          color: mag >= 5.5 ? Cesium.Color.RED : Cesium.Color.ORANGE,
+          outlineColor: Cesium.Color.BLACK,
+          outlineWidth: 2,
+        },
+        label: {
+          text: `🌋 M${mag}`,
+          font: "9px monospace",
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          fillColor: Cesium.Color.fromCssColorString("#ffaa00"),
+          outlineColor: Cesium.Color.BLACK,
+          outlineWidth: 2,
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          pixelOffset: new Cesium.Cartesian2(0, -8),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 15000000.0),
+        },
+        properties: {
+          type: "EARTHQUAKE",
+          name: eq.place,
+          magnitude: mag,
+          depth_km: eq.depth_km,
+          lat: eq.lat,
+          lon: eq.lon,
+          time: eq.time,
+          tsunami: eq.tsunami,
+        },
+      });
+    });
+  }
+
+  // 3d. Fetch Osiris Live News Broadcast Nodes
+  async function fetchNews() {
+    try {
+      const res = await apiGet<any>("/recon/osiris/live-news");
+      const list = res?.feeds || [];
+      setNewsFeeds(list);
+      if (showNews) plotNewsInCesium(list);
+    } catch (err) {
+      console.warn("Error fetching news for Cesium:", err);
+    }
+  }
+
+  function plotNewsInCesium(newsList: any[]) {
+    if (!viewerRef.current || !window.Cesium) return;
+    const Cesium = window.Cesium;
+    const viewer = viewerRef.current;
+
+    const toRemove: any[] = [];
+    viewer.entities.values.forEach((e: any) => {
+      if (e.id && e.id.startsWith("news-")) toRemove.push(e);
+    });
+    toRemove.forEach((e) => viewer.entities.remove(e));
+
+    newsList.forEach((nw: any) => {
+      if (!nw.lat || !nw.lon) return;
+      const position = Cesium.Cartesian3.fromDegrees(nw.lon, nw.lat, 6000);
+
+      viewer.entities.add({
+        id: `news-${nw.id}`,
+        name: `BROADCAST: ${nw.name}`,
+        position: position,
+        point: {
+          pixelSize: 10,
+          color: Cesium.Color.fromCssColorString("#a259ff"),
+          outlineColor: Cesium.Color.WHITE,
+          outlineWidth: 2,
+        },
+        label: {
+          text: `📺 ${nw.name}`,
+          font: "10px monospace",
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          fillColor: Cesium.Color.fromCssColorString("#c084fc"),
+          outlineColor: Cesium.Color.BLACK,
+          outlineWidth: 2,
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          pixelOffset: new Cesium.Cartesian2(0, -10),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 20000000.0),
+        },
+        properties: {
+          type: "LIVE_NEWS",
+          name: nw.name,
+          city: nw.city,
+          country: nw.country,
+          stream_url: nw.stream_url,
+          embed_allowed: nw.embed_allowed,
+          category: nw.category,
+          lat: nw.lat,
+          lon: nw.lon,
+        },
+      });
+    });
+  }
+
+  // 3e. Fetch Osiris CCTV Public Cameras
+  async function fetchCctv() {
+    try {
+      const res = await apiGet<any>("/recon/osiris/cctv?limit=40");
+      const list = res?.cameras || [];
+      setCctvs(list);
+      if (showCctv) plotCctvInCesium(list);
+    } catch (err) {
+      console.warn("Error fetching cctv for Cesium:", err);
+    }
+  }
+
+  function plotCctvInCesium(cctvList: any[]) {
+    if (!viewerRef.current || !window.Cesium) return;
+    const Cesium = window.Cesium;
+    const viewer = viewerRef.current;
+
+    const toRemove: any[] = [];
+    viewer.entities.values.forEach((e: any) => {
+      if (e.id && e.id.startsWith("cctv-")) toRemove.push(e);
+    });
+    toRemove.forEach((e) => viewer.entities.remove(e));
+
+    cctvList.forEach((cam: any) => {
+      if (!cam.lat || !cam.lon) return;
+      const position = Cesium.Cartesian3.fromDegrees(cam.lon, cam.lat, 3000);
+
+      viewer.entities.add({
+        id: `cctv-${cam.id}`,
+        name: `CCTV: ${cam.name}`,
+        position: position,
+        point: {
+          pixelSize: 8,
+          color: Cesium.Color.fromCssColorString("#00e5ff"),
+          outlineColor: Cesium.Color.BLACK,
+          outlineWidth: 1,
+        },
+        properties: {
+          type: "CCTV_CAMERA",
+          name: cam.name,
+          city: cam.city,
+          country: cam.country,
+          feed_url: cam.feed_url,
+          source: cam.source,
+          lat: cam.lat,
+          lon: cam.lon,
+        },
+      });
+    });
   }
 
   function plotSatellitesInCesium(satList: any[]) {
@@ -634,24 +891,24 @@ export default function GodsEyeCesiumGlobe({
             {activeShader}
           </span>
         </div>
-        <div style={{ display: "flex", gap: 14, color: "var(--text-muted)", marginTop: 2 }}>
+        <div style={{ display: "flex", gap: 12, color: "var(--text-muted)", marginTop: 2, flexWrap: "wrap", fontSize: 10 }}>
           <span>
-            Satellites:{" "}
-            <strong style={{ color: "var(--cyan)" }}>
-              {satLoading ? "Syncing..." : satellites.length}
-            </strong>
+            Sats: <strong style={{ color: "var(--cyan)" }}>{satLoading ? "..." : satellites.length}</strong>
           </span>
           <span>
-            Military Flights:{" "}
-            <strong style={{ color: "#a259ff" }}>
-              {flightLoading ? "Syncing..." : flights.length}
-            </strong>
+            Flights: <strong style={{ color: "#a259ff" }}>{flightLoading ? "..." : flights.length}</strong>
           </span>
           <span>
-            Sensor:{" "}
-            <strong style={{ color: "#fff" }}>
-              {activeShader === "FLIR" ? "LWIR 8-14μm" : activeShader === "NVG" ? "Gen-III Phosphor" : "EO Visible"}
-            </strong>
+            Wars: <strong style={{ color: "#ff5555" }}>{conflicts.length}</strong>
+          </span>
+          <span>
+            Quakes: <strong style={{ color: "#ffaa00" }}>{earthquakes.length}</strong>
+          </span>
+          <span>
+            News: <strong style={{ color: "#c084fc" }}>{newsFeeds.length}</strong>
+          </span>
+          <span>
+            Sensor: <strong style={{ color: "#fff" }}>{activeShader === "FLIR" ? "LWIR 8-14μm" : activeShader === "NVG" ? "Gen-III Phosphor" : "EO Visible"}</strong>
           </span>
         </div>
       </div>
@@ -890,11 +1147,29 @@ export default function GodsEyeCesiumGlobe({
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               {selectedContact.type === "AIRCRAFT" ? (
                 <RadarIcon size={15} color="#a259ff" />
+              ) : selectedContact.type === "CONFLICT_ZONE" ? (
+                <span style={{ fontSize: 14 }}>⚔️</span>
+              ) : selectedContact.type === "EARTHQUAKE" ? (
+                <span style={{ fontSize: 14 }}>🌋</span>
+              ) : selectedContact.type === "LIVE_NEWS" ? (
+                <span style={{ fontSize: 14 }}>📺</span>
+              ) : selectedContact.type === "CCTV_CAMERA" ? (
+                <span style={{ fontSize: 14 }}>📹</span>
               ) : (
                 <EyeIcon size={15} color="var(--cyan)" />
               )}
               <span style={{ fontSize: 12, fontWeight: "bold", color: "var(--cyan)" }}>
-                {selectedContact.type === "AIRCRAFT" ? "TACTICAL AIR CONTACT" : "ORBITAL ASSET"}
+                {selectedContact.type === "AIRCRAFT"
+                  ? "TACTICAL AIR CONTACT"
+                  : selectedContact.type === "CONFLICT_ZONE"
+                  ? "ACTIVE WAR ZONE"
+                  : selectedContact.type === "EARTHQUAKE"
+                  ? "SEISMIC EPICENTER"
+                  : selectedContact.type === "LIVE_NEWS"
+                  ? "GLOBAL BROADCAST STREAM"
+                  : selectedContact.type === "CCTV_CAMERA"
+                  ? "PUBLIC CCTV SURVEILLANCE"
+                  : "ORBITAL ASSET"}
               </span>
             </div>
             <button
@@ -918,6 +1193,35 @@ export default function GodsEyeCesiumGlobe({
                 <div>Speed: <strong>{selectedContact.speed} kts</strong></div>
                 <div>Track: <strong>{selectedContact.track}°</strong></div>
                 <div>Country: <strong>{selectedContact.country}</strong></div>
+              </>
+            ) : selectedContact.type === "CONFLICT_ZONE" ? (
+              <>
+                <div>Severity: <strong style={{ color: "#ff5555" }}>{selectedContact.severity?.toUpperCase()}</strong></div>
+                <div>Threat: <strong>{selectedContact.threat_level}</strong></div>
+                <div>Region: <strong>{selectedContact.region}</strong></div>
+                <div>Coords: <strong>{selectedContact.lat}, {selectedContact.lon}</strong></div>
+                <div style={{ gridColumn: "1 / -1", color: "var(--text-muted)", fontSize: 10 }}>{selectedContact.description}</div>
+              </>
+            ) : selectedContact.type === "EARTHQUAKE" ? (
+              <>
+                <div>Magnitude: <strong style={{ color: "#ffaa00" }}>M{selectedContact.magnitude}</strong></div>
+                <div>Depth: <strong>{selectedContact.depth_km} km</strong></div>
+                <div>Coords: <strong>{selectedContact.lat}, {selectedContact.lon}</strong></div>
+                <div>Tsunami: <strong>{selectedContact.tsunami ? "YES" : "NO"}</strong></div>
+              </>
+            ) : selectedContact.type === "LIVE_NEWS" ? (
+              <>
+                <div>City: <strong>{selectedContact.city}</strong></div>
+                <div>Country: <strong>{selectedContact.country}</strong></div>
+                <div>Category: <strong>{selectedContact.category}</strong></div>
+                <div>Embed: <strong>{selectedContact.embed_allowed ? "YES" : "NO"}</strong></div>
+              </>
+            ) : selectedContact.type === "CCTV_CAMERA" ? (
+              <>
+                <div>City: <strong>{selectedContact.city}</strong></div>
+                <div>Country: <strong>{selectedContact.country}</strong></div>
+                <div>Source: <strong>{selectedContact.source}</strong></div>
+                <div>Coords: <strong>{selectedContact.lat?.toFixed(3)}, {selectedContact.lon?.toFixed(3)}</strong></div>
               </>
             ) : (
               <>
@@ -954,12 +1258,47 @@ export default function GodsEyeCesiumGlobe({
               </button>
             )}
 
+            {selectedContact.type === "LIVE_NEWS" && selectedContact.stream_url && (
+              <a
+                href={selectedContact.stream_url}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  flex: 1,
+                  padding: "6px 10px",
+                  fontSize: 11,
+                  background: "rgba(162, 89, 255, 0.2)",
+                  color: "#c084fc",
+                  border: "1px solid #a259ff",
+                  borderRadius: 4,
+                  textAlign: "center",
+                  textDecoration: "none",
+                  fontWeight: "bold",
+                  fontFamily: "monospace",
+                }}
+              >
+                Open Broadcast Stream ↗
+              </a>
+            )}
+
             <div style={{ flex: 1 }}>
               <SaveToCaseButton
                 identifierType="corporate"
-                identifierValue={selectedContact.name || selectedContact.callsign || selectedContact.norad_id || "orbital_contact"}
-                platform={selectedContact.type === "AIRCRAFT" ? "military_flight_radar" : "orbital_satellite"}
-                discoveredBy="godseye_3d_cesium"
+                identifierValue={selectedContact.name || selectedContact.callsign || selectedContact.norad_id || "contact"}
+                platform={
+                  selectedContact.type === "AIRCRAFT"
+                    ? "military_flight_radar"
+                    : selectedContact.type === "CONFLICT_ZONE"
+                    ? "osiris_conflict_zone"
+                    : selectedContact.type === "EARTHQUAKE"
+                    ? "osiris_earthquake"
+                    : selectedContact.type === "LIVE_NEWS"
+                    ? "osiris_live_news"
+                    : selectedContact.type === "CCTV_CAMERA"
+                    ? "osiris_cctv"
+                    : "orbital_satellite"
+                }
+                discoveredBy="godseye_c4isr_cesium"
                 metadata={selectedContact}
               />
             </div>
@@ -981,68 +1320,134 @@ export default function GodsEyeCesiumGlobe({
           borderRadius: 4,
           padding: 6,
           backdropFilter: "blur(6px)",
+          flexWrap: "wrap",
+          maxWidth: "calc(100% - 28px)",
         }}
       >
         <button
           onClick={toggleSunLighting}
-          title={sunLighting ? "Switch to 24/7 Illuminated Daylight Mode" : "Switch to Astronomical Sun Shading (Night/Day cycle)"}
+          title={sunLighting ? "Switch to 24/7 Illuminated Daylight Mode" : "Switch to Astronomical Sun Shading"}
           style={{
-            padding: "5px 10px",
-            fontSize: 11,
+            padding: "4px 8px",
+            fontSize: 10,
             background: sunLighting ? "rgba(255, 170, 0, 0.2)" : "rgba(0, 229, 255, 0.15)",
             color: sunLighting ? "#ffaa00" : "var(--cyan)",
             border: `1px solid ${sunLighting ? "#ffaa00" : "var(--cyan)"}`,
-            borderRadius: 4,
+            borderRadius: 3,
             cursor: "pointer",
             fontFamily: "monospace",
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
           }}
         >
-          <span>{sunLighting ? "🌙 Sun Cycle" : "☀️ Daylit"}</span>
+          {sunLighting ? "🌙 Sun Cycle" : "☀️ Daylit"}
+        </button>
+
+        <button
+          onClick={() => {
+            const next = !showConflicts;
+            setShowConflicts(next);
+            if (next) plotConflictsInCesium(conflicts);
+            else {
+              viewerRef.current?.entities.values
+                .filter((e: any) => e.id?.startsWith("conflict-"))
+                .forEach((e: any) => viewerRef.current.entities.remove(e));
+            }
+          }}
+          style={{
+            padding: "4px 8px",
+            fontSize: 10,
+            background: showConflicts ? "rgba(255, 85, 85, 0.2)" : "rgba(255,255,255,0.05)",
+            color: showConflicts ? "#ff5555" : "var(--text-muted)",
+            border: `1px solid ${showConflicts ? "#ff5555" : "transparent"}`,
+            borderRadius: 3,
+            cursor: "pointer",
+            fontFamily: "monospace",
+          }}
+        >
+          ⚔️ Wars ({conflicts.length})
+        </button>
+
+        <button
+          onClick={() => {
+            const next = !showQuakes;
+            setShowQuakes(next);
+            if (next) plotEarthquakesInCesium(earthquakes);
+            else {
+              viewerRef.current?.entities.values
+                .filter((e: any) => e.id?.startsWith("quake-"))
+                .forEach((e: any) => viewerRef.current.entities.remove(e));
+            }
+          }}
+          style={{
+            padding: "4px 8px",
+            fontSize: 10,
+            background: showQuakes ? "rgba(255, 170, 0, 0.2)" : "rgba(255,255,255,0.05)",
+            color: showQuakes ? "#ffaa00" : "var(--text-muted)",
+            border: `1px solid ${showQuakes ? "#ffaa00" : "transparent"}`,
+            borderRadius: 3,
+            cursor: "pointer",
+            fontFamily: "monospace",
+          }}
+        >
+          🌋 Quakes ({earthquakes.length})
+        </button>
+
+        <button
+          onClick={() => {
+            const next = !showNews;
+            setShowNews(next);
+            if (next) plotNewsInCesium(newsFeeds);
+            else {
+              viewerRef.current?.entities.values
+                .filter((e: any) => e.id?.startsWith("news-"))
+                .forEach((e: any) => viewerRef.current.entities.remove(e));
+            }
+          }}
+          style={{
+            padding: "4px 8px",
+            fontSize: 10,
+            background: showNews ? "rgba(162, 89, 255, 0.2)" : "rgba(255,255,255,0.05)",
+            color: showNews ? "#c084fc" : "var(--text-muted)",
+            border: `1px solid ${showNews ? "#a259ff" : "transparent"}`,
+            borderRadius: 3,
+            cursor: "pointer",
+            fontFamily: "monospace",
+          }}
+        >
+          📺 News ({newsFeeds.length})
         </button>
 
         <button
           onClick={fetchSatellites}
           disabled={satLoading}
           style={{
-            padding: "5px 10px",
-            fontSize: 11,
+            padding: "4px 8px",
+            fontSize: 10,
             background: "rgba(0, 229, 255, 0.15)",
             color: "var(--cyan)",
             border: "1px solid var(--cyan)",
-            borderRadius: 4,
+            borderRadius: 3,
             cursor: "pointer",
             fontFamily: "monospace",
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
           }}
         >
-          <EyeIcon size={12} color="var(--cyan)" />
-          {satLoading ? "Syncing..." : "Refresh Satellites"}
+          🛰️ Sats ({satellites.length})
         </button>
 
         <button
           onClick={fetchFlights}
           disabled={flightLoading}
           style={{
-            padding: "5px 10px",
-            fontSize: 11,
+            padding: "4px 8px",
+            fontSize: 10,
             background: "rgba(162, 89, 255, 0.15)",
             color: "#a259ff",
             border: "1px solid #a259ff",
-            borderRadius: 4,
+            borderRadius: 3,
             cursor: "pointer",
             fontFamily: "monospace",
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
           }}
         >
-          <RadarIcon size={12} color="#a259ff" />
-          {flightLoading ? "Syncing..." : "Refresh Flights"}
+          ✈️ Flights ({flights.length})
         </button>
       </div>
     </div>

@@ -1766,3 +1766,74 @@ async def forensic_image_compare(req: ForensicCompareRequest):
         "image1_hashes": hashes1,
         "image2_hashes": hashes2,
     }
+
+
+# ---------------------------------------------------------------------------
+# OSIRIS — Real-time Global Intelligence & Reconnaissance Engine
+# ---------------------------------------------------------------------------
+from app.recon.osiris_intel import (
+    fetch_earthquakes as osiris_fetch_earthquakes,
+    fetch_active_fires as osiris_fetch_active_fires,
+    fetch_conflict_zones as osiris_fetch_conflict_zones,
+    fetch_live_news_streams as osiris_fetch_live_news,
+    fetch_cctv_directory as osiris_fetch_cctv,
+    fetch_space_weather as osiris_fetch_space_weather,
+    fetch_defense_markets as osiris_fetch_defense_markets,
+    search_ofac_sanctions as osiris_search_sanctions,
+    fetch_osiris_summary as osiris_fetch_summary,
+)
+
+
+@router.get("/osiris/earthquakes")
+async def osiris_earthquakes(min_magnitude: float = 2.5):
+    """OSIRIS: Real-time seismic events from USGS (M2.5+ with depth, magnitude, epicenter)."""
+    return await osiris_fetch_earthquakes(min_magnitude=min_magnitude)
+
+
+@router.get("/osiris/fires")
+async def osiris_fires():
+    """OSIRIS: Active wildfire and thermal anomalies from NASA FIRMS (VIIRS/MODIS) and EONET volcanoes."""
+    return await osiris_fetch_active_fires()
+
+
+@router.get("/osiris/conflicts")
+async def osiris_conflicts():
+    """OSIRIS: 13 active global conflict & war zones with frontlines, belligerents, and threat levels."""
+    return await osiris_fetch_conflict_zones()
+
+
+@router.get("/osiris/live-news")
+async def osiris_live_news():
+    """OSIRIS: 25+ live broadcast news streams with geolocation and embeddable live feeds."""
+    return await osiris_fetch_live_news()
+
+
+@router.get("/osiris/cctv")
+async def osiris_cctv(region: str | None = None, limit: int = 150):
+    """OSIRIS: Worldwide public traffic & CCTV surveillance directory with live snapshots."""
+    return await osiris_fetch_cctv(region=region, limit=limit)
+
+
+@router.get("/osiris/space-weather")
+async def osiris_space_weather():
+    """OSIRIS: Real-time NOAA SWPC planetary Kp-index, geomagnetic storm alerts, and solar flares."""
+    return await osiris_fetch_space_weather()
+
+
+@router.get("/osiris/defense-markets")
+async def osiris_defense_markets():
+    """OSIRIS: Defense aerospace equities, strategic energy, commodities, and maritime chokepoint alerts."""
+    return await osiris_fetch_defense_markets()
+
+
+@router.get("/osiris/sanctions")
+async def osiris_sanctions(query: str, limit: int = 25):
+    """OSIRIS: US OFAC SDN Sanctions lookup backed by OpenSanctions mirror."""
+    return await osiris_search_sanctions(query=query, limit=limit)
+
+
+@router.get("/osiris/summary")
+async def osiris_summary():
+    """OSIRIS: Aggregated real-time situational awareness metrics ticker."""
+    return await osiris_fetch_summary()
+
