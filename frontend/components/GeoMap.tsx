@@ -8,7 +8,32 @@ import { apiGet, apiPostJson, apiFetch } from "@/lib/api";
 import { CaseFileItem } from "./CaseFilesDatabank";
 import ShadowbrokerSuite from "./ShadowbrokerSuite";
 import GodsEyeSuite from "./GodsEyeSuite";
-import { MapIcon, PinIcon, PaperclipIcon, LinkIcon, CameraIcon, CheckIcon, AlertIcon, RadarIcon, EyeIcon } from "@/components/FlatIcons";
+import {
+  MapIcon,
+  PinIcon,
+  PaperclipIcon,
+  LinkIcon,
+  CameraIcon,
+  CheckIcon,
+  AlertIcon,
+  RadarIcon,
+  EyeIcon,
+  GlobeIcon,
+  CompassIcon,
+  FileTextIcon,
+  CrossIcon,
+} from "@/components/FlatIcons";
+import SaveToCaseButton from "./SaveToCaseButton";
+import type { VisualShaderMode } from "./GodsEyeCesiumGlobe";
+
+const GodsEyeCesiumGlobe = dynamic(() => import("./GodsEyeCesiumGlobe"), {
+  ssr: false,
+  loading: () => (
+    <div style={{ height: 680, background: "#05070c", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--cyan)" }}>
+      Loading God's Eye 3D Engine...
+    </div>
+  ),
+});
 
 // Dynamically import react-leaflet components (Leaflet relies on window/DOM)
 const MapContainer = dynamic(() => import("react-leaflet").then(m => m.MapContainer), { ssr: false });
@@ -65,6 +90,35 @@ export default function GeoMap() {
   const [selectedFileId, setSelectedFileId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showTraceLine, setShowTraceLine] = useState(true);
+
+  // Tactical Map Mode: "2D" (Leaflet) or "3D" (God's Eye Cesium)
+  const [mapMode, setMapMode] = useState<"2D" | "3D">("3D");
+  const [activeShader, setActiveShader] = useState<VisualShaderMode>("DEFAULT");
+
+  // Country Strategic Dossier State (Shadowbroker C4ISR)
+  const [dossierCountry, setDossierCountry] = useState<any | null>(null);
+  const [dossierLoading, setDossierLoading] = useState(false);
+  const [showDossierModal, setShowDossierModal] = useState(false);
+
+  async function handleFetchCountryDossier(query: string) {
+    setDossierLoading(true);
+    setShowDossierModal(true);
+    try {
+      let url = "/recon/shadowbroker/country-dossier";
+      if (query.startsWith("coords:")) {
+        const [lat, lon] = query.replace("coords:", "").split(",");
+        url += `?lat=${lat}&lon=${lon}`;
+      } else {
+        url += `?country=${encodeURIComponent(query)}`;
+      }
+      const data = await apiGet<any>(url);
+      setDossierCountry(data);
+    } catch (err) {
+      console.error("Error fetching country dossier:", err);
+    } finally {
+      setDossierLoading(false);
+    }
+  }
 
   // Photo Geolocation states (Pic2Map & Netryx Astra)
   const [showPhotoModal, setShowPhotoModal] = useState(false);
@@ -249,16 +303,97 @@ export default function GeoMap() {
           </p>
         </div>
 
-        {/* Controls */}
+        {/* Mode Switcher & Sensor Controls */}
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6, color: "var(--text-muted)", cursor: "pointer" }}>
-            <input
-              type="checkbox"
-              checked={showTraceLine}
-              onChange={(e) => setShowTraceLine(e.target.checked)}
-            />
-            Show Tracing Path
-          </label>
+          {/* 2D vs 3D Tactical Mode Toggle */}
+          <div
+            style={{
+              display: "flex",
+              background: "rgba(0,0,0,0.4)",
+              border: "1px solid var(--panel-border)",
+              borderRadius: 4,
+              overflow: "hidden",
+            }}
+          >
+            <button
+              onClick={() => setMapMode("2D")}
+              style={{
+                padding: "6px 14px",
+                fontSize: 12,
+                fontFamily: "monospace",
+                fontWeight: "bold",
+                background: mapMode === "2D" ? "var(--cyan)" : "transparent",
+                color: mapMode === "2D" ? "#000" : "var(--text-muted)",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <MapIcon size={13} color={mapMode === "2D" ? "#000" : "var(--text-muted)"} />
+              2D TACTICAL (Leaflet)
+            </button>
+            <button
+              onClick={() => setMapMode("3D")}
+              style={{
+                padding: "6px 14px",
+                fontSize: 12,
+                fontFamily: "monospace",
+                fontWeight: "bold",
+                background: mapMode === "3D" ? "var(--cyan)" : "transparent",
+                color: mapMode === "3D" ? "#000" : "var(--text-muted)",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <GlobeIcon size={13} color={mapMode === "3D" ? "#000" : "var(--text-muted)"} />
+              3D ORBITAL (God's Eye)
+            </button>
+          </div>
+
+          {/* GLSL Sensor Shader Selector (Available in 3D mode) */}
+          {mapMode === "3D" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(0,0,0,0.3)", padding: "2px 6px", borderRadius: 4, border: "1px solid rgba(0, 229, 255, 0.2)" }}>
+              <span style={{ fontSize: 10, fontFamily: "monospace", color: "var(--cyan)", fontWeight: "bold", marginRight: 2 }}>
+                SENSOR:
+              </span>
+              {(["DEFAULT", "FLIR", "NVG", "CRT", "NOIR"] as VisualShaderMode[]).map((sh) => (
+                <button
+                  key={sh}
+                  onClick={() => setActiveShader(sh)}
+                  style={{
+                    padding: "3px 7px",
+                    fontSize: 10,
+                    fontFamily: "monospace",
+                    borderRadius: 3,
+                    border: "none",
+                    cursor: "pointer",
+                    fontWeight: activeShader === sh ? "bold" : "normal",
+                    background: activeShader === sh ? (sh === "NVG" ? "#39ff14" : sh === "FLIR" ? "#ff2a5f" : "var(--cyan)") : "transparent",
+                    color: activeShader === sh ? "#000" : "var(--text-muted)",
+                  }}
+                >
+                  {sh}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {mapMode === "2D" && (
+            <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6, color: "var(--text-muted)", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={showTraceLine}
+                onChange={(e) => setShowTraceLine(e.target.checked)}
+              />
+              Show Tracing Path
+            </label>
+          )}
+
           <button
             onClick={() => setShowAddModal(!showAddModal)}
             style={{
@@ -643,8 +778,15 @@ export default function GeoMap() {
         </form>
       )}
 
-      {/* Map or Empty State */}
-      {points.length === 0 ? (
+      {/* Tactical Display: 3D God's Eye Cesium Globe OR 2D Leaflet Map */}
+      {mapMode === "3D" ? (
+        <div style={{ marginBottom: 20 }}>
+          <GodsEyeCesiumGlobe
+            activeShader={activeShader}
+            onSelectCountry={(countryCode) => handleFetchCountryDossier(countryCode)}
+          />
+        </div>
+      ) : points.length === 0 ? (
         <div
           style={{
             height: 420,
@@ -671,7 +813,7 @@ export default function GeoMap() {
           )}
         </div>
       ) : (
-        <div style={{ height: 520, width: "100%", borderRadius: 8, overflow: "hidden", border: "1px solid var(--cyan)", position: "relative" }}>
+        <div style={{ height: 520, width: "100%", borderRadius: 8, overflow: "hidden", border: "1px solid var(--cyan)", position: "relative", marginBottom: 20 }}>
           <MapContainer
             center={defaultCenter}
             zoom={points.length === 1 ? 14 : 11}
@@ -858,6 +1000,150 @@ export default function GeoMap() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+      {/* Country Strategic Intelligence Dossier Modal (Shadowbroker C4ISR) */}
+      {showDossierModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.75)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            padding: 16,
+            backdropFilter: "blur(4px)",
+          }}
+        >
+          <div
+            style={{
+              width: 580,
+              maxWidth: "100%",
+              background: "#0a0e17",
+              border: "1px solid var(--cyan)",
+              borderRadius: 8,
+              padding: 24,
+              color: "#e2e8f0",
+              boxShadow: "0 16px 48px rgba(0, 0, 0, 0.8)",
+              fontFamily: "monospace",
+              position: "relative",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid var(--panel-border)", paddingBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <GlobeIcon size={18} color="var(--cyan)" />
+                <h3 style={{ margin: 0, color: "var(--cyan)", fontSize: 15 }}>
+                  SHADOWBROKER C4ISR STRATEGIC DOSSIER
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowDossierModal(false);
+                  setDossierCountry(null);
+                }}
+                style={{ background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer" }}
+              >
+                <CrossIcon size={16} />
+              </button>
+            </div>
+
+            {dossierLoading ? (
+              <div style={{ textAlign: "center", padding: 32, color: "var(--cyan)" }}>
+                Interrogating C4ISR Geopolitical Database...
+              </div>
+            ) : dossierCountry ? (
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
+                  <div>
+                    <h2 style={{ margin: 0, color: "#fff", fontSize: 20 }}>
+                      {dossierCountry.country} ({dossierCountry.iso_code})
+                    </h2>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                      Capital: <strong style={{ color: "#fff" }}>{dossierCountry.capital}</strong> | Population: {dossierCountry.population}
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      padding: "3px 8px",
+                      borderRadius: 4,
+                      fontSize: 10,
+                      fontWeight: "bold",
+                      background: "rgba(255, 42, 109, 0.2)",
+                      color: "var(--danger)",
+                      border: "1px solid var(--danger)",
+                    }}
+                  >
+                    {dossierCountry.defense_readiness}
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 12, marginBottom: 20 }}>
+                  <div style={{ background: "rgba(0,0,0,0.4)", padding: 10, borderRadius: 4, borderLeft: "3px solid var(--cyan)" }}>
+                    <div style={{ color: "var(--cyan)", fontWeight: "bold", marginBottom: 2 }}>HEAD OF STATE &amp; COMMAND:</div>
+                    <div style={{ color: "#fff" }}>{dossierCountry.head_of_state}</div>
+                  </div>
+
+                  <div style={{ background: "rgba(0,0,0,0.4)", padding: 10, borderRadius: 4, borderLeft: "3px solid #a259ff" }}>
+                    <div style={{ color: "#a259ff", fontWeight: "bold", marginBottom: 2 }}>ALLIANCES &amp; SECURITY BLOCS:</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                      {dossierCountry.alliances?.map((al: string, i: number) => (
+                        <span key={i} style={{ padding: "2px 6px", background: "rgba(162, 89, 255, 0.2)", borderRadius: 3, fontSize: 11 }}>
+                          {al}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ background: "rgba(0,0,0,0.4)", padding: 10, borderRadius: 4, borderLeft: "3px solid #ffaa00" }}>
+                    <div style={{ color: "#ffaa00", fontWeight: "bold", marginBottom: 2 }}>NUCLEAR POSTURE / TRIAD:</div>
+                    <div>{dossierCountry.nuclear_triad}</div>
+                  </div>
+
+                  <div style={{ background: "rgba(0,0,0,0.4)", padding: 10, borderRadius: 4, borderLeft: "3px solid var(--cyan)" }}>
+                    <div style={{ color: "var(--cyan)", fontWeight: "bold", marginBottom: 2 }}>KEY MILITARY BASES &amp; STRATEGIC POSTURE:</div>
+                    <div style={{ marginBottom: 4 }}>{dossierCountry.strategic_posture}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                      Airbases: {dossierCountry.primary_airbases?.join(", ")}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                  <SaveToCaseButton
+                    identifierType="corporate"
+                    identifierValue={dossierCountry.country}
+                    platform="shadowbroker_c4isr"
+                    discoveredBy="shadowbroker_country_dossier"
+                    metadata={dossierCountry}
+                  />
+                  <button
+                    onClick={() => {
+                      setShowDossierModal(false);
+                      setDossierCountry(null);
+                    }}
+                    style={{
+                      padding: "6px 14px",
+                      fontSize: 12,
+                      background: "transparent",
+                      border: "1px solid var(--panel-border)",
+                      color: "var(--text-muted)",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                      fontFamily: "monospace",
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ textAlign: "center", padding: 20, color: "var(--text-muted)" }}>
+                No intelligence dossier available for this target.
+              </div>
+            )}
           </div>
         </div>
       )}

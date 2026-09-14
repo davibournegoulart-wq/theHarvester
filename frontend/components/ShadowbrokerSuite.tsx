@@ -102,7 +102,7 @@ export type EarthquakeItem = {
   source: string;
 };
 
-type TelemetryFeedTab = "military" | "jamming" | "firms" | "malware" | "telegram" | "earthquakes";
+type TelemetryFeedTab = "military" | "jamming" | "firms" | "malware" | "telegram" | "earthquakes" | "country_dossier";
 
 export default function ShadowbrokerSuite({
   onPinToMap,
@@ -122,6 +122,10 @@ export default function ShadowbrokerSuite({
   const [malwareC2s, setMalwareC2s] = useState<MalwareC2Item[]>([]);
   const [telegramPosts, setTelegramPosts] = useState<TelegramOsintItem[]>([]);
   const [earthquakes, setEarthquakes] = useState<EarthquakeItem[]>([]);
+
+  // Country Strategic Dossier State
+  const [selectedCountryCode, setSelectedCountryCode] = useState("US");
+  const [countryDossier, setCountryDossier] = useState<any | null>(null);
 
   // Telegram channel selector
   const [tgChannel, setTgChannel] = useState("osintdefender");
@@ -152,6 +156,9 @@ export default function ShadowbrokerSuite({
       } else if (tab === "earthquakes") {
         const data = await apiGet<EarthquakeItem[]>("/recon/shadowbroker/earthquakes?limit=40");
         setEarthquakes(data || []);
+      } else if (tab === "country_dossier") {
+        const data = await apiGet<any>(`/recon/shadowbroker/country-dossier?country=${encodeURIComponent(selectedCountryCode)}`);
+        setCountryDossier(data);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error fetching telemetry stream");
@@ -407,6 +414,26 @@ export default function ShadowbrokerSuite({
           <GlobeIcon size={13} color={activeTab === "earthquakes" ? "#ffcc00" : "var(--text-muted)"} />
           USGS Earthquakes (M2.5+)
           <span style={{ fontSize: 10, opacity: 0.8 }}>({earthquakes.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("country_dossier")}
+          style={{
+            padding: "6px 12px",
+            fontSize: 12,
+            borderRadius: 4,
+            border: activeTab === "country_dossier" ? "1px solid var(--cyan)" : "1px solid transparent",
+            background: activeTab === "country_dossier" ? "rgba(0, 229, 255, 0.2)" : "transparent",
+            color: activeTab === "country_dossier" ? "var(--cyan)" : "var(--text-muted)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            fontWeight: activeTab === "country_dossier" ? "bold" : "normal",
+          }}
+        >
+          <GlobeIcon size={13} color={activeTab === "country_dossier" ? "var(--cyan)" : "var(--text-muted)"} />
+          C4ISR Country Dossiers
         </button>
       </div>
 
@@ -1086,6 +1113,148 @@ export default function ShadowbrokerSuite({
                 </div>
               );
             })
+          )}
+        </div>
+      )}
+
+      {/* 7. Strategic Country Dossiers Tab */}
+      {activeTab === "country_dossier" && (
+        <div>
+          {/* Country Quick Selector */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
+            <label style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "monospace" }}>
+              STRATEGIC TARGET:
+            </label>
+            {[
+              { code: "US", name: "United States" },
+              { code: "RU", name: "Russia" },
+              { code: "CN", name: "China" },
+              { code: "UA", name: "Ukraine" },
+              { code: "IL", name: "Israel" },
+              { code: "IR", name: "Iran" },
+              { code: "TW", name: "Taiwan" },
+              { code: "GB", name: "United Kingdom" },
+              { code: "BR", name: "Brazil" },
+            ].map((c) => (
+              <button
+                key={c.code}
+                onClick={() => {
+                  setSelectedCountryCode(c.code);
+                  setLoading(true);
+                  apiGet<any>(`/recon/shadowbroker/country-dossier?country=${c.code}`)
+                    .then((data) => setCountryDossier(data))
+                    .catch((err) => setError(err.message))
+                    .finally(() => setLoading(false));
+                }}
+                style={{
+                  padding: "5px 10px",
+                  fontSize: 11,
+                  fontFamily: "monospace",
+                  borderRadius: 4,
+                  border: selectedCountryCode === c.code ? "1px solid var(--cyan)" : "1px solid var(--border)",
+                  background: selectedCountryCode === c.code ? "rgba(0, 229, 255, 0.2)" : "rgba(10, 14, 22, 0.6)",
+                  color: selectedCountryCode === c.code ? "var(--cyan)" : "var(--text-muted)",
+                  cursor: "pointer",
+                  fontWeight: selectedCountryCode === c.code ? "bold" : "normal",
+                }}
+              >
+                {c.name} ({c.code})
+              </button>
+            ))}
+          </div>
+
+          {countryDossier && (
+            <div
+              style={{
+                background: "rgba(10, 14, 22, 0.95)",
+                border: "1px solid var(--cyan)",
+                borderRadius: 8,
+                padding: 20,
+                fontFamily: "monospace",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
+                <div>
+                  <h3 style={{ margin: 0, color: "#fff", fontSize: 18 }}>
+                    {countryDossier.country} ({countryDossier.iso_code})
+                  </h3>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                    Capital: <strong style={{ color: "#fff" }}>{countryDossier.capital}</strong> | Population: {countryDossier.population}
+                  </div>
+                </div>
+                <span
+                  style={{
+                    padding: "3px 8px",
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: "bold",
+                    background: "rgba(255, 42, 109, 0.2)",
+                    color: "var(--danger)",
+                    border: "1px solid var(--danger)",
+                  }}
+                >
+                  {countryDossier.defense_readiness}
+                </span>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12, marginBottom: 16 }}>
+                <div style={{ background: "rgba(0,0,0,0.4)", padding: 12, borderRadius: 4, borderLeft: "3px solid var(--cyan)" }}>
+                  <div style={{ color: "var(--cyan)", fontWeight: "bold", fontSize: 11, marginBottom: 4 }}>
+                    HEAD OF STATE &amp; MILITARY COMMAND:
+                  </div>
+                  <div style={{ color: "#fff", fontSize: 12 }}>{countryDossier.head_of_state}</div>
+                </div>
+
+                <div style={{ background: "rgba(0,0,0,0.4)", padding: 12, borderRadius: 4, borderLeft: "3px solid #a259ff" }}>
+                  <div style={{ color: "#a259ff", fontWeight: "bold", fontSize: 11, marginBottom: 4 }}>
+                    ALLIANCES &amp; STRATEGIC BLOCS:
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                    {countryDossier.alliances?.map((al: string, i: number) => (
+                      <span key={i} style={{ padding: "1px 5px", background: "rgba(162, 89, 255, 0.2)", borderRadius: 3, fontSize: 10 }}>
+                        {al}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ background: "rgba(0,0,0,0.4)", padding: 12, borderRadius: 4, borderLeft: "3px solid #ffaa00" }}>
+                  <div style={{ color: "#ffaa00", fontWeight: "bold", fontSize: 11, marginBottom: 4 }}>
+                    NUCLEAR POSTURE:
+                  </div>
+                  <div style={{ color: "#fff", fontSize: 12 }}>{countryDossier.nuclear_triad}</div>
+                </div>
+
+                <div style={{ background: "rgba(0,0,0,0.4)", padding: 12, borderRadius: 4, borderLeft: "3px solid #00ff9f" }}>
+                  <div style={{ color: "#00ff9f", fontWeight: "bold", fontSize: 11, marginBottom: 4 }}>
+                    SANCTIONS REGIME / ENFORCEMENT:
+                  </div>
+                  <div style={{ color: "#fff", fontSize: 12 }}>{countryDossier.sanctions_enforcement}</div>
+                </div>
+              </div>
+
+              <div style={{ background: "rgba(0,0,0,0.4)", padding: 12, borderRadius: 4, borderLeft: "3px solid var(--cyan)", marginBottom: 16 }}>
+                <div style={{ color: "var(--cyan)", fontWeight: "bold", fontSize: 11, marginBottom: 4 }}>
+                  STRATEGIC DOCTRINE &amp; PRIMARY AIRBASES:
+                </div>
+                <div style={{ color: "#e2e8f0", fontSize: 12, marginBottom: 6 }}>
+                  {countryDossier.strategic_posture}
+                </div>
+                <div style={{ color: "var(--text-muted)", fontSize: 11 }}>
+                  Key Installations: {countryDossier.primary_airbases?.join(" • ")}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                <SaveToCaseButton
+                  identifierType="corporate"
+                  identifierValue={countryDossier.country}
+                  platform="shadowbroker_c4isr"
+                  discoveredBy="shadowbroker_country_dossier"
+                  metadata={countryDossier}
+                />
+              </div>
+            </div>
           )}
         </div>
       )}

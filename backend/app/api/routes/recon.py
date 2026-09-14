@@ -52,6 +52,7 @@ from app.recon.shadowbroker import (
     fetch_malware_c2,
     fetch_telegram_osint,
     fetch_usgs_earthquakes,
+    fetch_country_dossier,
 )
 from app.recon.torbot import (
     check_onion_status,
@@ -503,6 +504,16 @@ async def shadowbroker_telegram_feed(channel: str = "osintdefender", limit: int 
 async def shadowbroker_earthquakes(limit: int = 50):
     """Fetches global seismic events (M2.5+) from USGS Hazards Program."""
     return await fetch_usgs_earthquakes(limit=limit)
+
+
+@router.get("/shadowbroker/country-dossier")
+async def shadowbroker_country_dossier(
+    country: Optional[str] = Query(None, description="ISO Alpha-2 or Country Name"),
+    lat: Optional[float] = Query(None, description="Latitude"),
+    lon: Optional[float] = Query(None, description="Longitude"),
+):
+    """Fetches C4ISR geopolitical strategic dossier, Head of State, alliances, and defense posture."""
+    return await fetch_country_dossier(country_code=country, lat=lat, lon=lon)
 
 
 # ---------------------------------------------------------------------------

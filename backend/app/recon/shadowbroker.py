@@ -393,3 +393,165 @@ async def fetch_usgs_earthquakes(limit: int = 50) -> List[Dict[str, Any]]:
         logger.error(f"Error fetching USGS earthquakes: {e}")
 
     return quakes
+
+
+# ---------------------------------------------------------------------------
+# 7. Strategic Country Dossiers & Geopolitical Intel
+# ---------------------------------------------------------------------------
+
+STRATEGIC_COUNTRY_PROFILES: Dict[str, Dict[str, Any]] = {
+    "US": {
+        "country": "United States",
+        "iso_code": "US",
+        "capital": "Washington, D.C.",
+        "head_of_state": "Joe Biden (President)",
+        "population": "335 Million",
+        "alliances": ["NATO (Founding Member)", "Five Eyes (US/UK/CA/AU/NZ)", "AUKUS", "Quad"],
+        "defense_readiness": "DEFCON 3 (Standard Global Posture)",
+        "nuclear_triad": "Operational (Minuteman III ICBMs, Ohio-class SSBNs, B-2/B-52H)",
+        "primary_airbases": ["Andrews AFB", "Nellis AFB", "Ramstein AB (Europe forward)", "Al Udeid (CENTCOM)"],
+        "strategic_posture": "Global power projection, Indo-Pacific deterrence, Atlantic maritime security.",
+        "sanctions_enforcement": "OFAC Primary Regulator",
+    },
+    "RU": {
+        "country": "Russian Federation",
+        "iso_code": "RU",
+        "capital": "Moscow",
+        "head_of_state": "Vladimir Putin (President)",
+        "population": "144 Million",
+        "alliances": ["CSTO (Collective Security Treaty Org)", "BRICS+", "SCO (Shanghai Cooperation Org)"],
+        "defense_readiness": "High Strategic Alert (Special Military Operation)",
+        "nuclear_triad": "Operational (Yars/Sarmat ICBMs, Borei SSBNs, Tu-160/Tu-95MS)",
+        "primary_airbases": ["Engels-2", "Olenya", "Hmeymim AB (Syria)", "Kubinka"],
+        "strategic_posture": "Strategic buffer maintenance, Black Sea access, electronic warfare dominance.",
+        "sanctions_enforcement": "Subject to comprehensive OFAC/EU/UK sanctions.",
+    },
+    "CN": {
+        "country": "People's Republic of China",
+        "iso_code": "CN",
+        "capital": "Beijing",
+        "head_of_state": "Xi Jinping (President & CMC Chairman)",
+        "population": "1.41 Billion",
+        "alliances": ["SCO", "BRICS+", "China-Russia Strategic Partnership"],
+        "defense_readiness": "Elevated (Taiwan Strait & South China Sea Maritime Drills)",
+        "nuclear_triad": "Expanding Triad (DF-41/DF-31AG ICBMs, Type 094 SSBNs, H-6N)",
+        "primary_airbases": ["Hainan Yulin Naval Base", "Fiery Cross Reef", "Zhangzhou AFB", "Hotan"],
+        "strategic_posture": "Anti-Access/Area Denial (A2/AD), South China Sea militarization, Belt and Road.",
+        "sanctions_enforcement": "Selective Entity List export controls.",
+    },
+    "UA": {
+        "country": "Ukraine",
+        "iso_code": "UA",
+        "capital": "Kyiv",
+        "head_of_state": "Volodymyr Zelenskyy (President)",
+        "population": "38 Million",
+        "alliances": ["NATO Aspirant", "EU Candidate", "Ukraine Defense Contact Group"],
+        "defense_readiness": "Martial Law / Full Combat Mobilization",
+        "nuclear_triad": "Non-nuclear (Budapest Memorandum 1994)",
+        "primary_airbases": ["Starokostiantyniv", "Myrhorod", "Vasylkiv", "Odesa"],
+        "strategic_posture": "Territorial defense, sovereign airspace protection, Black Sea grain corridor.",
+        "sanctions_enforcement": "Coordinated Western allied support.",
+    },
+    "IL": {
+        "country": "Israel",
+        "iso_code": "IL",
+        "capital": "Jerusalem",
+        "head_of_state": "Benjamin Netanyahu (Prime Minister)",
+        "population": "9.8 Million",
+        "alliances": ["Major Non-NATO Ally (MNNA)", "Abraham Accords"],
+        "defense_readiness": "War Footing (Multi-Front Operations)",
+        "nuclear_triad": "Deliberate Ambiguity (Jericho III, Dolphin-class cruise missiles)",
+        "primary_airbases": ["Nevatim AFB (F-35I)", "Tel Nof AFB", "Ramat David", "Palmachim"],
+        "strategic_posture": "Iron Dome / David's Sling / Arrow multi-tier missile defense, regional deterrence.",
+        "sanctions_enforcement": "Western defense intelligence integration.",
+    },
+    "IR": {
+        "country": "Islamic Republic of Iran",
+        "iso_code": "IR",
+        "capital": "Tehran",
+        "head_of_state": "Ali Khamenei (Supreme Leader) / Masoud Pezeshkian (President)",
+        "population": "88 Million",
+        "alliances": ["Axis of Resistance", "SCO", "BRICS+"],
+        "defense_readiness": "Elevated Alert (IRGC Aerospace Forces)",
+        "nuclear_triad": "Uranium enrichment threshold state (Fordo, Natanz)",
+        "primary_airbases": ["Isfahan 8th Tactical Air Base", "Bandar Abbas Naval Base", "Oghab 44 underground base"],
+        "strategic_posture": "Asymmetric drone and ballistic missile proliferation (Shahed-136, Fateh-110), Strait of Hormuz chokepoint control.",
+        "sanctions_enforcement": "Subject to comprehensive OFAC/UN primary and secondary sanctions.",
+    },
+    "TW": {
+        "country": "Taiwan (Republic of China)",
+        "iso_code": "TW",
+        "capital": "Taipei",
+        "head_of_state": "Lai Ching-te (President)",
+        "population": "23.5 Million",
+        "alliances": ["Taiwan Relations Act security partnership with United States"],
+        "defense_readiness": "Constant ADIZ Intercept Readiness",
+        "nuclear_triad": "Non-nuclear state",
+        "primary_airbases": ["Hsinchu AFB (Mirage 2000)", "Chiayi AFB (F-16V)", "Hualien AFB (underground bunkers)"],
+        "strategic_posture": "Porcupine defense strategy, semiconductor supply chain security, Strait surveillance.",
+        "sanctions_enforcement": "US export controls enforcement.",
+    },
+    "GB": {
+        "country": "United Kingdom",
+        "iso_code": "GB",
+        "capital": "London",
+        "head_of_state": "King Charles III / Keir Starmer (Prime Minister)",
+        "population": "67 Million",
+        "alliances": ["NATO (Permanent Nuclear Member)", "Five Eyes", "AUKUS"],
+        "defense_readiness": "Standard NATO Alert",
+        "nuclear_triad": "Continuous At-Sea Deterrent (CASD) Vanguard-class Trident SSBNs",
+        "primary_airbases": ["RAF Waddington (ISR / RC-135)", "RAF Lossiemouth (Typhoon QRA)", "HMNB Clyde"],
+        "strategic_posture": "GIUK gap surveillance, European northern flank security, global carrier strike.",
+        "sanctions_enforcement": "UK OFSI Sanctions Authority.",
+    },
+    "BR": {
+        "country": "Brazil",
+        "iso_code": "BR",
+        "capital": "Brasília",
+        "head_of_state": "Luiz Inácio Lula da Silva (President)",
+        "population": "215 Million",
+        "alliances": ["BRICS+", "Mercosur", "UNASUR", "South Atlantic Peace and Cooperation Zone"],
+        "defense_readiness": "Standard Peacetime",
+        "nuclear_triad": "Non-nuclear (Treaty of Tlatelolco, Submarino Nuclear PROSUB program)",
+        "primary_airbases": ["Base Aérea de Anápolis (Gripen E)", "Base Aérea de Santa Cruz", "Base Naval de Mocanguê"],
+        "strategic_posture": "Amazon Basin sovereignty (SISFRON), Blue Amazon maritime economic zone defense, diplomatic non-alignment.",
+        "sanctions_enforcement": "Multilateral UN compliance.",
+    },
+}
+
+
+async def fetch_country_dossier(country_code: Optional[str] = None, lat: Optional[float] = None, lon: Optional[float] = None) -> Dict[str, Any]:
+    """Returns strategic intelligence dossier for a country."""
+    clean_code = (country_code or "").upper().strip()
+
+    # If coordinates given, and country_code was not explicitly given or not in profiles, resolve closest centroid
+    if lat is not None and lon is not None and (not clean_code or clean_code not in STRATEGIC_COUNTRY_PROFILES):
+        closest_code = "US"
+        min_dist = 999999.0
+        for code, (clat, clon) in COUNTRY_CENTROIDS.items():
+            dist = math.hypot(lat - clat, lon - clon)
+            if dist < min_dist:
+                min_dist = dist
+                closest_code = code
+        clean_code = closest_code
+    elif not clean_code:
+        clean_code = "US"
+
+    profile = STRATEGIC_COUNTRY_PROFILES.get(clean_code)
+    if profile:
+        return profile
+
+    # Fallback generic profile
+    return {
+        "country": f"Sovereign Entity ({clean_code})",
+        "iso_code": clean_code,
+        "capital": "Regional Capital",
+        "head_of_state": "National Leadership",
+        "population": "Unpublished Telemetry",
+        "alliances": ["United Nations Member State"],
+        "defense_readiness": "Regional Sovereignty Patrol",
+        "nuclear_triad": "Non-nuclear signatory",
+        "primary_airbases": ["National Defense Installation"],
+        "strategic_posture": "Territorial integrity and sovereign airspace monitoring.",
+        "sanctions_enforcement": "International sanctions database lookup available.",
+    }
