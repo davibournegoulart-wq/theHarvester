@@ -5,10 +5,7 @@ import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
 import { useActiveCase } from "@/lib/activeCase";
 import { apiGet, apiPostJson, apiFetch } from "@/lib/api";
-import { CaseFileItem } from "./CaseFilesDatabank";
-import ShadowbrokerSuite from "./ShadowbrokerSuite";
-import GodsEyeSuite from "./GodsEyeSuite";
-import GlobalCctvSuite from "./GlobalCctvSuite";
+import UnifiedC4ISRCockpit from "./UnifiedC4ISRCockpit";
 import {
   MapIcon,
   PinIcon,
@@ -26,11 +23,10 @@ import {
   SwordsIcon,
   FlameIcon,
   VideoIcon,
-  TvIcon,
   JetIcon,
 } from "@/components/FlatIcons";
+import { CaseFileItem } from "./CaseFilesDatabank";
 import SaveToCaseButton from "./SaveToCaseButton";
-import OsirisIntelSuite from "./OsirisIntelSuite";
 import type { VisualShaderMode } from "./GodsEyeCesiumGlobe";
 
 const GodsEyeCesiumGlobe = dynamic(() => import("./GodsEyeCesiumGlobe"), {
@@ -103,12 +99,7 @@ const cctvIcon = typeof window !== "undefined" ? L.divIcon({
   iconAnchor: [11, 11],
 }) : (null as any);
 
-const newsIcon = typeof window !== "undefined" ? L.divIcon({
-  className: "custom-div-icon",
-  html: `<div style="background: rgba(162, 89, 255, 0.9); border: 2px solid #a259ff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 8px #a259ff;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="15" x="2" y="7" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg></div>`,
-  iconSize: [22, 22],
-  iconAnchor: [11, 11],
-}) : (null as any);
+
 
 const militaryFlightIcon = typeof window !== "undefined" ? L.divIcon({
   className: "custom-div-icon",
@@ -164,28 +155,20 @@ export default function GeoMap() {
   }
 
   const [showPhotoModal, setShowPhotoModal] = useState(false);
-  const [showShadowbrokerModal, setShowShadowbrokerModal] = useState(false);
-  const [showGodsEyeModal, setShowGodsEyeModal] = useState(false);
-  const [showOsirisModal, setShowOsirisModal] = useState(false);
-  const [showCctvModal, setShowCctvModal] = useState(false);
+  const [showCockpitModal, setShowCockpitModal] = useState(false);
   const [photoLoading, setPhotoLoading] = useState(false);
 
-  // Osiris Intelligence Multi-layer States
+  // Tactical Intelligence Multi-layer States
   const [conflicts, setConflicts] = useState<any[]>([]);
   const [earthquakes, setEarthquakes] = useState<any[]>([]);
   const [cctvs, setCctvs] = useState<any[]>([]);
-  const [newsPoints, setNewsPoints] = useState<any[]>([]);
   const [militaryFlights, setMilitaryFlights] = useState<any[]>([]);
 
   // 2D Tactical Layer Visibility Toggles
   const [layerWars, setLayerWars] = useState(true);
   const [layerQuakes, setLayerQuakes] = useState(true);
   const [layerCctv, setLayerCctv] = useState(true);
-  const [layerNews, setLayerNews] = useState(true);
   const [layerFlights, setLayerFlights] = useState(true);
-
-  // Video News Player Modal in 2D map
-  const [activeNewsStream, setActiveNewsStream] = useState<any | null>(null);
   const [pic2mapResult, setPic2mapResult] = useState<{
     has_gps: boolean;
     latitude?: number;
@@ -272,17 +255,15 @@ export default function GeoMap() {
   useEffect(() => {
     async function loadOsirisData() {
       try {
-        const [czRes, eqRes, cctvRes, newsRes, flRes] = await Promise.allSettled([
+        const [czRes, eqRes, cctvRes, flRes] = await Promise.allSettled([
           apiGet<any>("/recon/osiris/conflicts"),
           apiGet<any>("/recon/osiris/earthquakes?min_magnitude=3.0"),
           apiGet<any>("/recon/osiris/cctv?limit=200"),
-          apiGet<any>("/recon/osiris/live-news"),
           apiGet<any>("/recon/shadowbroker/military-flights?limit=50"),
         ]);
         if (czRes.status === "fulfilled") setConflicts(czRes.value?.zones || []);
         if (eqRes.status === "fulfilled") setEarthquakes(eqRes.value?.earthquakes || []);
         if (cctvRes.status === "fulfilled") setCctvs(cctvRes.value?.cameras || []);
-        if (newsRes.status === "fulfilled") setNewsPoints(newsRes.value?.feeds || []);
         if (flRes.status === "fulfilled") setMilitaryFlights(Array.isArray(flRes.value) ? flRes.value : []);
       } catch (err) {
         console.warn("Error loading Osiris layers:", err);
@@ -515,93 +496,17 @@ export default function GeoMap() {
             <CameraIcon size={13} color="var(--cyan)" />
             {showPhotoModal ? "Close Photo GPS" : "Photo GPS (Pic2Map & Astra)"}
           </button>
+
           <button
             onClick={() => {
-              setShowShadowbrokerModal(!showShadowbrokerModal);
+              setShowCockpitModal(!showCockpitModal);
               if (showAddModal) setShowAddModal(false);
               if (showPhotoModal) setShowPhotoModal(false);
             }}
             style={{
-              padding: "6px 12px",
+              padding: "6px 14px",
               fontSize: 12,
-              background: "rgba(162, 89, 255, 0.15)",
-              color: "#a259ff",
-              border: "1px solid #a259ff",
-              fontWeight: "bold",
-              borderRadius: 4,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            <RadarIcon size={13} color="#a259ff" />
-            {showShadowbrokerModal ? "Close Threat (Shadowbroker)" : "Threat Intercept (Shadowbroker)"}
-          </button>
-          <button
-            onClick={() => {
-              setShowGodsEyeModal(!showGodsEyeModal);
-              if (showAddModal) setShowAddModal(false);
-              if (showPhotoModal) setShowPhotoModal(false);
-              if (showShadowbrokerModal) setShowShadowbrokerModal(false);
-              if (showCctvModal) setShowCctvModal(false);
-            }}
-            style={{
-              padding: "6px 12px",
-              fontSize: 12,
-              background: "rgba(0, 229, 255, 0.15)",
-              color: "#00e5ff",
-              border: "1px solid #00e5ff",
-              fontWeight: "bold",
-              borderRadius: 4,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            <EyeIcon size={13} color="#00e5ff" />
-            {showGodsEyeModal ? "Close Satellite (God's Eye)" : "Satellite Recon (God's Eye)"}
-          </button>
-          <button
-            onClick={() => {
-              setShowOsirisModal(!showOsirisModal);
-              if (showAddModal) setShowAddModal(false);
-              if (showPhotoModal) setShowPhotoModal(false);
-              if (showShadowbrokerModal) setShowShadowbrokerModal(false);
-              if (showGodsEyeModal) setShowGodsEyeModal(false);
-              if (showCctvModal) setShowCctvModal(false);
-            }}
-            style={{
-              padding: "6px 12px",
-              fontSize: 12,
-              background: "rgba(0, 230, 118, 0.15)",
-              color: "#00E676",
-              border: "1px solid #00E676",
-              fontWeight: "bold",
-              borderRadius: 4,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            <GlobeIcon size={13} color="#00E676" />
-            {showOsirisModal ? "Close Global Intel (Osiris)" : "Global Intel & Feeds (Osiris)"}
-          </button>
-          <button
-            onClick={() => {
-              setShowCctvModal(!showCctvModal);
-              if (showAddModal) setShowAddModal(false);
-              if (showPhotoModal) setShowPhotoModal(false);
-              if (showShadowbrokerModal) setShowShadowbrokerModal(false);
-              if (showGodsEyeModal) setShowGodsEyeModal(false);
-              if (showOsirisModal) setShowOsirisModal(false);
-            }}
-            style={{
-              padding: "6px 12px",
-              fontSize: 12,
-              background: "rgba(0, 229, 255, 0.15)",
+              background: showCockpitModal ? "rgba(0, 229, 255, 0.25)" : "rgba(0, 229, 255, 0.12)",
               color: "var(--cyan)",
               border: "1px solid var(--cyan)",
               fontWeight: "bold",
@@ -609,11 +514,13 @@ export default function GeoMap() {
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
-              gap: 6,
+              gap: 7,
+              fontFamily: "monospace",
+              letterSpacing: "0.03em",
             }}
           >
-            <VideoIcon size={13} color="var(--cyan)" />
-            {showCctvModal ? "Close CCTV Surveillance" : "CCTV Surveillance (Global)"}
+            <RadarIcon size={14} color="var(--cyan)" />
+            {showCockpitModal ? "CLOSE C4ISR COCKPIT" : "C4ISR COMMAND COCKPIT (SHADOWBROKER / GOD'S EYE / OSIRIS)"}
           </button>
           {points.length > 0 && (
             <button
@@ -767,37 +674,16 @@ export default function GeoMap() {
         </div>
       )}
 
-      {/* Shadowbroker Threat Telemetry Drawer */}
-      {showShadowbrokerModal && (
+      {/* Unified C4ISR Intelligence Cockpit (Shadowbroker, God's Eye & Osiris Merged) */}
+      {showCockpitModal && (
         <div style={{ marginBottom: 20 }}>
-          <ShadowbrokerSuite
+          <UnifiedC4ISRCockpit
             onPinToMap={() => {
               if (activeCase?.id) {
                 loadCaseGeolocations(activeCase.id);
               }
             }}
           />
-        </div>
-      )}
-
-      {/* God's Eye View Satellite & Multi-Sensor Intelligence Drawer */}
-      {showGodsEyeModal && (
-        <div style={{ marginBottom: 20 }}>
-          <GodsEyeSuite />
-        </div>
-      )}
-
-      {/* Osiris Global Situational Intelligence & Feeds Drawer */}
-      {showOsirisModal && (
-        <div style={{ marginBottom: 20 }}>
-          <OsirisIntelSuite />
-        </div>
-      )}
-
-      {/* Unified Global CCTV Surveillance Suite Drawer */}
-      {showCctvModal && (
-        <div style={{ marginBottom: 20 }}>
-          <GlobalCctvSuite />
         </div>
       )}
 
@@ -1014,24 +900,7 @@ export default function GeoMap() {
               <span>CCTVs ({cctvs.length})</span>
             </button>
 
-            <button
-              onClick={() => setLayerNews(!layerNews)}
-              style={{
-                padding: "3px 8px",
-                borderRadius: 3,
-                fontSize: 10,
-                background: layerNews ? "rgba(162, 89, 255, 0.25)" : "transparent",
-                color: layerNews ? "#c084fc" : "var(--text-muted)",
-                border: `1px solid ${layerNews ? "#a259ff" : "rgba(255,255,255,0.1)"}`,
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 5,
-              }}
-            >
-              <TvIcon size={12} color={layerNews ? "#c084fc" : "var(--text-muted)"} />
-              <span>News ({newsPoints.length})</span>
-            </button>
+
 
             <button
               onClick={() => setLayerFlights(!layerFlights)}
@@ -1211,50 +1080,7 @@ export default function GeoMap() {
                   </Marker>
                 ))}
 
-              {/* 5. Osiris Live News */}
-              {layerNews &&
-                newsPoints.map((nw) => (
-                  <Marker key={`news-${nw.id}`} position={[nw.lat, nw.lon]} icon={newsIcon}>
-                    <Popup>
-                      <div style={{ minWidth: 220, fontSize: 12, color: "#1e293b" }}>
-                        <div style={{ fontWeight: "bold", fontSize: 13, color: "#7c3aed", marginBottom: 4, display: "flex", alignItems: "center", gap: 5 }}>
-                          <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#7c3aed" }} />
-                          <span>{nw.name}</span>
-                        </div>
-                        <div style={{ fontSize: 10, color: "#64748b", marginBottom: 6 }}>
-                          {nw.city}, {nw.country} · {nw.category}
-                        </div>
-                        <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-                          <a
-                            href={nw.stream_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{
-                              flex: 1,
-                              padding: "4px 8px",
-                              fontSize: 10,
-                              background: "#7c3aed",
-                              color: "#fff",
-                              borderRadius: 3,
-                              textAlign: "center",
-                              textDecoration: "none",
-                              fontWeight: "bold",
-                            }}
-                          >
-                            Watch Live Stream ↗
-                          </a>
-                        </div>
-                        <SaveToCaseButton
-                          identifierType="domain"
-                          identifierValue={nw.name}
-                          platform="osiris_live_news"
-                          discoveredBy="osiris_news_monitor"
-                          metadata={nw}
-                        />
-                      </div>
-                    </Popup>
-                  </Marker>
-                ))}
+
 
               {/* 6. Shadowbroker Military Flights */}
               {layerFlights &&

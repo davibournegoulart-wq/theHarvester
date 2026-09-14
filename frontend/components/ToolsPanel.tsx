@@ -13,15 +13,12 @@ import SocialToolsDirectory from "./SocialToolsDirectory";
 import FacebookStalkerTool from "./FacebookStalkerTool";
 import OsintgramTool from "./OsintgramTool";
 import LinkdTimeTool from "./LinkdTimeTool";
-import ShadowbrokerSuite from "./ShadowbrokerSuite";
+import UnifiedC4ISRCockpit from "./UnifiedC4ISRCockpit";
 import TorBotTool from "./TorBotTool";
 import HorusSuite from "./HorusSuite";
-import GodsEyeSuite from "./GodsEyeSuite";
 import MailAccessSuite from "./MailAccessSuite";
 import VoidAccessSuite from "./VoidAccessSuite";
 import ForensicsSuite from "./ForensicsSuite";
-import OsirisIntelSuite from "./OsirisIntelSuite";
-import GlobalCctvSuite from "./GlobalCctvSuite";
 import { CheckIcon, KeyIcon, ShieldIcon, AlertIcon, FolderIcon, CameraIcon, PinIcon, GlobeIcon, LockIcon, LinkIcon } from "@/components/FlatIcons";
 
 type ReverseImageLink = {
@@ -767,12 +764,9 @@ export default function ToolsPanel() {
       <OsintgramTool />
       <LinkdTimeTool />
       <DeepScraperTool />
-      <ShadowbrokerSuite />
+      <UnifiedC4ISRCockpit />
       <TorBotTool />
       <HorusSuite />
-      <GodsEyeSuite />
-      <OsirisIntelSuite />
-      <GlobalCctvSuite />
       <MailAccessSuite />
       <VoidAccessSuite />
       <ForensicsSuite />
