@@ -8,6 +8,7 @@ import { apiGet, apiPostJson, apiFetch } from "@/lib/api";
 import { CaseFileItem } from "./CaseFilesDatabank";
 import ShadowbrokerSuite from "./ShadowbrokerSuite";
 import GodsEyeSuite from "./GodsEyeSuite";
+import GlobalCctvSuite from "./GlobalCctvSuite";
 import {
   MapIcon,
   PinIcon,
@@ -166,6 +167,7 @@ export default function GeoMap() {
   const [showShadowbrokerModal, setShowShadowbrokerModal] = useState(false);
   const [showGodsEyeModal, setShowGodsEyeModal] = useState(false);
   const [showOsirisModal, setShowOsirisModal] = useState(false);
+  const [showCctvModal, setShowCctvModal] = useState(false);
   const [photoLoading, setPhotoLoading] = useState(false);
 
   // Osiris Intelligence Multi-layer States
@@ -273,7 +275,7 @@ export default function GeoMap() {
         const [czRes, eqRes, cctvRes, newsRes, flRes] = await Promise.allSettled([
           apiGet<any>("/recon/osiris/conflicts"),
           apiGet<any>("/recon/osiris/earthquakes?min_magnitude=3.0"),
-          apiGet<any>("/recon/osiris/cctv?limit=60"),
+          apiGet<any>("/recon/osiris/cctv?limit=200"),
           apiGet<any>("/recon/osiris/live-news"),
           apiGet<any>("/recon/shadowbroker/military-flights?limit=50"),
         ]);
@@ -542,6 +544,7 @@ export default function GeoMap() {
               if (showAddModal) setShowAddModal(false);
               if (showPhotoModal) setShowPhotoModal(false);
               if (showShadowbrokerModal) setShowShadowbrokerModal(false);
+              if (showCctvModal) setShowCctvModal(false);
             }}
             style={{
               padding: "6px 12px",
@@ -567,6 +570,7 @@ export default function GeoMap() {
               if (showPhotoModal) setShowPhotoModal(false);
               if (showShadowbrokerModal) setShowShadowbrokerModal(false);
               if (showGodsEyeModal) setShowGodsEyeModal(false);
+              if (showCctvModal) setShowCctvModal(false);
             }}
             style={{
               padding: "6px 12px",
@@ -584,6 +588,32 @@ export default function GeoMap() {
           >
             <GlobeIcon size={13} color="#00E676" />
             {showOsirisModal ? "Close Global Intel (Osiris)" : "Global Intel & Feeds (Osiris)"}
+          </button>
+          <button
+            onClick={() => {
+              setShowCctvModal(!showCctvModal);
+              if (showAddModal) setShowAddModal(false);
+              if (showPhotoModal) setShowPhotoModal(false);
+              if (showShadowbrokerModal) setShowShadowbrokerModal(false);
+              if (showGodsEyeModal) setShowGodsEyeModal(false);
+              if (showOsirisModal) setShowOsirisModal(false);
+            }}
+            style={{
+              padding: "6px 12px",
+              fontSize: 12,
+              background: "rgba(0, 229, 255, 0.15)",
+              color: "var(--cyan)",
+              border: "1px solid var(--cyan)",
+              fontWeight: "bold",
+              borderRadius: 4,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <VideoIcon size={13} color="var(--cyan)" />
+            {showCctvModal ? "Close CCTV Surveillance" : "CCTV Surveillance (Global)"}
           </button>
           {points.length > 0 && (
             <button
@@ -761,6 +791,13 @@ export default function GeoMap() {
       {showOsirisModal && (
         <div style={{ marginBottom: 20 }}>
           <OsirisIntelSuite />
+        </div>
+      )}
+
+      {/* Unified Global CCTV Surveillance Suite Drawer */}
+      {showCctvModal && (
+        <div style={{ marginBottom: 20 }}>
+          <GlobalCctvSuite />
         </div>
       )}
 

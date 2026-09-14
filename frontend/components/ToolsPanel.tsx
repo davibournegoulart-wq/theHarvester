@@ -21,6 +21,7 @@ import MailAccessSuite from "./MailAccessSuite";
 import VoidAccessSuite from "./VoidAccessSuite";
 import ForensicsSuite from "./ForensicsSuite";
 import OsirisIntelSuite from "./OsirisIntelSuite";
+import GlobalCctvSuite from "./GlobalCctvSuite";
 import { CheckIcon, KeyIcon, ShieldIcon, AlertIcon, FolderIcon, CameraIcon, PinIcon, GlobeIcon, LockIcon, LinkIcon } from "@/components/FlatIcons";
 
 type ReverseImageLink = {
@@ -771,6 +772,7 @@ export default function ToolsPanel() {
       <HorusSuite />
       <GodsEyeSuite />
       <OsirisIntelSuite />
+      <GlobalCctvSuite />
       <MailAccessSuite />
       <VoidAccessSuite />
       <ForensicsSuite />

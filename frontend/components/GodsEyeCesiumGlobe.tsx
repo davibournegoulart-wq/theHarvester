@@ -484,7 +484,7 @@ export default function GodsEyeCesiumGlobe({
   // 3e. Fetch Osiris CCTV Public Cameras
   async function fetchCctv() {
     try {
-      const res = await apiGet<any>("/recon/osiris/cctv?limit=40");
+      const res = await apiGet<any>("/recon/osiris/cctv?limit=200");
       const list = res?.cameras || [];
       setCctvs(list);
       if (showCctv) plotCctvInCesium(list);
@@ -940,6 +940,9 @@ export default function GodsEyeCesiumGlobe({
           </span>
           <span>
             News: <strong style={{ color: "#c084fc" }}>{newsFeeds.length}</strong>
+          </span>
+          <span>
+            CCTVs: <strong style={{ color: "var(--cyan)" }}>{cctvs.length}</strong>
           </span>
           <span>
             Sensor: <strong style={{ color: "#fff" }}>{activeShader === "FLIR" ? "LWIR 8-14μm" : activeShader === "NVG" ? "Gen-III Phosphor" : "EO Visible"}</strong>
@@ -1460,6 +1463,37 @@ export default function GodsEyeCesiumGlobe({
         >
           <TvIcon size={12} color={showNews ? "#c084fc" : "var(--text-muted)"} />
           <span>News ({newsFeeds.length})</span>
+        </button>
+
+        <button
+          onClick={() => {
+            const next = !showCctv;
+            setShowCctv(next);
+            if (next) {
+              if (cctvs.length === 0) fetchCctv();
+              else plotCctvInCesium(cctvs);
+            } else {
+              viewerRef.current?.entities.values
+                .filter((e: any) => e.id?.startsWith("cctv-"))
+                .forEach((e: any) => viewerRef.current.entities.remove(e));
+            }
+          }}
+          style={{
+            padding: "4px 8px",
+            fontSize: 10,
+            background: showCctv ? "rgba(0, 229, 255, 0.2)" : "rgba(255,255,255,0.05)",
+            color: showCctv ? "var(--cyan)" : "var(--text-muted)",
+            border: `1px solid ${showCctv ? "var(--cyan)" : "transparent"}`,
+            borderRadius: 3,
+            cursor: "pointer",
+            fontFamily: "monospace",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+          }}
+        >
+          <VideoIcon size={12} color={showCctv ? "var(--cyan)" : "var(--text-muted)"} />
+          <span>CCTVs ({cctvs.length})</span>
         </button>
 
         <button
