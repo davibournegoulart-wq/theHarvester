@@ -63,6 +63,16 @@ export default function GodsEyeCesiumGlobe({
   // Tracked contact popup / inspection
   const [selectedContact, setSelectedContact] = useState<any | null>(null);
 
+  // Globe illumination mode (false = 24/7 Daylit Tactical, true = Astronomical Sun Shading)
+  const [sunLighting, setSunLighting] = useState(false);
+
+  function toggleSunLighting() {
+    if (!viewerRef.current) return;
+    const nextVal = !sunLighting;
+    viewerRef.current.scene.globe.enableLighting = nextVal;
+    setSunLighting(nextVal);
+  }
+
   // 1. Dynamic CDN loader for CesiumJS (Zero bundle overhead, Turbopack compatible)
   useEffect(() => {
     let isMounted = true;
@@ -134,6 +144,13 @@ export default function GodsEyeCesiumGlobe({
 
     // Use default anonymous access with OpenStreetMap / Esri imagery
     try {
+      // Base layer provider: Esri photorealistic satellite imagery
+      const esriProvider = new Cesium.UrlTemplateImageryProvider({
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        credit: "Esri World Imagery",
+        maximumLevel: 19,
+      });
+
       const viewer = new Cesium.Viewer(containerRef.current, {
         animation: false,
         baseLayerPicker: false,
@@ -147,6 +164,7 @@ export default function GodsEyeCesiumGlobe({
         navigationHelpButton: false,
         navigationInstructionsInitiallyVisible: false,
         scene3DOnly: true,
+        baseLayer: new Cesium.ImageryLayer(esriProvider),
         contextOptions: {
           webgl: {
             alpha: true,
@@ -158,26 +176,24 @@ export default function GodsEyeCesiumGlobe({
             failIfMajorPerformanceCaveat: false,
           },
         },
-        imageryProvider: new Cesium.UrlTemplateImageryProvider({
-          url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-          credit: "Esri World Imagery",
-        }),
       });
 
-      // Dark atmosphere styling
+      // Globe visual styling:
+      // Disable solar night shading (enableLighting = false) so the Earth is brightly illuminated and photorealistic 24/7 across all timezones
       const scene = viewer.scene;
-      scene.globe.enableLighting = true;
+      scene.globe.enableLighting = false;
       scene.globe.depthTestAgainstTerrain = false;
-      scene.globe.atmosphereBrightnessShift = -0.1;
-      scene.skyAtmosphere.hueShift = -0.05;
-      scene.skyAtmosphere.saturationShift = -0.2;
+      scene.globe.atmosphereBrightnessShift = 0.1;
+      scene.skyAtmosphere.hueShift = 0.0;
+      scene.skyAtmosphere.saturationShift = 0.1;
+      scene.globe.baseColor = Cesium.Color.fromCssColorString("#0d1b2a");
 
       viewerRef.current = viewer;
       setLoadingCesium(false);
 
-      // Default camera over global view
+      // Default camera over global view (centered on South America / Americas)
       viewer.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(-30.0, 20.0, 18000000.0),
+        destination: Cesium.Cartesian3.fromDegrees(-47.9, -15.8, 14000000.0),
         duration: 2.0,
       });
 
@@ -223,7 +239,7 @@ export default function GodsEyeCesiumGlobe({
     setSatLoading(true);
     try {
       const res = await apiGet<any>("/recon/godseye/satellites?group=stations");
-      const list = res?.satellites || [];
+      const list = Array.isArray(res) ? res : (res?.satellites || []);
       setSatellites(list);
       plotSatellitesInCesium(list);
     } catch (err) {
@@ -967,6 +983,26 @@ export default function GodsEyeCesiumGlobe({
           backdropFilter: "blur(6px)",
         }}
       >
+        <button
+          onClick={toggleSunLighting}
+          title={sunLighting ? "Switch to 24/7 Illuminated Daylight Mode" : "Switch to Astronomical Sun Shading (Night/Day cycle)"}
+          style={{
+            padding: "5px 10px",
+            fontSize: 11,
+            background: sunLighting ? "rgba(255, 170, 0, 0.2)" : "rgba(0, 229, 255, 0.15)",
+            color: sunLighting ? "#ffaa00" : "var(--cyan)",
+            border: `1px solid ${sunLighting ? "#ffaa00" : "var(--cyan)"}`,
+            borderRadius: 4,
+            cursor: "pointer",
+            fontFamily: "monospace",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          <span>{sunLighting ? "🌙 Sun Cycle" : "☀️ Daylit"}</span>
+        </button>
+
         <button
           onClick={fetchSatellites}
           disabled={satLoading}
