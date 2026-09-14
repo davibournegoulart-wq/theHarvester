@@ -614,12 +614,16 @@ export default function GodsEyeCesiumGlobe({
     toRemove.forEach((e) => viewer.entities.remove(e));
 
     flightList.forEach((fl: any, i: number) => {
-      const lat = fl.lat;
-      const lon = fl.lon;
-      const altFt = fl.alt_baro || fl.alt_geom || 25000;
+      const lat = fl.latitude ?? fl.lat;
+      const lon = fl.longitude ?? fl.lon;
+      const altFt = fl.altitude_feet ?? fl.alt_baro ?? fl.alt_geom ?? 25000;
       const altMeters = altFt * 0.3048;
+      const callsign = fl.callsign ?? fl.flight?.trim() ?? fl.hex ?? `MIL-${i}`;
+      const speed = fl.ground_speed_kts ?? fl.speed ?? fl.gs ?? 420;
+      const track = fl.heading_deg ?? fl.track ?? 0;
+      const typeDesc = fl.description ?? fl.type ?? "Military Aircraft";
 
-      if (!lat || !lon) return;
+      if (lat === undefined || lon === undefined || lat === null || lon === null) return;
 
       const position = Cesium.Cartesian3.fromDegrees(lon, lat, altMeters);
       const groundPos = Cesium.Cartesian3.fromDegrees(lon, lat, 0);
@@ -627,7 +631,7 @@ export default function GodsEyeCesiumGlobe({
       // Aircraft Marker with Altitude Drop-line
       viewer.entities.add({
         id: `flight-${fl.hex || i}`,
-        name: fl.flight?.trim() || fl.hex || `MIL-${i}`,
+        name: callsign,
         position: position,
         point: {
           pixelSize: 7,
@@ -644,7 +648,7 @@ export default function GodsEyeCesiumGlobe({
           }),
         },
         label: {
-          text: `${fl.flight?.trim() || fl.hex || "RECON"} (${Math.round(altFt / 1000)}k ft)`,
+          text: `${callsign} (${Math.round(altFt / 1000)}k ft)`,
           font: "10px system-ui, -apple-system, sans-serif",
           style: Cesium.LabelStyle.FILL_AND_OUTLINE,
           fillColor: Cesium.Color.fromCssColorString("#d8b4fe"),
@@ -656,16 +660,16 @@ export default function GodsEyeCesiumGlobe({
         },
         properties: {
           type: "AIRCRAFT",
-          callsign: fl.flight?.trim() || fl.hex,
+          callsign: callsign,
           hex: fl.hex,
           lat: lat,
           lon: lon,
           alt_baro: altFt,
-          speed: fl.gs || 420,
-          track: fl.track || 0,
-          country_code: fl.country_code || "US",
-          country: fl.country || "Military Aircraft",
-          category: fl.category || "C4ISR / Reconnaissance",
+          speed: speed,
+          track: track,
+          country_code: fl.country_code || "MIL",
+          country: typeDesc,
+          category: fl.category || "Tactical Airborne Recon",
           origin: fl.origin || "FORWARD AIRBASE",
           dest: fl.dest || "PATROL SECTOR",
         },
@@ -681,12 +685,16 @@ export default function GodsEyeCesiumGlobe({
 
     setCockpitTarget(flight);
 
-    const lat = flight.lat;
-    const lon = flight.lon;
-    const altFt = flight.alt_baro || 28000;
+    const lat = flight.latitude ?? flight.lat;
+    const lon = flight.longitude ?? flight.lon;
+    const altFt = flight.altitude_feet ?? flight.alt_baro ?? 28000;
     const altMeters = altFt * 0.3048;
-    const headingDeg = flight.track || 90;
-    const speed = flight.speed || 450;
+    const headingDeg = flight.heading_deg ?? flight.track ?? 90;
+    const speed = flight.ground_speed_kts ?? flight.speed ?? flight.gs ?? 450;
+    const callsign = flight.callsign ?? flight.flight?.trim() ?? flight.hex ?? "AIR-PATROL-1";
+    const model = flight.description ?? flight.type ?? flight.category ?? "Tactical Airborne Recon";
+
+    if (lat === undefined || lon === undefined || lat === null || lon === null) return;
 
     // Point camera in aircraft forward-looking first-person chase view
     const headingRad = Cesium.Math.toRadians(headingDeg);
@@ -711,8 +719,8 @@ export default function GodsEyeCesiumGlobe({
       verticalRateFpm: -100,
       pitchDeg: -5,
       rollDeg: 0,
-      callsign: flight.callsign || flight.flight || "AIR-PATROL-1",
-      model: flight.category || "USAF C4ISR AWACS / SIGINT",
+      callsign: callsign,
+      model: model,
       origin: flight.origin || "FORWARD PATROL BASE",
       dest: flight.dest || "COMBAT RECON AREA",
     });
@@ -1455,14 +1463,25 @@ export default function GodsEyeCesiumGlobe({
         </button>
 
         <button
-          onClick={fetchSatellites}
+          onClick={() => {
+            const next = !showSats;
+            setShowSats(next);
+            if (next) {
+              if (satellites.length === 0) fetchSatellites();
+              else plotSatellitesInCesium(satellites);
+            } else {
+              viewerRef.current?.entities.values
+                .filter((e: any) => e.id?.startsWith("sat-"))
+                .forEach((e: any) => viewerRef.current.entities.remove(e));
+            }
+          }}
           disabled={satLoading}
           style={{
             padding: "4px 8px",
             fontSize: 10,
-            background: "rgba(0, 229, 255, 0.15)",
-            color: "var(--cyan)",
-            border: "1px solid var(--cyan)",
+            background: showSats ? "rgba(0, 229, 255, 0.2)" : "rgba(255,255,255,0.05)",
+            color: showSats ? "var(--cyan)" : "var(--text-muted)",
+            border: `1px solid ${showSats ? "var(--cyan)" : "transparent"}`,
             borderRadius: 3,
             cursor: "pointer",
             fontFamily: "monospace",
@@ -1471,19 +1490,30 @@ export default function GodsEyeCesiumGlobe({
             gap: 5,
           }}
         >
-          <SatelliteIcon size={12} color="var(--cyan)" />
-          <span>Sats ({satellites.length})</span>
+          <SatelliteIcon size={12} color={showSats ? "var(--cyan)" : "var(--text-muted)"} />
+          <span>Sats ({satLoading ? "..." : satellites.length})</span>
         </button>
 
         <button
-          onClick={fetchFlights}
+          onClick={() => {
+            const next = !showFlights;
+            setShowFlights(next);
+            if (next) {
+              if (flights.length === 0) fetchFlights();
+              else plotFlightsInCesium(flights);
+            } else {
+              viewerRef.current?.entities.values
+                .filter((e: any) => e.id?.startsWith("flight-"))
+                .forEach((e: any) => viewerRef.current.entities.remove(e));
+            }
+          }}
           disabled={flightLoading}
           style={{
             padding: "4px 8px",
             fontSize: 10,
-            background: "rgba(162, 89, 255, 0.15)",
-            color: "#a259ff",
-            border: "1px solid #a259ff",
+            background: showFlights ? "rgba(162, 89, 255, 0.2)" : "rgba(255,255,255,0.05)",
+            color: showFlights ? "#c084fc" : "var(--text-muted)",
+            border: `1px solid ${showFlights ? "#a259ff" : "transparent"}`,
             borderRadius: 3,
             cursor: "pointer",
             fontFamily: "monospace",
@@ -1492,8 +1522,8 @@ export default function GodsEyeCesiumGlobe({
             gap: 5,
           }}
         >
-          <JetIcon size={12} color="#a259ff" />
-          <span>Flights ({flights.length})</span>
+          <JetIcon size={12} color={showFlights ? "#c084fc" : "var(--text-muted)"} />
+          <span>Flights ({flightLoading ? "..." : flights.length})</span>
         </button>
       </div>
     </div>

@@ -1089,8 +1089,9 @@ export default function GeoMap() {
                   <Marker key={`cz-${cz.id}`} position={[cz.lat, cz.lon]} icon={conflictIcon}>
                     <Popup>
                       <div style={{ minWidth: 240, fontSize: 12, color: "#1e293b" }}>
-                        <div style={{ fontWeight: "bold", fontSize: 13, color: "#dc2626", borderBottom: "1px solid #fecaca", paddingBottom: 4, marginBottom: 6 }}>
-                          ⚔️ {cz.label}
+                        <div style={{ fontWeight: "bold", fontSize: 13, color: "#dc2626", borderBottom: "1px solid #fecaca", paddingBottom: 4, marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
+                          <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#dc2626" }} />
+                          <span>{cz.label}</span>
                         </div>
                         <div style={{ fontSize: 10, fontWeight: "bold", color: "#b91c1c", marginBottom: 4 }}>
                           {cz.threat_level || cz.severity?.toUpperCase()}
@@ -1119,8 +1120,9 @@ export default function GeoMap() {
                   <Marker key={`eq-${eq.id}`} position={[eq.lat, eq.lon]} icon={earthquakeIcon}>
                     <Popup>
                       <div style={{ minWidth: 200, fontSize: 12, color: "#1e293b" }}>
-                        <div style={{ fontWeight: "bold", fontSize: 13, color: "#d97706", borderBottom: "1px solid #fef3c7", paddingBottom: 4, marginBottom: 6 }}>
-                          🌋 M{eq.magnitude} — {eq.place}
+                        <div style={{ fontWeight: "bold", fontSize: 13, color: "#d97706", borderBottom: "1px solid #fef3c7", paddingBottom: 4, marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
+                          <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#d97706" }} />
+                          <span>M{eq.magnitude} — {eq.place}</span>
                         </div>
                         <div style={{ fontSize: 11, marginBottom: 4 }}>
                           <strong>Depth:</strong> {eq.depth_km} km | <strong>Tsunami:</strong> {eq.tsunami ? "YES" : "NO"}
@@ -1143,8 +1145,9 @@ export default function GeoMap() {
                   <Marker key={`cctv-${cam.id}`} position={[cam.lat, cam.lon]} icon={cctvIcon}>
                     <Popup>
                       <div style={{ minWidth: 240, fontSize: 12, color: "#1e293b" }}>
-                        <div style={{ fontWeight: "bold", fontSize: 12, color: "#0284c7", marginBottom: 4 }}>
-                          📹 {cam.name}
+                        <div style={{ fontWeight: "bold", fontSize: 12, color: "#0284c7", marginBottom: 4, display: "flex", alignItems: "center", gap: 5 }}>
+                          <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#0284c7" }} />
+                          <span>{cam.name}</span>
                         </div>
                         <div style={{ fontSize: 10, color: "#64748b", marginBottom: 6 }}>
                           {cam.city}, {cam.country} · {cam.source}
@@ -1177,8 +1180,9 @@ export default function GeoMap() {
                   <Marker key={`news-${nw.id}`} position={[nw.lat, nw.lon]} icon={newsIcon}>
                     <Popup>
                       <div style={{ minWidth: 220, fontSize: 12, color: "#1e293b" }}>
-                        <div style={{ fontWeight: "bold", fontSize: 13, color: "#7c3aed", marginBottom: 4 }}>
-                          📺 {nw.name}
+                        <div style={{ fontWeight: "bold", fontSize: 13, color: "#7c3aed", marginBottom: 4, display: "flex", alignItems: "center", gap: 5 }}>
+                          <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#7c3aed" }} />
+                          <span>{nw.name}</span>
                         </div>
                         <div style={{ fontSize: 10, color: "#64748b", marginBottom: 6 }}>
                           {nw.city}, {nw.country} · {nw.category}
@@ -1217,30 +1221,43 @@ export default function GeoMap() {
 
               {/* 6. Shadowbroker Military Flights */}
               {layerFlights &&
-                militaryFlights.map((fl, i) => (
-                  <Marker key={`fl-${fl.hex || i}`} position={[fl.lat, fl.lon]} icon={militaryFlightIcon}>
-                    <Popup>
-                      <div style={{ minWidth: 200, fontSize: 12, color: "#1e293b" }}>
-                        <div style={{ fontWeight: "bold", fontSize: 13, color: "#16a34a", marginBottom: 4 }}>
-                          ✈️ {fl.flight?.trim() || fl.hex}
+                militaryFlights.map((fl, i) => {
+                  const lat = fl.latitude ?? fl.lat;
+                  const lon = fl.longitude ?? fl.lon;
+                  const alt = fl.altitude_feet ?? fl.alt_baro;
+                  const speed = fl.ground_speed_kts ?? fl.speed ?? fl.gs;
+                  const track = fl.heading_deg ?? fl.track;
+                  const callsign = fl.callsign ?? fl.flight?.trim() ?? fl.hex ?? `MIL-${i}`;
+                  const desc = fl.description ?? fl.type ?? fl.country ?? "Military Aircraft";
+
+                  if (lat === undefined || lon === undefined || lat === null || lon === null) return null;
+
+                  return (
+                    <Marker key={`fl-${fl.hex || i}`} position={[lat, lon]} icon={militaryFlightIcon}>
+                      <Popup>
+                        <div style={{ minWidth: 200, fontSize: 12, color: "#1e293b" }}>
+                          <div style={{ fontWeight: "bold", fontSize: 13, color: "#16a34a", marginBottom: 4, display: "flex", alignItems: "center", gap: 5 }}>
+                            <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#16a34a" }} />
+                            <span>{callsign}</span>
+                          </div>
+                          <div style={{ fontSize: 10, color: "#64748b", marginBottom: 4 }}>
+                            Alt: {alt != null ? Number(alt).toLocaleString() : "N/A"} ft | Speed: {speed != null ? speed : "N/A"} kts
+                          </div>
+                          <div style={{ fontSize: 10, color: "#64748b", marginBottom: 6 }}>
+                            Type: {desc} | Track: {track != null ? `${track}°` : "N/A"}
+                          </div>
+                          <SaveToCaseButton
+                            identifierType="corporate"
+                            identifierValue={callsign}
+                            platform="military_flight_radar"
+                            discoveredBy="shadowbroker_radar"
+                            metadata={fl}
+                          />
                         </div>
-                        <div style={{ fontSize: 10, color: "#64748b", marginBottom: 4 }}>
-                          Alt: {fl.alt_baro?.toLocaleString() || "N/A"} ft | Speed: {fl.speed || "N/A"} kts
-                        </div>
-                        <div style={{ fontSize: 10, color: "#64748b", marginBottom: 6 }}>
-                          Country: {fl.country || "Military"} | Track: {fl.track}°
-                        </div>
-                        <SaveToCaseButton
-                          identifierType="corporate"
-                          identifierValue={fl.flight?.trim() || fl.hex}
-                          platform="military_flight_radar"
-                          discoveredBy="shadowbroker_radar"
-                          metadata={fl}
-                        />
-                      </div>
-                    </Popup>
-                  </Marker>
-                ))}
+                      </Popup>
+                    </Marker>
+                  );
+                })}
             </MapContainer>
           </div>
         </div>
