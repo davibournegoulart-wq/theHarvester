@@ -5,6 +5,7 @@ import { apiGet, apiPostJson } from "@/lib/api";
 import { useActiveCase } from "@/lib/activeCase";
 import SaveToCaseButton from "@/components/SaveToCaseButton";
 import GlobalCctvSuite, { CctvCameraItem } from "./GlobalCctvSuite";
+import SocmintSuite from "./SocmintSuite";
 import {
   RadarIcon,
   GlobeIcon,
@@ -25,6 +26,7 @@ import {
   JetIcon,
   VideoIcon,
   CameraIcon,
+  UserIcon,
 } from "@/components/FlatIcons";
 
 export type CockpitTab =
@@ -34,7 +36,8 @@ export type CockpitTab =
   | "MARITIME_INFRA"
   | "DISASTERS_THERMAL"
   | "CYBER_C2"
-  | "MARKETS_SANCTIONS";
+  | "MARKETS_SANCTIONS"
+  | "SOCMINT";
 
 export type MilitaryFlightItem = {
   id: string;
@@ -493,6 +496,7 @@ export default function UnifiedC4ISRCockpit({
           { id: "DISASTERS_THERMAL", label: "DISASTERS & THERMAL (FIRMS)", count: earthquakes.length + thermalFires.length, icon: <FlameIcon size={13} /> },
           { id: "CYBER_C2", label: "CYBER C2 BOTNETS", count: malwareC2s.length, icon: <TerminalIcon size={13} /> },
           { id: "MARKETS_SANCTIONS", label: "GEO-FINANCE & SANCTIONS", count: null, icon: <ShieldIcon size={13} /> },
+          { id: "SOCMINT", label: "👻 SOCMINT", count: null, icon: <UserIcon size={13} /> },
         ].map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -1213,6 +1217,14 @@ export default function UnifiedC4ISRCockpit({
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+
+      {/* TAB 8: SOCMINT — Social Media Intelligence */}
+      {activeTab === "SOCMINT" && (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+          <SocmintSuite />
         </div>
       )}
     </div>

@@ -1837,3 +1837,38 @@ async def osiris_summary():
     """OSIRIS: Aggregated real-time situational awareness metrics ticker."""
     return await osiris_fetch_summary()
 
+
+# ---------------------------------------------------------------------------
+# SOCMINT — Social Media Intelligence Routes
+# Sources: SnapIntel (Kr0wZ), Snapchat-Checker (OSINT-Trace),
+#          Social-Media-OSINT (The-Osint-Toolbox), OSINT-Tools-Library,
+#          Social-Media-OSINT-Tools-CollectionNow (SENSEiXENUS)
+# ---------------------------------------------------------------------------
+from app.recon.socmint import (
+    snap_profile as socmint_snap_profile,
+    get_socmint_tool_directory as socmint_tool_dir,
+)
+
+
+@router.get("/socmint/snapchat")
+async def socmint_snapchat_profile(username: str):
+    """
+    SOCMINT: Snapchat profile intelligence lookup.
+    Adapted from SnapIntel (Kr0wZ/SnapIntel): fetches snapchat.com/add/{username}
+    and parses __NEXT_DATA__ JSON to extract profile, stories, highlights, spotlights,
+    lenses, subscriber count, Snapcode, Bitmoji and badge information.
+    """
+    return await socmint_snap_profile(username=username.strip())
+
+
+@router.get("/socmint/tools")
+async def socmint_tools_directory():
+    """
+    SOCMINT: Curated social media OSINT tool directory.
+    Compiled from: Social-Media-OSINT (The-Osint-Toolbox),
+    OSINT-Tools-Library (The-OSINT-Newsletter),
+    Social-Media-OSINT-Tools-CollectionNow (SENSEiXENUS).
+    Covers: Snapchat, Instagram, Twitter/X, Facebook, LinkedIn,
+    Reddit, Telegram, YouTube, and multi-platform tools.
+    """
+    return socmint_tool_dir()
