@@ -13,6 +13,12 @@ import {
   TargetIcon,
   CheckIcon,
   AlertIcon,
+  SwordsIcon,
+  FlameIcon,
+  TvIcon,
+  SatelliteIcon,
+  JetIcon,
+  VideoIcon,
 } from "@/components/FlatIcons";
 
 declare global {
@@ -105,6 +111,26 @@ export default function GodsEyeCesiumGlobe({
           link.href =
             "https://cesium.com/downloads/cesiumjs/releases/1.121/Build/Cesium/Widgets/widgets.css";
           document.head.appendChild(link);
+        }
+
+        if (!document.getElementById("cesium-custom-overrides")) {
+          const style = document.createElement("style");
+          style.id = "cesium-custom-overrides";
+          style.textContent = `
+            .cesium-widget-credits,
+            .cesium-credit-logoContainer,
+            .cesium-credit-textContainer,
+            .cesium-credit-expand-link {
+              display: none !important;
+              visibility: hidden !important;
+              opacity: 0 !important;
+              pointer-events: none !important;
+            }
+            .cesium-viewer-bottom {
+              display: none !important;
+            }
+          `;
+          document.head.appendChild(style);
         }
 
         // Inject JS
@@ -304,15 +330,15 @@ export default function GodsEyeCesiumGlobe({
           outlineWidth: 2,
         },
         label: {
-          text: `⚔️ ${cz.label}`,
-          font: "bold 10px monospace",
+          text: cz.label,
+          font: "bold 11px system-ui, -apple-system, sans-serif",
           style: Cesium.LabelStyle.FILL_AND_OUTLINE,
           fillColor: Cesium.Color.fromCssColorString("#ff5555"),
           outlineColor: Cesium.Color.BLACK,
-          outlineWidth: 2,
+          outlineWidth: 3,
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
           pixelOffset: new Cesium.Cartesian2(0, -10),
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 25000000.0),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 18000000.0),
         },
         properties: {
           type: "CONFLICT_ZONE",
@@ -368,15 +394,15 @@ export default function GodsEyeCesiumGlobe({
           outlineWidth: 2,
         },
         label: {
-          text: `🌋 M${mag}`,
-          font: "9px monospace",
+          text: `M${mag}`,
+          font: "bold 10px system-ui, -apple-system, sans-serif",
           style: Cesium.LabelStyle.FILL_AND_OUTLINE,
           fillColor: Cesium.Color.fromCssColorString("#ffaa00"),
           outlineColor: Cesium.Color.BLACK,
-          outlineWidth: 2,
+          outlineWidth: 3,
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
           pixelOffset: new Cesium.Cartesian2(0, -8),
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 15000000.0),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 10000000.0),
         },
         properties: {
           type: "EARTHQUAKE",
@@ -424,21 +450,21 @@ export default function GodsEyeCesiumGlobe({
         name: `BROADCAST: ${nw.name}`,
         position: position,
         point: {
-          pixelSize: 10,
+          pixelSize: 9,
           color: Cesium.Color.fromCssColorString("#a259ff"),
           outlineColor: Cesium.Color.WHITE,
           outlineWidth: 2,
         },
         label: {
-          text: `📺 ${nw.name}`,
-          font: "10px monospace",
+          text: nw.name,
+          font: "10px system-ui, -apple-system, sans-serif",
           style: Cesium.LabelStyle.FILL_AND_OUTLINE,
           fillColor: Cesium.Color.fromCssColorString("#c084fc"),
           outlineColor: Cesium.Color.BLACK,
-          outlineWidth: 2,
+          outlineWidth: 3,
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
           pixelOffset: new Cesium.Cartesian2(0, -10),
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 20000000.0),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 12000000.0),
         },
         properties: {
           type: "LIVE_NEWS",
@@ -530,21 +556,21 @@ export default function GodsEyeCesiumGlobe({
         name: sat.name || `ORBITAL SATELLITE #${sat.norad_id || i}`,
         position: position,
         point: {
-          pixelSize: 8,
+          pixelSize: 7,
           color: Cesium.Color.CYAN,
           outlineColor: Cesium.Color.BLACK,
-          outlineWidth: 2,
+          outlineWidth: 1.5,
         },
         label: {
           text: sat.name ? sat.name.substring(0, 16) : `SAT-${sat.norad_id || i}`,
-          font: "10px monospace",
+          font: "10px system-ui, -apple-system, sans-serif",
           style: Cesium.LabelStyle.FILL_AND_OUTLINE,
           fillColor: Cesium.Color.fromCssColorString("#00e5ff"),
           outlineColor: Cesium.Color.BLACK,
-          outlineWidth: 2,
+          outlineWidth: 3,
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
           pixelOffset: new Cesium.Cartesian2(0, -9),
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 30000000.0),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 15000000.0),
         },
         properties: {
           type: "SATELLITE",
@@ -619,14 +645,14 @@ export default function GodsEyeCesiumGlobe({
         },
         label: {
           text: `${fl.flight?.trim() || fl.hex || "RECON"} (${Math.round(altFt / 1000)}k ft)`,
-          font: "10px monospace",
+          font: "10px system-ui, -apple-system, sans-serif",
           style: Cesium.LabelStyle.FILL_AND_OUTLINE,
           fillColor: Cesium.Color.fromCssColorString("#d8b4fe"),
           outlineColor: Cesium.Color.BLACK,
-          outlineWidth: 2,
+          outlineWidth: 3,
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
           pixelOffset: new Cesium.Cartesian2(0, -9),
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 15000000.0),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 10000000.0),
         },
         properties: {
           type: "AIRCRAFT",
@@ -1146,17 +1172,17 @@ export default function GodsEyeCesiumGlobe({
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               {selectedContact.type === "AIRCRAFT" ? (
-                <RadarIcon size={15} color="#a259ff" />
+                <JetIcon size={15} color="#a259ff" />
               ) : selectedContact.type === "CONFLICT_ZONE" ? (
-                <span style={{ fontSize: 14 }}>⚔️</span>
+                <SwordsIcon size={15} color="#ff5555" />
               ) : selectedContact.type === "EARTHQUAKE" ? (
-                <span style={{ fontSize: 14 }}>🌋</span>
+                <FlameIcon size={15} color="#ffaa00" />
               ) : selectedContact.type === "LIVE_NEWS" ? (
-                <span style={{ fontSize: 14 }}>📺</span>
+                <TvIcon size={15} color="#c084fc" />
               ) : selectedContact.type === "CCTV_CAMERA" ? (
-                <span style={{ fontSize: 14 }}>📹</span>
+                <VideoIcon size={15} color="#00e5ff" />
               ) : (
-                <EyeIcon size={15} color="var(--cyan)" />
+                <SatelliteIcon size={15} color="var(--cyan)" />
               )}
               <span style={{ fontSize: 12, fontWeight: "bold", color: "var(--cyan)" }}>
                 {selectedContact.type === "AIRCRAFT"
@@ -1361,9 +1387,13 @@ export default function GodsEyeCesiumGlobe({
             borderRadius: 3,
             cursor: "pointer",
             fontFamily: "monospace",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
           }}
         >
-          ⚔️ Wars ({conflicts.length})
+          <SwordsIcon size={12} color={showConflicts ? "#ff5555" : "var(--text-muted)"} />
+          <span>Wars ({conflicts.length})</span>
         </button>
 
         <button
@@ -1386,9 +1416,13 @@ export default function GodsEyeCesiumGlobe({
             borderRadius: 3,
             cursor: "pointer",
             fontFamily: "monospace",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
           }}
         >
-          🌋 Quakes ({earthquakes.length})
+          <FlameIcon size={12} color={showQuakes ? "#ffaa00" : "var(--text-muted)"} />
+          <span>Quakes ({earthquakes.length})</span>
         </button>
 
         <button
@@ -1411,9 +1445,13 @@ export default function GodsEyeCesiumGlobe({
             borderRadius: 3,
             cursor: "pointer",
             fontFamily: "monospace",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
           }}
         >
-          📺 News ({newsFeeds.length})
+          <TvIcon size={12} color={showNews ? "#c084fc" : "var(--text-muted)"} />
+          <span>News ({newsFeeds.length})</span>
         </button>
 
         <button
@@ -1428,9 +1466,13 @@ export default function GodsEyeCesiumGlobe({
             borderRadius: 3,
             cursor: "pointer",
             fontFamily: "monospace",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
           }}
         >
-          🛰️ Sats ({satellites.length})
+          <SatelliteIcon size={12} color="var(--cyan)" />
+          <span>Sats ({satellites.length})</span>
         </button>
 
         <button
@@ -1445,9 +1487,13 @@ export default function GodsEyeCesiumGlobe({
             borderRadius: 3,
             cursor: "pointer",
             fontFamily: "monospace",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
           }}
         >
-          ✈️ Flights ({flights.length})
+          <JetIcon size={12} color="#a259ff" />
+          <span>Flights ({flights.length})</span>
         </button>
       </div>
     </div>

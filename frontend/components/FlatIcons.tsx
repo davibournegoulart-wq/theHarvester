@@ -579,6 +579,58 @@ export function CompassIcon({ size = 14, color = "currentColor", style }: IconPr
   );
 }
 
+export function SatelliteIcon({ size = 14, color = "currentColor", style }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", ...style }}>
+      <path d="M13 7 9 3 5 7l4 4" />
+      <path d="m17 11 4 4-4 4-4-4" />
+      <path d="m8 12 4 4" />
+      <path d="m16 8-4-4" />
+      <circle cx="12" cy="12" r="2" />
+    </svg>
+  );
+}
+
+export function JetIcon({ size = 14, color = "currentColor", style }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", ...style }}>
+      <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3.5c-.5-.5-2.5 0-4 1.5L13.5 8.5 5.3 6.7c-.6-.1-1.2.2-1.5.7l-.6 1.1c-.2.4-.1.9.2 1.2l5.5 4.5-3.4 3.4-2.8-.7c-.4-.1-.8 0-1.1.3l-.4.4c-.3.3-.3.8 0 1.1l2.5 2.5 2.5 2.5c.3.3.8.3 1.1 0l.4-.4c.3-.3.4-.7.3-1.1l-.7-2.8 3.4-3.4 4.5 5.5c.3.3.8.4 1.2.2l1.1-.6c.5-.3.8-.9.7-1.5z" />
+    </svg>
+  );
+}
+
+export function SwordsIcon({ size = 14, color = "currentColor", style }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", ...style }}>
+      <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5" />
+      <line x1="13" y1="19" x2="19" y2="13" />
+      <line x1="16" y1="16" x2="20" y2="20" />
+      <line x1="19" y1="21" x2="21" y2="19" />
+      <polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5" />
+      <line x1="5" y1="14" x2="9" y2="18" />
+      <line x1="7" y1="17" x2="4" y2="20" />
+      <line x1="3" y1="19" x2="5" y2="21" />
+    </svg>
+  );
+}
+
+export function TvIcon({ size = 14, color = "currentColor", style }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", ...style }}>
+      <rect width="20" height="15" x="2" y="7" rx="2" ry="2" />
+      <polyline points="17 2 12 7 7 2" />
+    </svg>
+  );
+}
+
+export function FlameIcon({ size = 14, color = "currentColor", style }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", ...style }}>
+      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+    </svg>
+  );
+}
+
 
 
 

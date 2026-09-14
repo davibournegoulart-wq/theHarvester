@@ -22,6 +22,11 @@ import {
   CompassIcon,
   FileTextIcon,
   CrossIcon,
+  SwordsIcon,
+  FlameIcon,
+  VideoIcon,
+  TvIcon,
+  JetIcon,
 } from "@/components/FlatIcons";
 import SaveToCaseButton from "./SaveToCaseButton";
 import OsirisIntelSuite from "./OsirisIntelSuite";
@@ -75,37 +80,38 @@ const customPinIcon = typeof window !== "undefined" ? new L.Icon({
   shadowSize: [41, 41]
 }) : (null as any);
 
-const conflictIcon = typeof window !== "undefined" ? L.divIcon({
+const conflictZoneIcon = typeof window !== "undefined" ? L.divIcon({
   className: "custom-div-icon",
-  html: `<div style="background: rgba(255, 60, 60, 0.9); border: 2px solid #ff1111; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; box-shadow: 0 0 10px #ff3333;">⚔️</div>`,
+  html: `<div style="background: rgba(255, 60, 60, 0.9); border: 2px solid #ff1111; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px #ff3333;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>`,
   iconSize: [24, 24],
   iconAnchor: [12, 12],
 }) : (null as any);
+const conflictIcon = conflictZoneIcon;
 
 const earthquakeIcon = typeof window !== "undefined" ? L.divIcon({
   className: "custom-div-icon",
-  html: `<div style="background: rgba(255, 170, 0, 0.9); border: 2px solid #ffaa00; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; box-shadow: 0 0 8px #ffaa00;">🌋</div>`,
+  html: `<div style="background: rgba(255, 170, 0, 0.9); border: 2px solid #ffaa00; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 8px #ffaa00;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div>`,
   iconSize: [22, 22],
   iconAnchor: [11, 11],
 }) : (null as any);
 
 const cctvIcon = typeof window !== "undefined" ? L.divIcon({
   className: "custom-div-icon",
-  html: `<div style="background: rgba(0, 229, 255, 0.9); border: 2px solid #00e5ff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; box-shadow: 0 0 8px #00e5ff;">📹</div>`,
+  html: `<div style="background: rgba(0, 229, 255, 0.9); border: 2px solid #00e5ff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 8px #00e5ff;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect width="15" height="14" x="1" y="5" rx="2" ry="2"/></svg></div>`,
   iconSize: [22, 22],
   iconAnchor: [11, 11],
 }) : (null as any);
 
 const newsIcon = typeof window !== "undefined" ? L.divIcon({
   className: "custom-div-icon",
-  html: `<div style="background: rgba(162, 89, 255, 0.9); border: 2px solid #a259ff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; box-shadow: 0 0 8px #a259ff;">📺</div>`,
+  html: `<div style="background: rgba(162, 89, 255, 0.9); border: 2px solid #a259ff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 8px #a259ff;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="15" x="2" y="7" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg></div>`,
   iconSize: [22, 22],
   iconAnchor: [11, 11],
 }) : (null as any);
 
 const militaryFlightIcon = typeof window !== "undefined" ? L.divIcon({
   className: "custom-div-icon",
-  html: `<div style="background: rgba(0, 230, 118, 0.9); border: 2px solid #00E676; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; box-shadow: 0 0 8px #00E676;">✈️</div>`,
+  html: `<div style="background: rgba(0, 230, 118, 0.9); border: 2px solid #00E676; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 8px #00E676;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3.5c-.5-.5-2.5 0-4 1.5L13.5 8.5 5.3 6.7c-.6-.1-1.2.2-1.5.7l-.6 1.1c-.2.4-.1.9.2 1.2l5.5 4.5-3.4 3.4-2.8-.7c-.4-.1-.8 0-1.1.3l-.4.4c-.3.3-.3.8 0 1.1l2.5 2.5 2.5 2.5c.3.3.8.3 1.1 0l.4-.4c.3-.3.4-.7.3-1.1l-.7-2.8 3.4-3.4 4.5 5.5c.3.3.8.4 1.2.2l1.1-.6c.5-.3.8-.9.7-1.5z"/></svg></div>`,
   iconSize: [20, 20],
   iconAnchor: [10, 10],
 }) : (null as any);
@@ -924,9 +930,13 @@ export default function GeoMap() {
                 color: layerWars ? "#ff5555" : "var(--text-muted)",
                 border: `1px solid ${layerWars ? "#ff5555" : "rgba(255,255,255,0.1)"}`,
                 cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
               }}
             >
-              ⚔️ Wars ({conflicts.length})
+              <SwordsIcon size={12} color={layerWars ? "#ff5555" : "var(--text-muted)"} />
+              <span>Wars ({conflicts.length})</span>
             </button>
 
             <button
@@ -939,9 +949,13 @@ export default function GeoMap() {
                 color: layerQuakes ? "#ffaa00" : "var(--text-muted)",
                 border: `1px solid ${layerQuakes ? "#ffaa00" : "rgba(255,255,255,0.1)"}`,
                 cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
               }}
             >
-              🌋 Quakes ({earthquakes.length})
+              <FlameIcon size={12} color={layerQuakes ? "#ffaa00" : "var(--text-muted)"} />
+              <span>Quakes ({earthquakes.length})</span>
             </button>
 
             <button
@@ -954,9 +968,13 @@ export default function GeoMap() {
                 color: layerCctv ? "var(--cyan)" : "var(--text-muted)",
                 border: `1px solid ${layerCctv ? "var(--cyan)" : "rgba(255,255,255,0.1)"}`,
                 cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
               }}
             >
-              📹 CCTVs ({cctvs.length})
+              <VideoIcon size={12} color={layerCctv ? "var(--cyan)" : "var(--text-muted)"} />
+              <span>CCTVs ({cctvs.length})</span>
             </button>
 
             <button
@@ -969,9 +987,13 @@ export default function GeoMap() {
                 color: layerNews ? "#c084fc" : "var(--text-muted)",
                 border: `1px solid ${layerNews ? "#a259ff" : "rgba(255,255,255,0.1)"}`,
                 cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
               }}
             >
-              📺 News ({newsPoints.length})
+              <TvIcon size={12} color={layerNews ? "#c084fc" : "var(--text-muted)"} />
+              <span>News ({newsPoints.length})</span>
             </button>
 
             <button
@@ -984,9 +1006,13 @@ export default function GeoMap() {
                 color: layerFlights ? "#00E676" : "var(--text-muted)",
                 border: `1px solid ${layerFlights ? "#00E676" : "rgba(255,255,255,0.1)"}`,
                 cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
               }}
             >
-              ✈️ Flights ({militaryFlights.length})
+              <JetIcon size={12} color={layerFlights ? "#00E676" : "var(--text-muted)"} />
+              <span>Flights ({militaryFlights.length})</span>
             </button>
 
             <label style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 6, color: "var(--text-muted)", cursor: "pointer", marginLeft: "auto" }}>
